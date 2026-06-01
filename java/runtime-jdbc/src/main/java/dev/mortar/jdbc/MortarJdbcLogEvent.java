@@ -5,6 +5,9 @@ import dev.mortar.core.QueryMetadata;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Redacted JDBC log event emitted by the runtime adapter.
+ */
 public record MortarJdbcLogEvent(
     MortarJdbcOperation operation,
     String sql,

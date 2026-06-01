@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 
+/**
+ * Fluent builder for immutable select query specifications.
+ */
 public final class QueryBuilder<T> {
     private final TableRef table;
     private final T model;

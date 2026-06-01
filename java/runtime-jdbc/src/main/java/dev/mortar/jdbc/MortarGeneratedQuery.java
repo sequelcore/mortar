@@ -7,6 +7,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
 
+/**
+ * Generated query contract with pre-rendered SQL, direct parameter binding, and row mapping.
+ */
 public interface MortarGeneratedQuery<P, T> {
     String sql();
 

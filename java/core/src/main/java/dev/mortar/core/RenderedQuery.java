@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * SQL text, bound parameters, and metadata produced by a renderer.
+ */
 public record RenderedQuery(String sql, List<Parameter> parameters, QueryMetadata metadata) {
     public RenderedQuery(String sql, List<Parameter> parameters) {
         this(sql, parameters, QueryMetadata.empty());

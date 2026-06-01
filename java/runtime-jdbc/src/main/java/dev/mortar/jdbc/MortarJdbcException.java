@@ -7,6 +7,9 @@ import dev.mortar.core.RenderedQuery;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Unchecked JDBC failure with rendered SQL context when available.
+ */
 public final class MortarJdbcException extends RuntimeException {
     private static final long serialVersionUID = 1L;
     private final String sql;

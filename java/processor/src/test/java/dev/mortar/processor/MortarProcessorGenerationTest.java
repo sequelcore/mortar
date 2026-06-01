@@ -154,6 +154,7 @@ final class MortarProcessorGenerationTest {
 
         assertThat(generatedSource)
             .contains("import dev.mortar.jdbc.MortarGeneratedQuery;")
+            .contains("Generated primary-key lookup for SQL table {@code clients}.")
             .contains("public FindByIdQuery findById(dev.mortar.core.QueryRenderer renderer)")
             .contains("public record FindByIdParameters(java.lang.Long id)")
             .contains("public record FindByIdRow(java.lang.Long id, java.lang.String name, java.lang.Boolean active)")
@@ -239,6 +240,7 @@ final class MortarProcessorGenerationTest {
 
         assertThat(generatedSource)
             .contains("public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer)")
+            .contains("Generated query for {@code select id, name, active from clients}.")
             .doesNotContain("public record FindAllParameters()")
             .contains("public record FindAllRow(java.lang.Long id, java.lang.String name, java.lang.Boolean active)")
             .contains("public static final class FindAllQuery implements MortarGeneratedQuery<dev.mortar.jdbc.MortarNoParameters, FindAllRow>")

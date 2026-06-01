@@ -1,4 +1,5 @@
 mortar:
+  dialect: postgres
   sql-format: pretty
   jdbc:
     logging:

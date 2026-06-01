@@ -18,3 +18,7 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 - Added Maven Central publishing configuration for public Java modules.
 - Added CI release dry-run checks for Java Maven local publishing and the first Rust crate.
 - Added canonical roadmap and public governance docs.
+- Added R15 public API readiness hardening for generated read executors, Spring
+  Boot starter diagnostics, PostgreSQL syntax evidence, processor diagnostics,
+  usage guidance, additional examples, benchmark matrix breadth, and pre-1.0
+  compatibility policy.

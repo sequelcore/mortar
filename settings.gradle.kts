@@ -32,5 +32,6 @@ include(
     "java:testkit",
     "java:benchmarks",
     "editors:intellij",
-    "examples:spring-boot-postgres"
+    "examples:spring-boot-postgres",
+    "examples:clean-architecture-postgres"
 )

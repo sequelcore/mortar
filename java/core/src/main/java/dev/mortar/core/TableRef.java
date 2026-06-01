@@ -2,6 +2,9 @@ package dev.mortar.core;
 
 import java.util.Objects;
 
+/**
+ * SQL table name and alias used by query specs and generated metamodels.
+ */
 public record TableRef(String tableName, String alias) {
     public TableRef {
         Objects.requireNonNull(tableName, "tableName cannot be null");

@@ -2,6 +2,9 @@ package dev.mortar.core;
 
 import java.util.Objects;
 
+/**
+ * Explicit join between two columns.
+ */
 public record Join(
     JoinType type,
     TableRef table,

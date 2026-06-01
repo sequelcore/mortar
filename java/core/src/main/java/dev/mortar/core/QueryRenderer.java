@@ -1,5 +1,8 @@
 package dev.mortar.core;
 
+/**
+ * Dialect boundary that renders query and mutation specs to SQL.
+ */
 public interface QueryRenderer {
     RenderedQuery render(QuerySpec query);
 

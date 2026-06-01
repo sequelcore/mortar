@@ -2,6 +2,9 @@ package dev.mortar.core;
 
 import java.util.Objects;
 
+/**
+ * Default framework-free implementation of the Mortar query entry point.
+ */
 public final class SimpleMortarDb implements MortarDb {
     @Override
     public <T> QueryBuilder<T> from(TableRef table) {

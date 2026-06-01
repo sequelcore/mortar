@@ -26,3 +26,20 @@ Current rules:
 Diagnostics are warnings by default unless explicitly marked as `INFO`. Schema
 drift checks are available through `mortar schema check`. A suppression mechanism
 with mandatory reason text is still planned.
+
+## Processor Diagnostics
+
+Mortar's annotation processor fails compilation for invalid generated metamodel
+inputs. Current stable processor diagnostic codes:
+
+- `MORTAR_PROCESSOR_001`: entity has no identifier field.
+- `MORTAR_PROCESSOR_002`: duplicate generated SQL column name.
+- `MORTAR_PROCESSOR_003`: unsupported generic column type.
+- `MORTAR_PROCESSOR_004`: relationship local column is blank.
+- `MORTAR_PROCESSOR_005`: invalid SQL table identifier.
+- `MORTAR_PROCESSOR_006`: invalid SQL table alias.
+- `MORTAR_PROCESSOR_007`: invalid SQL column identifier.
+
+Generated `Q*` source also includes Javadocs for table refs, column refs,
+relation refs, and generated read executors so IDEs can show SQL metadata at
+the call site.

@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * String comparison options for case strategy and optional collation.
+ */
 public record StringComparison(StringCaseStrategy caseStrategy, Optional<String> collation) {
     public StringComparison {
         Objects.requireNonNull(caseStrategy, "caseStrategy cannot be null");

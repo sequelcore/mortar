@@ -27,6 +27,9 @@ import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * Javac annotation processor that emits Mortar {@code Q*} metamodels and metadata files.
+ */
 @SupportedAnnotationTypes({
     "dev.mortar.processor.MortarColumn",
     "dev.mortar.processor.MortarEntity",
@@ -40,6 +43,12 @@ import java.util.Set;
 })
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public final class MortarProcessor extends AbstractProcessor {
+    /**
+     * Creates the annotation processor instance used by javac.
+     */
+    public MortarProcessor() {
+    }
+
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
         if (roundEnvironment == null || annotations.isEmpty() || roundEnvironment.processingOver()) {
@@ -116,6 +125,22 @@ public final class MortarProcessor extends AbstractProcessor {
         boolean valid = true;
         boolean hasId = false;
         Set<String> columnNames = new HashSet<>();
+        String tableName = tableName(entity);
+        String alias = alias(entity, entity.getSimpleName().toString());
+
+        if (!isSqlIdentifier(tableName)) {
+            error("MORTAR_PROCESSOR_005 invalid table identifier '" + tableName + "'", entity);
+            valid = false;
+        }
+
+        MortarEntity metadata = entity.getAnnotation(MortarEntity.class);
+        if (metadata != null && !metadata.alias().isEmpty() && metadata.alias().isBlank()) {
+            error("MORTAR_PROCESSOR_006 invalid table alias '" + metadata.alias() + "'", entity);
+            valid = false;
+        } else if (!isSqlIdentifier(alias)) {
+            error("MORTAR_PROCESSOR_006 invalid table alias '" + alias + "'", entity);
+            valid = false;
+        }
 
         for (VariableElement field : ElementFilter.fieldsIn(entity.getEnclosedElements())) {
             MortarColumn column = field.getAnnotation(MortarColumn.class);
@@ -129,6 +154,10 @@ public final class MortarProcessor extends AbstractProcessor {
 
             if (columnName.isPresent()) {
                 String name = columnName.get();
+                if (!isSqlIdentifier(name)) {
+                    error("MORTAR_PROCESSOR_007 invalid column identifier '" + name + "'", field);
+                    valid = false;
+                }
                 if (!columnNames.add(name)) {
                     error("MORTAR_PROCESSOR_002 duplicate column '" + name + "'", field);
                     valid = false;
@@ -145,6 +174,18 @@ public final class MortarProcessor extends AbstractProcessor {
                     error("MORTAR_PROCESSOR_004 relation localColumn cannot be blank", field);
                     valid = false;
                 }
+                if (!localColumn.isBlank() && !isSqlIdentifier(localColumn)) {
+                    error("MORTAR_PROCESSOR_007 invalid column identifier '" + localColumn + "'", field);
+                    valid = false;
+                }
+                Optional<String> targetColumn = relationTargetColumn(field);
+                if (targetColumn.isPresent() && targetColumn.get().isBlank()) {
+                    error("MORTAR_PROCESSOR_007 invalid column identifier '" + targetColumn.get() + "'", field);
+                    valid = false;
+                } else if (targetColumn.isPresent() && !isSqlIdentifier(targetColumn.get())) {
+                    error("MORTAR_PROCESSOR_007 invalid column identifier '" + targetColumn.get() + "'", field);
+                    valid = false;
+                }
                 if (!localColumn.isBlank() && !columnNames.add(localColumn)) {
                     error("MORTAR_PROCESSOR_002 duplicate column '" + localColumn + "'", field);
                     valid = false;
@@ -158,6 +199,10 @@ public final class MortarProcessor extends AbstractProcessor {
         }
 
         return valid;
+    }
+
+    private boolean isSqlIdentifier(String value) {
+        return value != null && value.matches("[a-zA-Z_][a-zA-Z0-9_]*");
     }
 
     private boolean hasUnsupportedType(VariableElement field) {
@@ -269,8 +314,8 @@ public final class MortarProcessor extends AbstractProcessor {
             source.append("        ").append(relation.nullable()).append("\n");
             source.append("    );\n");
         }
-        appendFindAllExecutor(source, generatedClassName, columns);
-        appendFindByIdExecutor(source, generatedClassName, columns);
+        appendFindAllExecutor(source, generatedClassName, tableName, columns);
+        appendFindByIdExecutor(source, generatedClassName, tableName, columns);
         source.append("\n");
         source.append("    @Override\n");
         source.append("    public TableRef table() {\n");
@@ -282,12 +327,25 @@ public final class MortarProcessor extends AbstractProcessor {
         return source.toString();
     }
 
-    private void appendFindAllExecutor(StringBuilder source, String generatedClassName, List<ColumnModel> columns) {
+    private void appendFindAllExecutor(
+        StringBuilder source,
+        String generatedClassName,
+        String tableName,
+        List<ColumnModel> columns
+    ) {
         source.append("\n");
+        source.append("    /**\n");
+        source.append("     * Generated query for {@code select ").append(columnList(columns)).append(" from ")
+            .append(tableName).append("}.\n");
+        source.append("     * SQL is rendered by the supplied dialect renderer.\n");
+        source.append("     */\n");
         source.append("    public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("        return new FindAllQuery(renderer);\n");
         source.append("    }\n\n");
         appendRowRecord(source, "FindAllRow", columns);
+        source.append("    /**\n");
+        source.append("     * Pre-rendered generated query for all mapped columns.\n");
+        source.append("     */\n");
         source.append("    public static final class FindAllQuery implements MortarGeneratedQuery<dev.mortar.jdbc.MortarNoParameters, FindAllRow> {\n");
         source.append("        private final dev.mortar.core.RenderedQuery renderedQuery;\n\n");
         source.append("        public FindAllQuery(dev.mortar.core.QueryRenderer renderer) {\n");
@@ -322,7 +380,12 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("    }\n");
     }
 
-    private void appendFindByIdExecutor(StringBuilder source, String generatedClassName, List<ColumnModel> columns) {
+    private void appendFindByIdExecutor(
+        StringBuilder source,
+        String generatedClassName,
+        String tableName,
+        List<ColumnModel> columns
+    ) {
         Optional<ColumnModel> idColumn = columns.stream()
             .filter(ColumnModel::id)
             .findFirst();
@@ -332,6 +395,11 @@ public final class MortarProcessor extends AbstractProcessor {
 
         ColumnModel id = idColumn.get();
         source.append("\n");
+        source.append("    /**\n");
+        source.append("     * Generated primary-key lookup for SQL table {@code ")
+            .append(tableName).append("}.\n");
+        source.append("     * SQL is rendered by the supplied dialect renderer.\n");
+        source.append("     */\n");
         source.append("    public FindByIdQuery findById(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("        return new FindByIdQuery(renderer);\n");
         source.append("    }\n\n");
@@ -339,6 +407,9 @@ public final class MortarProcessor extends AbstractProcessor {
             .append(id.propertyName()).append(") {\n");
         source.append("    }\n\n");
         appendRowRecord(source, "FindByIdRow", columns);
+        source.append("    /**\n");
+        source.append("     * Pre-rendered generated query for primary-key lookup.\n");
+        source.append("     */\n");
         source.append("    public static final class FindByIdQuery implements MortarGeneratedQuery<FindByIdParameters, FindByIdRow> {\n");
         source.append("        private final dev.mortar.core.RenderedQuery renderedQuery;\n\n");
         source.append("        public FindByIdQuery(dev.mortar.core.QueryRenderer renderer) {\n");
@@ -411,6 +482,12 @@ public final class MortarProcessor extends AbstractProcessor {
             source.append("table.").append(columns.get(index).propertyName());
         }
         source.append(")\n");
+    }
+
+    private String columnList(List<ColumnModel> columns) {
+        return columns.stream()
+            .map(ColumnModel::columnName)
+            .collect(java.util.stream.Collectors.joining(", "));
     }
 
     private void appendBindStatement(StringBuilder source, ColumnModel id) {

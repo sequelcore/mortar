@@ -4,6 +4,9 @@ import org.assertj.core.api.AbstractAssert;
 
 import java.util.Objects;
 
+/**
+ * AssertJ assertions for PostgreSQL EXPLAIN text.
+ */
 public final class MortarExplainPlanAssertions extends AbstractAssert<MortarExplainPlanAssertions, String> {
     private MortarExplainPlanAssertions(String explainPlan) {
         super(explainPlan, MortarExplainPlanAssertions.class);

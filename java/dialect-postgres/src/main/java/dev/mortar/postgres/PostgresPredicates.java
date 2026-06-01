@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * PostgreSQL-specific predicate factories for arrays, JSONB, and full-text search.
+ */
 public final class PostgresPredicates {
     static final String DIALECT = "postgres";
     static final String ARRAY_CONTAINS = "array_contains";

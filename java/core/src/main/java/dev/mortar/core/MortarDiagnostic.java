@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Stable diagnostic emitted by core analysis or tooling.
+ */
 public record MortarDiagnostic(
     MortarDiagnosticCode code,
     MortarDiagnosticSeverity severity,

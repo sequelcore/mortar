@@ -3,6 +3,10 @@
 Mortar should live in the infrastructure adapter, not inside domain entities or
 use cases.
 
+The runnable companion module is `examples/clean-architecture-postgres`. It
+compiles in CI and shows a domain-facing `ClientReader` port implemented by a
+PostgreSQL infrastructure adapter.
+
 ## Boundary Rule
 
 - Domain model: no Mortar imports.
@@ -23,14 +27,14 @@ infrastructure/postgres/
   ClientRepository.java
 ```
 
-`examples/spring-boot-postgres` keeps the sample compact, but the repository
-method shows the same boundary: public methods return domain-facing results,
-while the Mortar query is isolated in `findActiveByIdQuery`.
+`examples/clean-architecture-postgres` keeps the sample compact: public methods
+return domain-facing results, while generated `Q*` types, `QuerySpec`, and
+`MortarJdbcClient` stay inside `PostgresClientReader`.
 
 ## Verification
 
 ```bash
-gradlew.bat :examples:spring-boot-postgres:test
+gradlew.bat :examples:clean-architecture-postgres:check
 ```
 
 The test asserts the SQL without requiring a database connection. That keeps the

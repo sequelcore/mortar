@@ -1,5 +1,8 @@
 package dev.mortar.core;
 
+/**
+ * Dialect-neutral predicate operators.
+ */
 public enum Operator {
     EQUALS,
     NOT_EQUALS,

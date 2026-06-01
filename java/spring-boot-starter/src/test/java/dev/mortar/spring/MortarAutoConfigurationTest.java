@@ -87,6 +87,18 @@ final class MortarAutoConfigurationTest {
     }
 
     @Test
+    void appliesDialectPropertyToPostgresRenderer() {
+        contextRunner
+            .withPropertyValues("mortar.dialect=postgres")
+            .run(context -> {
+                assertThat(context.getBean(MortarSpringProperties.class).getDialect())
+                    .isEqualTo(MortarDialect.POSTGRES);
+                assertThat(context.getBean(QueryRenderer.class))
+                    .isInstanceOf(PostgresQueryRenderer.class);
+            });
+    }
+
+    @Test
     void enablesJdbcLoggingBeanFromProperty() {
         contextRunner
             .withPropertyValues("mortar.jdbc.logging.enabled=true")

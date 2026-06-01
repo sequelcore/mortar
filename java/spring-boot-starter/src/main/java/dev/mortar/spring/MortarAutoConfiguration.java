@@ -18,9 +18,18 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.TransactionAwareDataSourceProxy;
 
+/**
+ * Spring Boot auto-configuration for Mortar core, renderer, and JDBC beans.
+ */
 @AutoConfiguration
 @EnableConfigurationProperties(MortarSpringProperties.class)
 public class MortarAutoConfiguration {
+    /**
+     * Creates the Spring Boot auto-configuration instance.
+     */
+    public MortarAutoConfiguration() {
+    }
+
     @Bean
     @ConditionalOnMissingBean
     MortarDb mortarDb() {
@@ -30,7 +39,9 @@ public class MortarAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     QueryRenderer mortarQueryRenderer(MortarSpringProperties properties) {
-        return new PostgresQueryRenderer(properties.getSqlFormat());
+        return switch (properties.getDialect()) {
+            case POSTGRES -> new PostgresQueryRenderer(properties.getSqlFormat());
+        };
     }
 
     @Bean
@@ -58,7 +69,7 @@ public class MortarAutoConfiguration {
     @Bean
     @ConditionalOnProperty(prefix = "mortar.diagnostics", name = "enabled", havingValue = "true", matchIfMissing = true)
     @ConditionalOnMissingBean
-    MortarDiagnosticsEndpoint mortarDiagnosticsEndpoint(MortarSpringProperties properties) {
-        return new MortarDiagnosticsEndpoint(properties);
+    MortarDiagnosticsEndpoint mortarDiagnosticsEndpoint(MortarSpringProperties properties, QueryRenderer renderer) {
+        return new MortarDiagnosticsEndpoint(properties, renderer);
     }
 }

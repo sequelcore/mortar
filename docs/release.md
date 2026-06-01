@@ -9,12 +9,46 @@ Before `1.0.0`:
 - minor versions may include breaking API changes;
 - patch versions should be compatible bug fixes;
 - every breaking change requires migration notes.
+- breaking changes must identify the affected artifact, package, type or
+  property, replacement path, and whether automated migration is possible.
 
 After `1.0.0`, Mortar follows semantic versioning:
 
 - MAJOR for incompatible API changes;
 - MINOR for backwards-compatible functionality;
 - PATCH for backwards-compatible bug fixes.
+
+## Public Compatibility Surface
+
+Before `1.0.0`, Mortar treats these as public compatibility surfaces:
+
+- Maven coordinates listed in the artifact policy;
+- handwritten Java public types in `dev.mortar.core`, `dev.mortar.jdbc`,
+  `dev.mortar.postgres`, `dev.mortar.spring`, `dev.mortar.processor`, and
+  `dev.mortar.testkit`;
+- annotation names and annotation attributes used by the processor;
+- generated `Q*` naming conventions, generated table/column fields, generated
+  `findAll(renderer)` and `findById(renderer)` executors, generated parameter
+  records, and generated row records;
+- stable processor and core diagnostic codes;
+- Spring Boot starter properties under `mortar.*`;
+- Rust CLI command names and documented snapshot/report file formats.
+
+Pre-`1.0` minor releases may still change these surfaces, but every breaking
+change must be listed in `CHANGELOG.md` and linked from release notes.
+Pre-`1.0` patch releases should avoid incompatible changes except for security
+or correctness fixes where preserving behavior would keep a serious defect.
+
+Current tested compatibility envelope:
+
+- Java 21;
+- Spring Boot 3.5.x for the starter;
+- PostgreSQL 16 for PostgreSQL Testcontainers evidence;
+- PostgreSQL is the only supported starter dialect;
+- Rust stable toolchain for CLI/compiler/LSP crates.
+
+Untested or future compatibility must not be described as supported in release
+notes, README, or Maven metadata.
 
 ## Release Checklist
 

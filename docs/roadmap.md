@@ -605,14 +605,14 @@ Slices:
 
 - R15.1: Generate common read executors beyond primary-key lookup. Status: Done.
 - R15.2: Stabilize Java-first repository API ergonomics for common real queries. Status: Done.
-- R15.3: Harden Spring Boot starter ergonomics, properties, diagnostics, and examples. Status: Planned.
-- R15.4: Expand PostgreSQL dialect coverage with syntax and Testcontainers evidence. Status: Planned.
-- R15.5: Strengthen processor/codegen diagnostics and generated-source documentation. Status: Planned.
-- R15.6: Upgrade public documentation from examples to real usage guidance. Status: Planned.
-- R15.7: Broaden benchmarks to joins, pages, writes, and tuned PgJDBC scenarios. Status: Planned.
-- R15.8: Add more end-to-end examples that compile in CI. Status: Planned.
-- R15.9: Finalize pre-1.0 semantic-versioning and compatibility policy. Status: Planned.
-- R15.10: Review and complete Javadocs for public API before first release. Status: Planned.
+- R15.3: Harden Spring Boot starter ergonomics, properties, diagnostics, and examples. Status: Done.
+- R15.4: Expand PostgreSQL dialect coverage with syntax and Testcontainers evidence. Status: Done.
+- R15.5: Strengthen processor/codegen diagnostics and generated-source documentation. Status: Done.
+- R15.6: Upgrade public documentation from examples to real usage guidance. Status: Done.
+- R15.7: Broaden benchmarks to joins, pages, writes, and tuned PgJDBC scenarios. Status: Done.
+- R15.8: Add more end-to-end examples that compile in CI. Status: Done.
+- R15.9: Finalize pre-1.0 semantic-versioning and compatibility policy. Status: Done.
+- R15.10: Review and complete Javadocs for public API before first release. Status: Done.
 
 Verification:
 
@@ -660,6 +660,107 @@ Current evidence:
   `docs/plan.md`, and `docs/roadmap.md`.
 - Architecture note: this is a runtime API convenience for generated queries
   only; SQL rendering remains in dialects and execution remains in JDBC runtime.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.3 added an explicit `mortar.dialect` starter property with PostgreSQL as
+  the only supported value, kept renderer selection inside
+  `java/spring-boot-starter`, and expanded the actuator diagnostics descriptor
+  to report dialect, SQL format, JDBC logging, diagnostics, and renderer class.
+- `gradlew.bat :java:spring-boot-starter:test --tests dev.mortar.spring.MortarAutoConfigurationTest.appliesDialectPropertyToPostgresRenderer --tests dev.mortar.spring.MortarDiagnosticsEndpointTest.exposesMortarDiagnosticsEndpointWhenDiagnosticsAreEnabled --tests dev.mortar.spring.MortarDiagnosticsEndpointTest.exposesConfiguredStarterDiagnostics --no-daemon`
+  failed first on 2026-06-01 because `MortarDialect`, the bound dialect
+  property, and the richer diagnostics descriptor did not exist, then passed
+  after implementation.
+- Changed modules/docs: `java/spring-boot-starter`,
+  `examples/spring-boot-postgres`, `docs/spring-boot-postgres-example.md`,
+  `docs/spring-boot-compatibility.md`, `docs/plan.md`, and
+  `docs/roadmap.md`.
+- Architecture note: the new dialect property is starter wiring only; core,
+  runtime, and PostgreSQL dialect boundaries did not change.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.4 added PostgreSQL 16 Testcontainers coverage for an explicitly
+  paginated join query and UUID array overlap execution, broadening syntax
+  evidence beyond single-table lookup shapes.
+- `gradlew.bat :java:dialect-postgres:test --tests dev.mortar.postgres.PostgresReadSyntaxIntegrationTest --tests dev.mortar.postgres.PostgresSpecificPredicateIntegrationTest.executesUuidArrayOverlapAgainstPostgreSQL --no-daemon`
+  passed on 2026-06-01.
+- Changed module/docs: `java/dialect-postgres` and `docs/roadmap.md`.
+- Architecture note: no renderer contract changed; this slice adds executable
+  PostgreSQL evidence for existing DSL and PostgreSQL predicate behavior.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.5 added fail-fast annotation processor diagnostics for invalid SQL table,
+  alias, and column identifiers, using stable public codes
+  `MORTAR_PROCESSOR_005`, `MORTAR_PROCESSOR_006`, and
+  `MORTAR_PROCESSOR_007`. Generated `findAll` and `findById` source now emits
+  Javadocs that describe the SQL shape and dialect-renderer boundary.
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorDiagnosticsTest.rejectsInvalidSqlMetadata --tests dev.mortar.processor.MortarProcessorGenerationTest.generatesFindByIdExecutorForAnnotatedEntity --tests dev.mortar.processor.MortarProcessorGenerationTest.generatesFindAllExecutorForAnnotatedEntity --no-daemon`
+  failed first on 2026-06-01 because invalid SQL metadata was accepted and the
+  generated executor Javadocs were missing, then passed after implementation.
+- Changed modules/docs: `java/processor`, `docs/api-reference.md`,
+  `docs/diagnostics.md`, and `docs/roadmap.md`.
+- Architecture note: this slice only strengthens compile-time validation and
+  generated-source documentation; generated queries still render through a
+  caller-provided `QueryRenderer` and execute through JDBC runtime contracts.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- Reviewer follow-up for R15.5 added blank relation target-column validation so
+  `@MortarRelation(targetColumn = " ")` fails fast instead of generating a
+  malformed join path.
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorDiagnosticsTest.rejectsBlankRelationTargetColumn --no-daemon`
+  failed first on 2026-06-01, then passed after validation was tightened.
+- R15.8 added `examples:clean-architecture-postgres`, a CI-compiling example
+  that keeps the domain-facing `ClientReader` port free of Mortar types while
+  the PostgreSQL infrastructure adapter uses generated `findById` and a
+  paginated DSL query. The module is included in `settings.gradle.kts`, so root
+  Java verification compiles it in CI.
+- `gradlew.bat :examples:clean-architecture-postgres:check --no-daemon` failed
+  first on 2026-06-01 because the `PostgresClientReader` adapter did not exist,
+  then passed after implementation.
+- Changed modules/docs: `examples/clean-architecture-postgres`,
+  `settings.gradle.kts`, `README.md`, `docs/ddd-clean-architecture-example.md`,
+  and `docs/roadmap.md`.
+- Architecture note: this is an example-only module; it adds no new runtime,
+  Spring, or core abstraction.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.7 broadened `PostgresExecutionBenchmark` with joined paginated reads,
+  update batches, and benchmark-local tuned PgJDBC scenarios using
+  `prepareThreshold=1`, `preparedStatementCacheQueries=256`, and
+  `binaryTransfer=true`.
+- `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`
+  failed first on 2026-06-01 because the expanded benchmark methods and tuned
+  PgJDBC metadata did not exist, then passed after implementation.
+- Changed modules/docs: `java/benchmarks`, `docs/benchmarks/README.md`,
+  `docs/performance.md`, and `docs/roadmap.md`.
+- Evidence note: this slice expands the benchmark matrix only. It does not make
+  a public performance claim; public claims still require retained JMH JSON
+  artifacts and reviewer sign-off.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.6 added `docs/usage-guide.md`, covering when to use generated executors,
+  Java DSL queries, pre-rendered queries, Spring Boot starter properties,
+  Clean Architecture placement, adapter-boundary SQL tests, Testcontainers, JMH
+  evidence, and diagnostics. The guide is linked from `README.md` and
+  `docs/getting-started.md`.
+- Verification note: this is a documentation-only slice; executable examples
+  are covered by `gradlew.bat :examples:spring-boot-postgres:test --no-daemon`
+  and `gradlew.bat :examples:clean-architecture-postgres:check --no-daemon`
+  in the final gate sequence.
+- Changed docs: `docs/usage-guide.md`, `README.md`,
+  `docs/getting-started.md`, and `docs/roadmap.md`.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.9 expanded `docs/release.md` with the explicit pre-1.0 public
+  compatibility surface, required migration-note contents, current tested
+  compatibility envelope, and unsupported/future compatibility wording rules.
+  `CHANGELOG.md` now records R15 public API readiness hardening under
+  `Unreleased`.
+- Verification note: this is a policy-only slice; final release workflow
+  validation remains covered by `gradlew.bat check --no-daemon` and the
+  configured release dry-run CI job.
+- Changed docs: `docs/release.md`, `CHANGELOG.md`, and `docs/roadmap.md`.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.10 added concise Javadocs to handwritten public Java types across
+  `java/core`, `java/dialect-postgres`, `java/runtime-jdbc`,
+  `java/spring-boot-starter`, `java/processor`, and `java/testkit`, and kept
+  generated executor Javadocs aligned with the generated JDBC contract.
+- `gradlew.bat javadoc --no-daemon` passed on 2026-06-01.
+- Changed modules/docs: `java/core`, `java/dialect-postgres`,
+  `java/runtime-jdbc`, `java/spring-boot-starter`, `java/processor`,
+  `java/testkit`, `docs/api-reference.md`, and `docs/roadmap.md`.
 - Release note: no Maven Central or GitHub release is authorized by this slice.
 
 ## Canonical Update Protocol

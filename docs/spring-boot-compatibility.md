@@ -15,6 +15,9 @@ Mortar's Spring Boot starter follows Spring Boot's current auto-configuration mo
 - `java/runtime-jdbc` must remain Spring-free.
 - Spring transaction participation belongs only in `java/spring-boot-starter`.
 - New Spring Boot properties must be covered by `ApplicationContextRunner` tests.
+- `mortar.dialect` is explicit even while PostgreSQL is the only supported
+  starter dialect, so future dialects require a deliberate public property
+  addition instead of hidden auto-detection.
 - A Spring Boot line is not considered tested until CI compiles and runs the starter tests against that line.
 
 ## Current Baseline

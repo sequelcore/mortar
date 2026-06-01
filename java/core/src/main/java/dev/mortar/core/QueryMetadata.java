@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Tables, columns, and joins touched by a query or mutation.
+ */
 public record QueryMetadata(List<TableRef> tables, List<ColumnRef<?>> columns, List<Join> joins) {
     public QueryMetadata {
         Objects.requireNonNull(tables, "tables cannot be null");

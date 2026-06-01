@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Immutable update mutation model rendered by dialect adapters.
+ */
 public record UpdateSpec(
     TableRef table,
     List<Assignment<?>> assignments,

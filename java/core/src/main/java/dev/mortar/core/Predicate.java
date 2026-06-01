@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Dialect-neutral predicate tree used by query and mutation specifications.
+ */
 public sealed interface Predicate permits
     Predicate.BetweenPredicate,
     Predicate.BinaryPredicate,
