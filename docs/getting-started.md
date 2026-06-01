@@ -42,8 +42,15 @@ This code is refactorable Java. The PostgreSQL renderer produces:
 select c.id, c.name from clients c where c.id = ? and c.active = ?
 ```
 
-For primary-key lookup hot paths, the generated `Q*` type also exposes a
-generated executor:
+For common read paths, the generated `Q*` type also exposes generated
+executors:
+
+```java
+List<QClient.FindAllRow> rows =
+    jdbcClient.fetch(QClient.CLIENT.findAll(renderer), new QClient.FindAllParameters());
+```
+
+Primary-key lookups use the same generated-query contract:
 
 ```java
 var query = QClient.CLIENT.findById(renderer);

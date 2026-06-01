@@ -8,7 +8,7 @@ The canonical Spring Boot example lives in `examples/spring-boot-postgres`.
 - PostgreSQL rendering through `java/dialect-postgres`.
 - JDBC execution boundary through `MortarJdbcClient`.
 - Generated Java metamodels through `java/processor`.
-- Generated `findById` executor usage for a primary-key hot path.
+- Generated `findAll` and `findById` executor usage for common read paths.
 - Testkit assertions for SQL and parameters.
 
 ## Run The Example Tests
@@ -30,7 +30,16 @@ rendering SQL and by mocking the JDBC client boundary.
 
 ## Repository Pattern
 
-Use generated executors for simple primary-key hot paths:
+Use generated executors for common read paths:
+
+```java
+public List<ClientSummary> findAll() {
+    return jdbcClient.fetch(CLIENT.findAll(renderer), new QClient.FindAllParameters())
+        .stream()
+        .map(row -> new ClientSummary(row.id(), row.name()))
+        .toList();
+}
+```
 
 ```java
 public Optional<ClientSummary> findById(long id) {

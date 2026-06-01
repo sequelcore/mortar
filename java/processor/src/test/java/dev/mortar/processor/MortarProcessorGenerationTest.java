@@ -166,6 +166,90 @@ final class MortarProcessorGenerationTest {
     }
 
     @Test
+    void generatesFindAllExecutorForAnnotatedEntity() throws Exception {
+        Path sourceDir = tempDir.resolve("find-all-source");
+        Path classDir = tempDir.resolve("find-all-classes");
+        Path generatedDir = tempDir.resolve("find-all-generated");
+        Files.createDirectories(sourceDir.resolve("example"));
+        Files.createDirectories(classDir);
+        Files.createDirectories(generatedDir);
+
+        Path clientSource = sourceDir.resolve("example").resolve("Client.java");
+        Files.writeString(clientSource, """
+            package example;
+
+            import dev.mortar.processor.MortarColumn;
+            import dev.mortar.processor.MortarEntity;
+            import dev.mortar.processor.MortarId;
+
+            @MortarEntity(table = "clients", alias = "c")
+            final class Client {
+                @MortarId
+                @MortarColumn(name = "id", nullable = false)
+                Long id;
+
+                @MortarColumn(name = "name")
+                String name;
+
+                @MortarColumn(name = "active")
+                Boolean active;
+            }
+            """, StandardCharsets.UTF_8);
+        Path usageSource = sourceDir.resolve("example").resolve("ClientUsage.java");
+        Files.writeString(usageSource, """
+            package example;
+
+            import dev.mortar.core.QueryRenderer;
+            import dev.mortar.jdbc.MortarJdbcClient;
+            import java.util.List;
+
+            final class ClientUsage {
+                List<QClient.FindAllRow> findAll(MortarJdbcClient jdbcClient, QueryRenderer renderer) {
+                    return jdbcClient.fetch(QClient.CLIENT.findAll(renderer), new QClient.FindAllParameters());
+                }
+            }
+            """, StandardCharsets.UTF_8);
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.ROOT, StandardCharsets.UTF_8)) {
+            fileManager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(classDir));
+            fileManager.setLocationFromPaths(StandardLocation.SOURCE_OUTPUT, List.of(generatedDir));
+
+            boolean compiled = compiler.getTask(
+                null,
+                fileManager,
+                null,
+                List.of(
+                    "-classpath",
+                    System.getProperty("java.class.path"),
+                    "-processor",
+                    MortarProcessor.class.getName()
+                ),
+                null,
+                fileManager.getJavaFileObjectsFromPaths(List.of(clientSource, usageSource))
+            ).call();
+
+            assertThat(compiled).isTrue();
+        }
+
+        String generatedSource = Files.readString(
+            generatedDir.resolve("example").resolve("QClient.java"),
+            StandardCharsets.UTF_8
+        ).replace("\r\n", "\n");
+
+        assertThat(generatedSource)
+            .contains("public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer)")
+            .contains("public record FindAllParameters()")
+            .contains("public record FindAllRow(java.lang.Long id, java.lang.String name, java.lang.Boolean active)")
+            .contains("public static final class FindAllQuery implements MortarGeneratedQuery<FindAllParameters, FindAllRow>")
+            .contains("return java.util.List.of();")
+            .contains("public void bind(java.sql.PreparedStatement statement, FindAllParameters parameters) throws java.sql.SQLException")
+            .contains("java.util.Objects.requireNonNull(parameters, \"parameters cannot be null\");")
+            .contains("return new FindAllRow(readLong(resultSet, 1), resultSet.getString(2), readBoolean(resultSet, 3));")
+            .contains("private static dev.mortar.core.QuerySpec findAllSpec()");
+    }
+
+    @Test
     void generatesQClassForAnnotatedRecord() throws Exception {
         Path sourceDir = tempDir.resolve("record-source");
         Path classDir = tempDir.resolve("record-classes");

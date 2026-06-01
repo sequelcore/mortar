@@ -141,3 +141,42 @@ After public-readiness cleanup, the next product decision should choose one of:
 - editor workflow hardening around SQL hover, EXPLAIN, and diagnostics.
 
 The next slice should update [`roadmap.md`](roadmap.md) in the same change.
+
+## Active Slice: Generated Common Read Executors
+
+Status: Done
+
+Objective: reduce repository boilerplate by generating common Java-first read
+executors from annotated entities, while keeping SQL rendering in dialects and
+execution in JDBC runtime.
+
+Scope:
+
+- update `java/processor/src/main/java/dev/mortar/processor/MortarProcessor.java`;
+- add processor compile tests in
+  `java/processor/src/test/java/dev/mortar/processor/MortarProcessorGenerationTest.java`;
+- update public docs that show generated executor usage;
+- update `docs/roadmap.md` with verification evidence.
+
+Non-goals:
+
+- no Spring-specific code in generated metamodels;
+- no Rust hot-path runtime dependency;
+- no broad repository abstraction or ORM behavior;
+- no release or Maven Central publication.
+
+Verification:
+
+- focused processor generation test first;
+- `gradlew.bat :java:processor:test --no-daemon`;
+- root `gradlew.bat check --no-daemon`;
+- Rust and VS Code gates if public docs or tooling metadata change.
+
+Result:
+
+- Generated `findAll(renderer)` now exists on `Q*` metamodels with explicit
+  empty `FindAllParameters`, typed `FindAllRow`, direct SQL/metadata access,
+  no-op binding, and projection-index row mapping.
+- `examples/spring-boot-postgres` uses `QClient.CLIENT.findAll(renderer)` in
+  `ClientRepository.findAll()`, so the generated API is exercised by a real
+  Spring-style repository example.

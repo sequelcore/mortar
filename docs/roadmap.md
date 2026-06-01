@@ -594,6 +594,56 @@ Current evidence:
 - Rust verification passed on 2026-06-01 with `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`.
 - Java root verification passed on 2026-06-01 with `gradlew.bat check --no-daemon`.
 
+### R15: Public API Readiness Hardening
+
+Status: In Progress
+
+Goal: raise Mortar from public project infrastructure to a credible public API
+surface for real Java/Spring projects before any release is tagged.
+
+Slices:
+
+- R15.1: Generate common read executors beyond primary-key lookup. Status: Done.
+- R15.2: Stabilize Java-first repository API ergonomics for common real queries. Status: Planned.
+- R15.3: Harden Spring Boot starter ergonomics, properties, diagnostics, and examples. Status: Planned.
+- R15.4: Expand PostgreSQL dialect coverage with syntax and Testcontainers evidence. Status: Planned.
+- R15.5: Strengthen processor/codegen diagnostics and generated-source documentation. Status: Planned.
+- R15.6: Upgrade public documentation from examples to real usage guidance. Status: Planned.
+- R15.7: Broaden benchmarks to joins, pages, writes, and tuned PgJDBC scenarios. Status: Planned.
+- R15.8: Add more end-to-end examples that compile in CI. Status: Planned.
+- R15.9: Finalize pre-1.0 semantic-versioning and compatibility policy. Status: Planned.
+- R15.10: Review and complete Javadocs for public API before first release. Status: Planned.
+
+Verification:
+
+- Every slice requires tests first when behavior changes.
+- Every generated API change must compile inside a real example module.
+- Documentation updates must avoid private Sequel workspace assumptions.
+- Benchmark claims remain internal until CI artifacts and reviewer sign-off exist.
+
+Current evidence:
+
+- R15.1 generated `findAll(renderer)` on `Q*` metamodels alongside existing
+  `findById(renderer)`. The generated API exposes `FindAllParameters`,
+  `FindAllRow`, direct SQL access, metadata, empty parameter type metadata,
+  no-op explicit binding, and projection-index row mapping through
+  `MortarGeneratedQuery<P, T>`.
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorGenerationTest.generatesFindAllExecutorForAnnotatedEntity --no-daemon`
+  failed first on 2026-06-01, proving the missing generated executor.
+- `gradlew.bat :java:processor:test --no-daemon` passed on 2026-06-01 after
+  implementing generated `findAll`.
+- `gradlew.bat :examples:spring-boot-postgres:test --tests dev.mortar.examples.springpostgres.ClientRepositoryTest --no-daemon`
+  passed on 2026-06-01 with `ClientRepository.findAll()` using
+  `QClient.CLIENT.findAll(renderer)` and `MortarJdbcClient.fetch(...)`.
+- Changed modules/docs: `java/processor`, `examples/spring-boot-postgres`,
+  `docs/api-reference.md`, `docs/getting-started.md`,
+  `docs/spring-boot-postgres-example.md`, `docs/plan.md`, and
+  `docs/roadmap.md`.
+- Architecture note: generated metamodels still do not render SQL themselves;
+  generated read executors pre-render through a caller-provided
+  `QueryRenderer`, and JDBC execution remains in `java/runtime-jdbc`.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+
 ## Canonical Update Protocol
 
 Every completed slice must update this roadmap in the same change.

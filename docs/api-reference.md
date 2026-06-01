@@ -25,15 +25,21 @@ Package: `dev.mortar.processor`
 - `@MortarColumn`: column name and nullability metadata.
 - `@MortarRelation`: relationship metadata for generated joins.
 - `MortarProcessor`: javac annotation processor that generates `Q*`
-  metamodels and canonical `findById` generated JDBC executors for annotated
-  entities with an id column.
+  metamodels and common generated JDBC executors for annotated entities.
 
-Generated `findById` executors:
+Generated read executors:
 
 - expose nested parameter and row records on the generated `Q*` type;
 - accept a `QueryRenderer` so SQL is pre-rendered through the dialect boundary;
 - implement `MortarGeneratedQuery<P, T>` with direct JDBC bind and map methods;
 - map selected columns by projection index for the generated hot path.
+
+Current generated read executors:
+
+- `findAll(renderer)`: selects all mapped columns with explicit empty
+  `FindAllParameters`.
+- `findById(renderer)`: selects all mapped columns by identifier with
+  `FindByIdParameters`.
 
 ## PostgreSQL
 
