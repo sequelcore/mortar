@@ -79,7 +79,7 @@ subprojects {
                     pom {
                         name.set("Mortar ${project.name}")
                         description.set(project.description ?: "Mortar Java module")
-                        url.set("https://github.com/sequela02/mortar")
+                        url.set("https://github.com/sequelcore/mortar")
                         licenses {
                             license {
                                 name.set("Apache License, Version 2.0")
@@ -88,15 +88,15 @@ subprojects {
                         }
                         developers {
                             developer {
-                                id.set("sequela02")
+                                id.set("sequelcore")
                                 name.set("Ricardo Armenta")
                                 organization.set("Sequel")
                             }
                         }
                         scm {
-                            connection.set("scm:git:https://github.com/sequela02/mortar.git")
-                            developerConnection.set("scm:git:ssh://git@github.com/sequela02/mortar.git")
-                            url.set("https://github.com/sequela02/mortar")
+                            connection.set("scm:git:https://github.com/sequelcore/mortar.git")
+                            developerConnection.set("scm:git:ssh://git@github.com/sequelcore/mortar.git")
+                            url.set("https://github.com/sequelcore/mortar")
                         }
                     }
                 }
