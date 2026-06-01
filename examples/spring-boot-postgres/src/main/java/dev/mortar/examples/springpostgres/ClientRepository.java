@@ -32,6 +32,13 @@ public final class ClientRepository {
             .map(row -> new ClientSummary(row.id(), row.name()));
     }
 
+    public List<ClientSummary> findAll() {
+        return jdbcClient.fetch(CLIENT.findAll(renderer), new QClient.FindAllParameters())
+            .stream()
+            .map(row -> new ClientSummary(row.id(), row.name()))
+            .toList();
+    }
+
     public Optional<ClientSummary> findActiveById(long id) {
         List<ClientSummary> rows = jdbcClient.fetch(findActiveByIdQuery(id), ClientSummary.class);
         return rows.stream().findFirst();

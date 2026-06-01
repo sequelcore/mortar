@@ -269,6 +269,7 @@ public final class MortarProcessor extends AbstractProcessor {
             source.append("        ").append(relation.nullable()).append("\n");
             source.append("    );\n");
         }
+        appendFindAllExecutor(source, generatedClassName, columns);
         appendFindByIdExecutor(source, generatedClassName, columns);
         source.append("\n");
         source.append("    @Override\n");
@@ -279,6 +280,48 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("    }\n");
         source.append("}\n");
         return source.toString();
+    }
+
+    private void appendFindAllExecutor(StringBuilder source, String generatedClassName, List<ColumnModel> columns) {
+        source.append("\n");
+        source.append("    public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer) {\n");
+        source.append("        return new FindAllQuery(renderer);\n");
+        source.append("    }\n\n");
+        source.append("    public record FindAllParameters() {\n");
+        source.append("    }\n\n");
+        appendRowRecord(source, "FindAllRow", columns);
+        source.append("    public static final class FindAllQuery implements MortarGeneratedQuery<FindAllParameters, FindAllRow> {\n");
+        source.append("        private final dev.mortar.core.RenderedQuery renderedQuery;\n\n");
+        source.append("        public FindAllQuery(dev.mortar.core.QueryRenderer renderer) {\n");
+        source.append("            this.renderedQuery = java.util.Objects.requireNonNull(renderer, \"renderer cannot be null\").render(findAllSpec());\n");
+        source.append("        }\n\n");
+        source.append("        @Override\n");
+        source.append("        public String sql() {\n");
+        source.append("            return renderedQuery.sql();\n");
+        source.append("        }\n\n");
+        source.append("        @Override\n");
+        source.append("        public java.util.List<java.lang.Class<?>> parameterTypes() {\n");
+        source.append("            return java.util.List.of();\n");
+        source.append("        }\n\n");
+        source.append("        @Override\n");
+        source.append("        public dev.mortar.core.QueryMetadata metadata() {\n");
+        source.append("            return renderedQuery.metadata();\n");
+        source.append("        }\n\n");
+        source.append("        @Override\n");
+        source.append("        public void bind(java.sql.PreparedStatement statement, FindAllParameters parameters) throws java.sql.SQLException {\n");
+        source.append("            java.util.Objects.requireNonNull(statement, \"statement cannot be null\");\n");
+        source.append("            java.util.Objects.requireNonNull(parameters, \"parameters cannot be null\");\n");
+        source.append("        }\n\n");
+        appendMapMethod(source, "FindAllRow", columns);
+        source.append("    }\n\n");
+        source.append("    private static dev.mortar.core.QuerySpec findAllSpec() {\n");
+        source.append("        ").append(generatedClassName).append(" table = ").append(generatedClassName).append(".")
+            .append(constantName(generatedClassName.substring(1))).append(";\n");
+        source.append("        return new dev.mortar.core.SimpleMortarDb()\n");
+        source.append("            .from(table)\n");
+        appendSelectColumns(source, columns);
+        source.append("            .build();\n");
+        source.append("    }\n");
     }
 
     private void appendFindByIdExecutor(StringBuilder source, String generatedClassName, List<ColumnModel> columns) {
@@ -297,16 +340,7 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("    public record FindByIdParameters(").append(id.javaType()).append(" ")
             .append(id.propertyName()).append(") {\n");
         source.append("    }\n\n");
-        source.append("    public record FindByIdRow(");
-        for (int index = 0; index < columns.size(); index++) {
-            ColumnModel column = columns.get(index);
-            if (index > 0) {
-                source.append(", ");
-            }
-            source.append(column.javaType()).append(" ").append(column.propertyName());
-        }
-        source.append(") {\n");
-        source.append("    }\n\n");
+        appendRowRecord(source, "FindByIdRow", columns);
         source.append("    public static final class FindByIdQuery implements MortarGeneratedQuery<FindByIdParameters, FindByIdRow> {\n");
         source.append("        private final dev.mortar.core.RenderedQuery renderedQuery;\n\n");
         source.append("        public FindByIdQuery(dev.mortar.core.QueryRenderer renderer) {\n");
@@ -328,17 +362,7 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("        public void bind(java.sql.PreparedStatement statement, FindByIdParameters parameters) throws java.sql.SQLException {\n");
         appendBindStatement(source, id);
         source.append("        }\n\n");
-        source.append("        @Override\n");
-        source.append("        public FindByIdRow map(java.sql.ResultSet resultSet) throws java.sql.SQLException {\n");
-        source.append("            return new FindByIdRow(");
-        for (int index = 0; index < columns.size(); index++) {
-            if (index > 0) {
-                source.append(", ");
-            }
-            source.append(readExpression(columns.get(index), index + 1));
-        }
-        source.append(");\n");
-        source.append("        }\n");
+        appendMapMethod(source, "FindByIdRow", columns);
         source.append("    }\n\n");
         source.append("    private static dev.mortar.core.QuerySpec findByIdSpec() {\n");
         source.append("        ").append(generatedClassName).append(" table = ").append(generatedClassName).append(".")
@@ -351,6 +375,33 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("            .build();\n");
         source.append("    }\n");
         appendReadHelpers(source, columns);
+    }
+
+    private void appendRowRecord(StringBuilder source, String rowType, List<ColumnModel> columns) {
+        source.append("    public record ").append(rowType).append("(");
+        for (int index = 0; index < columns.size(); index++) {
+            ColumnModel column = columns.get(index);
+            if (index > 0) {
+                source.append(", ");
+            }
+            source.append(column.javaType()).append(" ").append(column.propertyName());
+        }
+        source.append(") {\n");
+        source.append("    }\n\n");
+    }
+
+    private void appendMapMethod(StringBuilder source, String rowType, List<ColumnModel> columns) {
+        source.append("        @Override\n");
+        source.append("        public ").append(rowType).append(" map(java.sql.ResultSet resultSet) throws java.sql.SQLException {\n");
+        source.append("            return new ").append(rowType).append("(");
+        for (int index = 0; index < columns.size(); index++) {
+            if (index > 0) {
+                source.append(", ");
+            }
+            source.append(readExpression(columns.get(index), index + 1));
+        }
+        source.append(");\n");
+        source.append("        }\n");
     }
 
     private void appendSelectColumns(StringBuilder source, List<ColumnModel> columns) {

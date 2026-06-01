@@ -29,6 +29,14 @@ final class ClientRepositoryTest {
     }
 
     @Test
+    void buildsTransparentSqlForGeneratedFindAll() {
+        QClient.FindAllQuery query = QClient.CLIENT.findAll(renderer);
+
+        assertThat(query.sql()).isEqualTo("select c.id, c.name, c.active from clients c");
+        assertThat(query.parameterTypes()).isEmpty();
+    }
+
+    @Test
     void buildsTransparentSqlForFindActiveById() {
         ClientRepository repository = new ClientRepository(mock(MortarJdbcClient.class), renderer);
         QuerySpec query = repository.findActiveByIdQuery(7L);
@@ -52,6 +60,25 @@ final class ClientRepositoryTest {
     }
 
     @Test
+    void fetchesAllClientsWithGeneratedExecutor() {
+        MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
+        when(jdbcClient.fetch(anyFindAllQuery(), eq(new QClient.FindAllParameters())))
+            .thenReturn(List.of(
+                new QClient.FindAllRow(7L, "Ada", true),
+                new QClient.FindAllRow(8L, "Grace", false)
+            ));
+        ClientRepository repository = new ClientRepository(jdbcClient, renderer);
+
+        List<ClientSummary> result = repository.findAll();
+
+        assertThat(result).containsExactly(
+            new ClientSummary(7L, "Ada"),
+            new ClientSummary(8L, "Grace")
+        );
+        verify(jdbcClient).fetch(anyFindAllQuery(), eq(new QClient.FindAllParameters()));
+    }
+
+    @Test
     void fetchesOneActiveClientById() {
         MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
         when(jdbcClient.fetch(any(QuerySpec.class), eq(ClientSummary.class)))
@@ -68,6 +95,11 @@ final class ClientRepositoryTest {
 
     @SuppressWarnings("unchecked")
     private MortarGeneratedQuery<QClient.FindByIdParameters, QClient.FindByIdRow> anyFindByIdQuery() {
+        return any(MortarGeneratedQuery.class);
+    }
+
+    @SuppressWarnings("unchecked")
+    private MortarGeneratedQuery<QClient.FindAllParameters, QClient.FindAllRow> anyFindAllQuery() {
         return any(MortarGeneratedQuery.class);
     }
 }
