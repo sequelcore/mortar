@@ -596,7 +596,7 @@ Current evidence:
 
 ### R15: Public API Readiness Hardening
 
-Status: In Progress
+Status: Done
 
 Goal: raise Mortar from public project infrastructure to a credible public API
 surface for real Java/Spring projects before any release is tagged.

@@ -1,5 +1,5 @@
 {
-  "mortar.lsp.path": "C:/Proyectos/Sequel/mortar/rust/target/debug/mortar-lsp.exe",
-  "mortar.cli.path": "C:/Proyectos/Sequel/mortar/rust/target/debug/mortar.exe",
+  "mortar.lsp.path": "${workspaceFolder}/../../../rust/target/debug/mortar-lsp.exe",
+  "mortar.cli.path": "${workspaceFolder}/../../../rust/target/debug/mortar.exe",
   "mortar.postgres.connection": "postgres://postgres@localhost:55432/postgres"
 }
