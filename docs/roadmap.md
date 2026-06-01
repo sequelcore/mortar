@@ -109,7 +109,7 @@ Current evidence:
 - Public governance docs exist: `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, and `docs/release.md`.
 - Licensing decision recorded in `docs/adr/0002-apache-2-license.md`; project license files are `LICENSE` and `NOTICE`.
 - CI runs the same Java gate as local development: `./gradlew check`.
-- Java publishing metadata declares group `dev.mortar`, Apache-2.0 license, SCM, and developer metadata.
+- Java publishing metadata declares group `io.github.sequelcore`, Apache-2.0 license, SCM, and developer metadata.
 - Rust workspace/crates declare Apache-2.0 package metadata.
 
 Exit criteria:
@@ -589,7 +589,8 @@ Current evidence:
 - R14.5-R14.8 release policy was completed on 2026-06-01 in `docs/release.md`. The policy covers pre-1.0 and post-1.0 versioning, Maven Central scope, GitHub release notes, and Rust crate publication order.
 - Maven publishing is restricted to public Java library modules only: `java:core`, `java:dialect-postgres`, `java:runtime-jdbc`, `java:spring-boot-starter`, `java:processor`, and `java:testkit`. Examples, benchmarks, aggregate projects, and editor plugins are excluded from Maven Central publication.
 - CI release dry-run was added on 2026-06-01 in `.github/workflows/ci.yml` after Java and Rust gates. It runs `./gradlew publishToMavenLocal` and `cargo publish --dry-run -p mortar-compiler` from the repository root paths.
-- Local release dry-run verification passed on 2026-06-01 with `gradlew.bat publishToMavenLocal --no-daemon` and `cargo publish --dry-run -p mortar-compiler --allow-dirty`. The Rust command used `--allow-dirty` locally because this workspace has uncommitted implementation changes; CI runs without that flag on a clean checkout.
+- Maven Central publishing follow-up on 2026-06-01 aligned Mortar with Vigil's release workflow while using the current Vanniktech Maven Publish Plugin 0.36.0. Public Java artifacts now publish under group `io.github.sequelcore` with artifact IDs `mortar-core`, `mortar-dialect-postgres`, `mortar-runtime-jdbc`, `mortar-spring-boot-starter`, `mortar-processor`, and `mortar-testkit`. `.github/workflows/publish.yml` publishes on semantic version tags `v*`, fetches Central Portal and GPG secrets from Doppler project `sequel-core` config `prd`, runs `./gradlew publishToMavenCentral --no-daemon --no-configuration-cache`, and creates a GitHub release. Verification passed locally with `gradlew.bat verifyPublishWorkflow --no-daemon` and `gradlew.bat publishToMavenLocal --no-daemon --no-configuration-cache`. Signing is conditional locally so Maven local dry-runs work without a private key; release publishing signs artifacts when CI injects `ORG_GRADLE_PROJECT_signingInMemoryKey`.
+- Local release dry-run verification passed on 2026-06-01 with `gradlew.bat publishToMavenLocal --no-daemon --no-configuration-cache` and `cargo publish --dry-run -p mortar-compiler --allow-dirty`. The Rust command used `--allow-dirty` locally because this workspace has uncommitted implementation changes; CI runs without that flag on a clean checkout.
 - Rust verification passed on 2026-06-01 with `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`.
 - Java root verification passed on 2026-06-01 with `gradlew.bat check --no-daemon`.
 

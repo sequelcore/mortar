@@ -5,6 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   java:
     runs-on: ubuntu-latest
@@ -14,6 +21,9 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
       - name: Check Java
         run: ./gradlew check
 
@@ -41,9 +51,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: wrapper
       - uses: dtolnay/rust-toolchain@stable
       - name: Java Maven publish dry run
-        run: ./gradlew publishToMavenLocal
+        run: ./gradlew publishToMavenLocal --no-configuration-cache
       - name: Rust crate publish dry run
         run: cargo publish --dry-run -p mortar-compiler
         working-directory: rust

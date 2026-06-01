@@ -25,13 +25,22 @@ After `1.0.0`, Mortar follows semantic versioning:
 5. Java gates pass: `./gradlew check`.
 6. Rust gates pass: `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`.
 7. Examples compile once examples exist.
-8. Maven Central dry run passes with `./gradlew publishToMavenLocal`.
+8. Maven Central dry run passes with `./gradlew publishToMavenLocal --no-configuration-cache`.
 9. Rust publish dry run passes for crates that have all registry dependencies available.
 10. GitHub release notes are drafted from `CHANGELOG.md`.
 
 ## Artifact Policy
 
-Java artifacts use group `dev.mortar`.
+Java artifacts use group `io.github.sequelcore`.
+
+Public Java artifact IDs:
+
+- `mortar-core`
+- `mortar-dialect-postgres`
+- `mortar-runtime-jdbc`
+- `mortar-spring-boot-starter`
+- `mortar-processor`
+- `mortar-testkit`
 
 Rust crates use the `mortar-*` naming convention.
 
@@ -54,11 +63,29 @@ Maven Central.
 Local dry run:
 
 ```bash
-./gradlew publishToMavenLocal
+./gradlew publishToMavenLocal --no-configuration-cache
 ```
 
-Signing and remote repository credentials are required before the first public
-Maven Central release.
+Signed Maven Central publishing is handled by `.github/workflows/publish.yml`
+on version tags. The workflow follows the Vigil release pattern and fetches
+Central Portal and GPG credentials from Doppler project `sequel-core`, config
+`prd`.
+
+Required injected environment variables:
+
+- `MAVEN_USERNAME`
+- `MAVEN_PASSWORD`
+- `GPG_PRIVATE_KEY`
+- `GPG_PASSPHRASE`
+
+The workflow publishes with:
+
+```bash
+./gradlew publishToMavenCentral --no-daemon --no-configuration-cache
+```
+
+Local dry runs do not require signing credentials. Release publishing signs
+artifacts when `ORG_GRADLE_PROJECT_signingInMemoryKey` is present in CI.
 
 ## GitHub Release Policy
 

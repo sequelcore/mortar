@@ -15,5 +15,6 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 - Added Rust compiler and CLI foundation.
 - Added LSP, VS Code, and IntelliJ editor transparency tooling.
 - Added runnable Spring Boot PostgreSQL example and public guides.
+- Added Maven Central publishing configuration for public Java modules.
 - Added CI release dry-run checks for Java Maven local publishing and the first Rust crate.
 - Added canonical roadmap and public governance docs.

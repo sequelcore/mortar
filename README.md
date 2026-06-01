@@ -63,6 +63,22 @@ examples/spring-boot-postgres Runnable Spring Boot PostgreSQL example
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 
+## Install
+
+Mortar is pre-release. The first planned Maven Central version is
+`0.1.0-alpha.1`.
+
+```kotlin
+dependencies {
+    implementation("io.github.sequelcore:mortar-core:0.1.0-alpha.1")
+    implementation("io.github.sequelcore:mortar-dialect-postgres:0.1.0-alpha.1")
+    implementation("io.github.sequelcore:mortar-runtime-jdbc:0.1.0-alpha.1")
+    implementation("io.github.sequelcore:mortar-spring-boot-starter:0.1.0-alpha.1")
+    annotationProcessor("io.github.sequelcore:mortar-processor:0.1.0-alpha.1")
+    testImplementation("io.github.sequelcore:mortar-testkit:0.1.0-alpha.1")
+}
+```
+
 ## Verify
 
 ```bash
