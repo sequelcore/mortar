@@ -287,10 +287,8 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("    public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("        return new FindAllQuery(renderer);\n");
         source.append("    }\n\n");
-        source.append("    public record FindAllParameters() {\n");
-        source.append("    }\n\n");
         appendRowRecord(source, "FindAllRow", columns);
-        source.append("    public static final class FindAllQuery implements MortarGeneratedQuery<FindAllParameters, FindAllRow> {\n");
+        source.append("    public static final class FindAllQuery implements MortarGeneratedQuery<dev.mortar.jdbc.MortarNoParameters, FindAllRow> {\n");
         source.append("        private final dev.mortar.core.RenderedQuery renderedQuery;\n\n");
         source.append("        public FindAllQuery(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("            this.renderedQuery = java.util.Objects.requireNonNull(renderer, \"renderer cannot be null\").render(findAllSpec());\n");
@@ -308,7 +306,7 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("            return renderedQuery.metadata();\n");
         source.append("        }\n\n");
         source.append("        @Override\n");
-        source.append("        public void bind(java.sql.PreparedStatement statement, FindAllParameters parameters) throws java.sql.SQLException {\n");
+        source.append("        public void bind(java.sql.PreparedStatement statement, dev.mortar.jdbc.MortarNoParameters parameters) throws java.sql.SQLException {\n");
         source.append("            java.util.Objects.requireNonNull(statement, \"statement cannot be null\");\n");
         source.append("            java.util.Objects.requireNonNull(parameters, \"parameters cannot be null\");\n");
         source.append("        }\n\n");

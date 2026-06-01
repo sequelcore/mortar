@@ -108,11 +108,29 @@ public final class MortarJdbcClient {
         return fetchGenerated(query, parameters);
     }
 
+    /**
+     * Executes a generated query that has no caller-supplied parameters.
+     */
+    public <T> List<T> fetch(MortarGeneratedQuery<MortarNoParameters, T> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+
+        return fetchGenerated(query, MortarNoParameters.INSTANCE);
+    }
+
     public <P, T> Optional<T> fetchOptional(MortarGeneratedQuery<P, T> query, P parameters) {
         Objects.requireNonNull(query, "query cannot be null");
         Objects.requireNonNull(parameters, "parameters cannot be null");
 
         return fetchOptionalGenerated(query, parameters);
+    }
+
+    /**
+     * Executes an at-most-one-row generated query that has no caller-supplied parameters.
+     */
+    public <T> Optional<T> fetchOptional(MortarGeneratedQuery<MortarNoParameters, T> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+
+        return fetchOptionalGenerated(query, MortarNoParameters.INSTANCE);
     }
 
     public <P, T> MortarPreparedQuery<P, T> prepare(MortarGeneratedQuery<P, T> query) {

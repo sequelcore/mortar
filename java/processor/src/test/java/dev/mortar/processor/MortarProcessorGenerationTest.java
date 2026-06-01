@@ -205,7 +205,7 @@ final class MortarProcessorGenerationTest {
 
             final class ClientUsage {
                 List<QClient.FindAllRow> findAll(MortarJdbcClient jdbcClient, QueryRenderer renderer) {
-                    return jdbcClient.fetch(QClient.CLIENT.findAll(renderer), new QClient.FindAllParameters());
+                    return jdbcClient.fetch(QClient.CLIENT.findAll(renderer));
                 }
             }
             """, StandardCharsets.UTF_8);
@@ -239,11 +239,11 @@ final class MortarProcessorGenerationTest {
 
         assertThat(generatedSource)
             .contains("public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer)")
-            .contains("public record FindAllParameters()")
+            .doesNotContain("public record FindAllParameters()")
             .contains("public record FindAllRow(java.lang.Long id, java.lang.String name, java.lang.Boolean active)")
-            .contains("public static final class FindAllQuery implements MortarGeneratedQuery<FindAllParameters, FindAllRow>")
+            .contains("public static final class FindAllQuery implements MortarGeneratedQuery<dev.mortar.jdbc.MortarNoParameters, FindAllRow>")
             .contains("return java.util.List.of();")
-            .contains("public void bind(java.sql.PreparedStatement statement, FindAllParameters parameters) throws java.sql.SQLException")
+            .contains("public void bind(java.sql.PreparedStatement statement, dev.mortar.jdbc.MortarNoParameters parameters) throws java.sql.SQLException")
             .contains("java.util.Objects.requireNonNull(parameters, \"parameters cannot be null\");")
             .contains("return new FindAllRow(readLong(resultSet, 1), resultSet.getString(2), readBoolean(resultSet, 3));")
             .contains("private static dev.mortar.core.QuerySpec findAllSpec()");

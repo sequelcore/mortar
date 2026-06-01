@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import dev.mortar.core.QuerySpec;
 import dev.mortar.jdbc.MortarGeneratedQuery;
 import dev.mortar.jdbc.MortarJdbcClient;
+import dev.mortar.jdbc.MortarNoParameters;
 import dev.mortar.postgres.PostgresQueryRenderer;
 import dev.mortar.testkit.MortarSqlAssertions;
 import java.util.List;
@@ -62,7 +63,7 @@ final class ClientRepositoryTest {
     @Test
     void fetchesAllClientsWithGeneratedExecutor() {
         MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
-        when(jdbcClient.fetch(anyFindAllQuery(), eq(new QClient.FindAllParameters())))
+        when(jdbcClient.fetch(anyFindAllQuery()))
             .thenReturn(List.of(
                 new QClient.FindAllRow(7L, "Ada", true),
                 new QClient.FindAllRow(8L, "Grace", false)
@@ -75,7 +76,7 @@ final class ClientRepositoryTest {
             new ClientSummary(7L, "Ada"),
             new ClientSummary(8L, "Grace")
         );
-        verify(jdbcClient).fetch(anyFindAllQuery(), eq(new QClient.FindAllParameters()));
+        verify(jdbcClient).fetch(anyFindAllQuery());
     }
 
     @Test
@@ -99,7 +100,7 @@ final class ClientRepositoryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private MortarGeneratedQuery<QClient.FindAllParameters, QClient.FindAllRow> anyFindAllQuery() {
+    private MortarGeneratedQuery<MortarNoParameters, QClient.FindAllRow> anyFindAllQuery() {
         return any(MortarGeneratedQuery.class);
     }
 }

@@ -604,7 +604,7 @@ surface for real Java/Spring projects before any release is tagged.
 Slices:
 
 - R15.1: Generate common read executors beyond primary-key lookup. Status: Done.
-- R15.2: Stabilize Java-first repository API ergonomics for common real queries. Status: Planned.
+- R15.2: Stabilize Java-first repository API ergonomics for common real queries. Status: Done.
 - R15.3: Harden Spring Boot starter ergonomics, properties, diagnostics, and examples. Status: Planned.
 - R15.4: Expand PostgreSQL dialect coverage with syntax and Testcontainers evidence. Status: Planned.
 - R15.5: Strengthen processor/codegen diagnostics and generated-source documentation. Status: Planned.
@@ -624,10 +624,9 @@ Verification:
 Current evidence:
 
 - R15.1 generated `findAll(renderer)` on `Q*` metamodels alongside existing
-  `findById(renderer)`. The generated API exposes `FindAllParameters`,
-  `FindAllRow`, direct SQL access, metadata, empty parameter type metadata,
-  no-op explicit binding, and projection-index row mapping through
-  `MortarGeneratedQuery<P, T>`.
+  `findById(renderer)`. The generated API exposes `FindAllRow`, direct SQL
+  access, metadata, empty parameter type metadata, no-op explicit binding, and
+  projection-index row mapping through `MortarGeneratedQuery<P, T>`.
 - `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorGenerationTest.generatesFindAllExecutorForAnnotatedEntity --no-daemon`
   failed first on 2026-06-01, proving the missing generated executor.
 - `gradlew.bat :java:processor:test --no-daemon` passed on 2026-06-01 after
@@ -642,6 +641,25 @@ Current evidence:
 - Architecture note: generated metamodels still do not render SQL themselves;
   generated read executors pre-render through a caller-provided
   `QueryRenderer`, and JDBC execution remains in `java/runtime-jdbc`.
+- Release note: no Maven Central or GitHub release is authorized by this slice.
+- R15.2 added `MortarNoParameters` plus `MortarJdbcClient.fetch(query)` and
+  `fetchOptional(query)` overloads for generated no-parameter queries. The
+  processor-generated `findAll` executor now implements
+  `MortarGeneratedQuery<MortarNoParameters, FindAllRow>`, so repository code can
+  use `jdbcClient.fetch(QClient.CLIENT.findAll(renderer))` without constructing
+  empty parameter records.
+- `gradlew.bat :java:runtime-jdbc:test --tests dev.mortar.jdbc.MortarJdbcClientTest.executesGeneratedQueryWithoutParameters --no-daemon`
+  failed first on 2026-06-01 because `MortarNoParameters` and the overload did
+  not exist, then passed after implementation.
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorGenerationTest.generatesFindAllExecutorForAnnotatedEntity --no-daemon`
+  failed first on 2026-06-01 while generated `findAll` still used
+  `FindAllParameters`, then passed after implementation.
+- Changed modules/docs: `java/runtime-jdbc`, `java/processor`,
+  `examples/spring-boot-postgres`, `docs/api-reference.md`,
+  `docs/getting-started.md`, `docs/spring-boot-postgres-example.md`,
+  `docs/plan.md`, and `docs/roadmap.md`.
+- Architecture note: this is a runtime API convenience for generated queries
+  only; SQL rendering remains in dialects and execution remains in JDBC runtime.
 - Release note: no Maven Central or GitHub release is authorized by this slice.
 
 ## Canonical Update Protocol
