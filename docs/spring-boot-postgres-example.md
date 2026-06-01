@@ -34,7 +34,7 @@ Use generated executors for common read paths:
 
 ```java
 public List<ClientSummary> findAll() {
-    return jdbcClient.fetch(CLIENT.findAll(renderer), new QClient.FindAllParameters())
+    return jdbcClient.fetch(CLIENT.findAll(renderer))
         .stream()
         .map(row -> new ClientSummary(row.id(), row.name()))
         .toList();

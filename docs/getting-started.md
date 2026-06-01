@@ -47,7 +47,7 @@ executors:
 
 ```java
 List<QClient.FindAllRow> rows =
-    jdbcClient.fetch(QClient.CLIENT.findAll(renderer), new QClient.FindAllParameters());
+    jdbcClient.fetch(QClient.CLIENT.findAll(renderer));
 ```
 
 Primary-key lookups use the same generated-query contract:

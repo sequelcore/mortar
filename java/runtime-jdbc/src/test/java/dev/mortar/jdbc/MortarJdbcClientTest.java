@@ -128,6 +128,23 @@ final class MortarJdbcClientTest {
     }
 
     @Test
+    void executesGeneratedQueryWithoutParameters() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(
+            dataSource(statement),
+            query -> {
+                throw new AssertionError("renderer should not run for generated queries");
+            }
+        );
+
+        List<ClientRow> rows = client.fetch(new ClientFindAllQuery());
+
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ricardo"));
+        assertThat(statement.sql).isEqualTo("select id, name from clients");
+        assertThat(statement.boundCalls).isEmpty();
+    }
+
+    @Test
     void fetchOptionalGeneratedQueryRejectsMultipleRows() {
         CapturingStatement statement = new CapturingStatement();
         statement.rowCount = 2;
@@ -869,6 +886,24 @@ final class MortarJdbcClientTest {
         public void bind(PreparedStatement statement, ClientLookup parameters) throws SQLException {
             statement.setBoolean(1, parameters.active());
             statement.setLong(2, parameters.id());
+        }
+
+        @Override
+        public ClientRow map(ResultSet resultSet) throws SQLException {
+            return new ClientRow(resultSet.getLong("id"), resultSet.getString("name"));
+        }
+    }
+
+    private static final class ClientFindAllQuery implements MortarGeneratedQuery<MortarNoParameters, ClientRow> {
+        @Override
+        public String sql() {
+            return "select id, name from clients";
+        }
+
+        @Override
+        public void bind(PreparedStatement statement, MortarNoParameters parameters) {
+            java.util.Objects.requireNonNull(statement, "statement cannot be null");
+            java.util.Objects.requireNonNull(parameters, "parameters cannot be null");
         }
 
         @Override

@@ -37,7 +37,7 @@ Generated read executors:
 Current generated read executors:
 
 - `findAll(renderer)`: selects all mapped columns with explicit empty
-  `FindAllParameters`.
+  `MortarNoParameters` binding and can be executed as `jdbcClient.fetch(query)`.
 - `findById(renderer)`: selects all mapped columns by identifier with
   `FindByIdParameters`.
 
@@ -61,6 +61,8 @@ Package: `dev.mortar.jdbc`
   caller-owned prepared query reuse through `prepare(...)`.
 - `MortarGeneratedQuery<P, T>`: generated query contract with SQL, parameter
   types, metadata, direct JDBC binding, and direct row mapping.
+- `MortarNoParameters`: singleton marker for generated queries that do not need
+  caller-supplied parameters.
 - `MortarPreparedQuery<P, T>`: reusable prepared generated query for
   caller-owned connection scopes.
 - `RowMapper<T>`: mapper callback for custom row mapping.

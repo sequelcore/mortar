@@ -174,9 +174,29 @@ Verification:
 
 Result:
 
-- Generated `findAll(renderer)` now exists on `Q*` metamodels with explicit
-  empty `FindAllParameters`, typed `FindAllRow`, direct SQL/metadata access,
-  no-op binding, and projection-index row mapping.
+- Generated `findAll(renderer)` now exists on `Q*` metamodels with typed
+  `FindAllRow`, direct SQL/metadata access, no-op binding, and
+  projection-index row mapping.
 - `examples/spring-boot-postgres` uses `QClient.CLIENT.findAll(renderer)` in
   `ClientRepository.findAll()`, so the generated API is exercised by a real
   Spring-style repository example.
+
+## Active Slice: Zero-Parameter Generated Query Ergonomics
+
+Status: Done
+
+Objective: remove empty parameter boilerplate from generated read executors so
+no-parameter queries execute as `jdbcClient.fetch(query)`.
+
+Scope:
+
+- add a runtime marker for generated queries with no caller parameters;
+- add `MortarJdbcClient.fetch(query)` and `fetchOptional(query)` overloads for
+  no-parameter generated queries;
+- update processor-generated `findAll` to use the no-parameter contract;
+- update the Spring example and public docs.
+
+Verification:
+
+- `gradlew.bat :java:runtime-jdbc:test --tests dev.mortar.jdbc.MortarJdbcClientTest.executesGeneratedQueryWithoutParameters --no-daemon`;
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorGenerationTest.generatesFindAllExecutorForAnnotatedEntity --no-daemon`.
