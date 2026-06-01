@@ -9,12 +9,14 @@ import com.querydsl.sql.PostgreSQLTemplates;
 import com.querydsl.sql.RelationalPathBase;
 import com.querydsl.sql.SQLQuery;
 
+import dev.mortar.core.Assignment;
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.QueryMetadata;
 import dev.mortar.core.QuerySpec;
 import dev.mortar.core.RenderedQuery;
 import dev.mortar.core.SimpleMortarDb;
 import dev.mortar.core.TableRef;
+import dev.mortar.core.UpdateSpec;
 import dev.mortar.jdbc.MortarGeneratedQuery;
 import dev.mortar.jdbc.MortarJdbcClient;
 import dev.mortar.jdbc.MortarPreparedQuery;
@@ -61,10 +63,19 @@ import java.util.concurrent.TimeUnit;
 public class PostgresExecutionBenchmark {
     static final int DATASET_SIZE = 1_000;
     static final long QUERY_CLIENT_ID = 777L;
+    static final int PAGE_SIZE = 20;
+    static final int PAGE_OFFSET = 40;
     static final boolean QUERY_ACTIVE = true;
+    static final String TUNED_PGJDBC_PARAMETERS =
+        "prepareThreshold=1&preparedStatementCacheQueries=256&binaryTransfer=true";
     static final String CREATE_SCHEMA_SQL = """
+        create table routes (
+            id bigint primary key,
+            name text not null
+        );
         create table clients (
             id bigint primary key,
+            route_id bigint not null references routes(id),
             name text not null,
             active boolean not null
         );
@@ -74,14 +85,30 @@ public class PostgresExecutionBenchmark {
     private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:16-alpine");
     private static final String SELECT_SQL = "select id, name from clients where active = ? and id = ?";
     private static final String SELECT_BY_ID_SQL = "select c.id, c.name, c.active from clients c where c.id = ?";
+    private static final String SELECT_JOIN_PAGE_SQL = """
+        select c.id, c.name, r.name
+        from clients c
+        inner join routes r on c.route_id = r.id
+        where c.active = ?
+        order by c.id asc
+        limit ? offset ?
+        """.replace("\n", " ").replaceAll(" +", " ").trim();
+    private static final String UPDATE_SQL = "update clients set active = ? where id = ?";
 
     private PostgreSQLContainer postgres;
     private Connection connection;
+    private Connection tunedConnection;
     private PreparedStatement plainReusableStatement;
     private PreparedStatement plainReusableFindByIdStatement;
+    private PreparedStatement plainJoinPageStatement;
+    private PreparedStatement plainUpdateStatement;
+    private PreparedStatement plainTunedReusableFindByIdStatement;
     private MortarJdbcClient mortarClient;
+    private MortarJdbcClient tunedMortarClient;
     private QuerySpec mortarQuery;
+    private QuerySpec mortarJoinPageQuery;
     private RenderedQuery mortarRenderedQuery;
+    private List<UpdateSpec> mortarUpdateBatch;
     private MortarGeneratedQuery<ClientLookupParameters, ClientRow> mortarGeneratedQuery;
     private ClientLookupParameters mortarGeneratedParameters;
     private MortarPreparedQuery<ClientLookupParameters, ClientRow> mortarPreparedGeneratedQuery;
@@ -110,6 +137,11 @@ public class PostgresExecutionBenchmark {
             postgres.getUsername(),
             postgres.getPassword()
         );
+        tunedConnection = DriverManager.getConnection(
+            tunedJdbcUrl(),
+            postgres.getUsername(),
+            postgres.getPassword()
+        );
         createSchema();
         seedClients();
         configureMortar();
@@ -131,8 +163,20 @@ public class PostgresExecutionBenchmark {
         if (plainReusableFindByIdStatement != null) {
             plainReusableFindByIdStatement.close();
         }
+        if (plainJoinPageStatement != null) {
+            plainJoinPageStatement.close();
+        }
+        if (plainUpdateStatement != null) {
+            plainUpdateStatement.close();
+        }
+        if (plainTunedReusableFindByIdStatement != null) {
+            plainTunedReusableFindByIdStatement.close();
+        }
         if (connection != null) {
             connection.close();
+        }
+        if (tunedConnection != null) {
+            tunedConnection.close();
         }
         if (postgres != null) {
             postgres.stop();
@@ -273,6 +317,77 @@ public class PostgresExecutionBenchmark {
             }
             blackhole.consume(row);
         }
+    }
+
+    @Benchmark
+    public void plainJdbcJoinPageFetch(Blackhole blackhole) throws Exception {
+        plainJoinPageStatement.setBoolean(1, QUERY_ACTIVE);
+        plainJoinPageStatement.setInt(2, PAGE_SIZE);
+        plainJoinPageStatement.setInt(3, PAGE_OFFSET);
+        try (ResultSet resultSet = plainJoinPageStatement.executeQuery()) {
+            List<ClientRouteRow> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                rows.add(new ClientRouteRow(
+                    resultSet.getLong(1),
+                    resultSet.getString(2),
+                    resultSet.getString(3)
+                ));
+            }
+            blackhole.consume(List.copyOf(rows));
+        }
+    }
+
+    @Benchmark
+    public void mortarJoinPageFetch(Blackhole blackhole) {
+        List<ClientRouteRow> rows = mortarClient.fetch(
+            mortarJoinPageQuery,
+            resultSet -> new ClientRouteRow(resultSet.getLong(1), resultSet.getString(2), resultSet.getString(3))
+        );
+
+        blackhole.consume(rows);
+    }
+
+    @Benchmark
+    public void plainJdbcUpdateBatch(Blackhole blackhole) throws Exception {
+        plainUpdateStatement.setBoolean(1, false);
+        plainUpdateStatement.setLong(2, QUERY_CLIENT_ID);
+        plainUpdateStatement.addBatch();
+        plainUpdateStatement.setBoolean(1, true);
+        plainUpdateStatement.setLong(2, QUERY_CLIENT_ID);
+        plainUpdateStatement.addBatch();
+
+        blackhole.consume(plainUpdateStatement.executeBatch());
+    }
+
+    @Benchmark
+    public void mortarUpdateBatch(Blackhole blackhole) {
+        blackhole.consume(mortarClient.executeBatch(mortarUpdateBatch));
+    }
+
+    @Benchmark
+    public void plainJdbcTunedReusableFindByIdFetch(Blackhole blackhole) throws Exception {
+        plainTunedReusableFindByIdStatement.setLong(1, QUERY_CLIENT_ID);
+        try (ResultSet resultSet = plainTunedReusableFindByIdStatement.executeQuery()) {
+            List<QBenchmarkClient.FindByIdRow> rows = new ArrayList<>();
+            while (resultSet.next()) {
+                rows.add(new QBenchmarkClient.FindByIdRow(
+                    resultSet.getLong(1),
+                    resultSet.getString(2),
+                    resultSet.getBoolean(3)
+                ));
+            }
+            blackhole.consume(List.copyOf(rows));
+        }
+    }
+
+    @Benchmark
+    public void mortarTunedProcessorGeneratedFindByIdFetch(Blackhole blackhole) {
+        List<QBenchmarkClient.FindByIdRow> rows = tunedMortarClient.fetch(
+            mortarProcessorGeneratedFindByIdQuery,
+            mortarProcessorGeneratedFindByIdParameters
+        );
+
+        blackhole.consume(rows);
     }
 
     @Benchmark
@@ -438,18 +553,36 @@ public class PostgresExecutionBenchmark {
 
     private void configureMortar() {
         TableRef clients = new TableRef("clients", "c");
+        TableRef routes = new TableRef("routes", "r");
         ColumnRef<Long> id = clients.column("id", "id", Long.class);
         ColumnRef<String> name = clients.column("name", "name", String.class);
         ColumnRef<Boolean> active = clients.column("active", "active", Boolean.class);
+        ColumnRef<Long> routeId = clients.column("routeId", "route_id", Long.class);
+        ColumnRef<Long> routeTableId = routes.column("id", "id", Long.class);
+        ColumnRef<String> routeName = routes.column("name", "name", String.class);
         mortarQuery = new SimpleMortarDb()
             .from(clients)
             .select(id, name)
             .where(active.eq(QUERY_ACTIVE))
             .where(id.eq(QUERY_CLIENT_ID))
             .build();
+        mortarJoinPageQuery = new SimpleMortarDb()
+            .from(clients)
+            .innerJoin(routes, routeId, routeTableId)
+            .select(id, name, routeName)
+            .where(active.eq(QUERY_ACTIVE))
+            .orderBy(id.asc())
+            .limit(PAGE_SIZE)
+            .offset(PAGE_OFFSET)
+            .build();
+        mortarUpdateBatch = List.of(
+            new UpdateSpec(clients, List.of(Assignment.of(active, false)), List.of(id.eq(QUERY_CLIENT_ID)), List.of()),
+            new UpdateSpec(clients, List.of(Assignment.of(active, true)), List.of(id.eq(QUERY_CLIENT_ID)), List.of())
+        );
         PostgresQueryRenderer renderer = new PostgresQueryRenderer();
         mortarRenderedQuery = renderer.render(mortarQuery);
         mortarClient = new MortarJdbcClient(connection, renderer);
+        tunedMortarClient = new MortarJdbcClient(tunedConnection, renderer);
         mortarGeneratedQuery = new GeneratedClientLookupQuery();
         mortarGeneratedParameters = new ClientLookupParameters(QUERY_ACTIVE, QUERY_CLIENT_ID);
         mortarPreparedGeneratedQuery = mortarClient.prepare(mortarGeneratedQuery);
@@ -477,9 +610,17 @@ public class PostgresExecutionBenchmark {
     private void createSchema() throws Exception {
         try (Statement statement = connection.createStatement()) {
             statement.execute("drop table if exists clients");
+            statement.execute("drop table if exists routes");
+            statement.execute("""
+                create table routes (
+                    id bigint primary key,
+                    name text not null
+                )
+                """);
             statement.execute("""
                 create table clients (
                     id bigint primary key,
+                    route_id bigint not null references routes(id),
                     name text not null,
                     active boolean not null
                 )
@@ -490,24 +631,46 @@ public class PostgresExecutionBenchmark {
 
     private void seedClients() throws Exception {
         try (PreparedStatement statement = connection.prepareStatement(
-            "insert into clients (id, name, active) values (?, ?, ?)"
+            "insert into routes (id, name) values (?, ?)"
+        )) {
+            for (long id = 1L; id <= 10L; id++) {
+                statement.setLong(1, id);
+                statement.setString(2, "route-" + id);
+                statement.addBatch();
+            }
+            statement.executeBatch();
+        }
+        try (PreparedStatement statement = connection.prepareStatement(
+            "insert into clients (id, route_id, name, active) values (?, ?, ?, ?)"
         )) {
             for (long id = 1L; id <= DATASET_SIZE; id++) {
                 statement.setLong(1, id);
-                statement.setString(2, seedClientName(id));
-                statement.setBoolean(3, id % 2L != 0L);
+                statement.setLong(2, (id % 10L) + 1L);
+                statement.setString(3, seedClientName(id));
+                statement.setBoolean(4, id % 2L != 0L);
                 statement.addBatch();
             }
             statement.executeBatch();
         }
         plainReusableStatement = connection.prepareStatement(SELECT_SQL);
         plainReusableFindByIdStatement = connection.prepareStatement(SELECT_BY_ID_SQL);
+        plainJoinPageStatement = connection.prepareStatement(SELECT_JOIN_PAGE_SQL);
+        plainUpdateStatement = connection.prepareStatement(UPDATE_SQL);
+        plainTunedReusableFindByIdStatement = tunedConnection.prepareStatement(SELECT_BY_ID_SQL);
+    }
+
+    private String tunedJdbcUrl() {
+        String separator = postgres.getJdbcUrl().contains("?") ? "&" : "?";
+        return postgres.getJdbcUrl() + separator + TUNED_PGJDBC_PARAMETERS;
     }
 
     private record ClientLookupParameters(boolean active, long id) {
     }
 
     private record ClientRow(Long id, String name) {
+    }
+
+    private record ClientRouteRow(Long id, String name, String routeName) {
     }
 
     private static final class GeneratedClientLookupQuery implements MortarGeneratedQuery<ClientLookupParameters, ClientRow> {

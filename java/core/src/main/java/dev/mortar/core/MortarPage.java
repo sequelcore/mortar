@@ -1,5 +1,8 @@
 package dev.mortar.core;
 
+/**
+ * Zero-based page request used to derive limit and offset.
+ */
 public record MortarPage(int page, int size) {
     public MortarPage {
         if (page < 0) {

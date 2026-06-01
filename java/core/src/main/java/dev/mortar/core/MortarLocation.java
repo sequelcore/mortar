@@ -2,6 +2,9 @@ package dev.mortar.core;
 
 import java.util.Objects;
 
+/**
+ * Optional source location attached to a diagnostic.
+ */
 public record MortarLocation(String source, int line, int column) {
     public MortarLocation {
         Objects.requireNonNull(source, "source cannot be null");

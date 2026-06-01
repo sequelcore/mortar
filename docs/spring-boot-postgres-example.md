@@ -51,6 +51,25 @@ public Optional<ClientSummary> findById(long id) {
 The generated executor pre-renders SQL through the configured renderer and then
 uses direct JDBC bind/map code.
 
+## Starter Properties
+
+The example configures the starter explicitly:
+
+```yaml
+mortar:
+  dialect: postgres
+  sql-format: pretty
+  jdbc:
+    logging:
+      enabled: true
+  diagnostics:
+    enabled: true
+```
+
+`mortar.dialect` currently supports PostgreSQL. The diagnostics endpoint reports
+the selected dialect, SQL format, JDBC logging flag, diagnostics flag, and
+renderer class so production applications can verify the active starter wiring.
+
 Keep richer query shapes in the Java DSL:
 
 ```java

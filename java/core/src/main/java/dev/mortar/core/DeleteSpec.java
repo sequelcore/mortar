@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Immutable delete mutation model rendered by dialect adapters.
+ */
 public record DeleteSpec(
     TableRef table,
     List<Predicate> predicates,

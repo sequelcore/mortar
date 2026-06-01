@@ -18,6 +18,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
+import java.util.UUID;
 
 @Testcontainers(disabledWithoutDocker = true)
 final class PostgresSpecificPredicateIntegrationTest {
@@ -54,6 +55,48 @@ final class PostgresSpecificPredicateIntegrationTest {
                 for (int index = 0; index < rendered.parameters().size(); index++) {
                     statement.setObject(index + 1, rendered.parameters().get(index).value());
                 }
+
+                try (ResultSet resultSet = statement.executeQuery()) {
+                    assertThat(resultSet.next()).isTrue();
+                    assertThat(resultSet.getLong("id")).isEqualTo(1L);
+                    assertThat(resultSet.next()).isFalse();
+                }
+            }
+        }
+    }
+
+    @Test
+    void executesUuidArrayOverlapAgainstPostgreSQL() throws Exception {
+        UUID betaGroup = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        UUID inactiveGroup = UUID.fromString("22222222-2222-2222-2222-222222222222");
+        TableRef clients = new TableRef("client_groups", "c");
+        ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        ColumnRef<UUID[]> groups = clients.column("groups", "groups", UUID[].class);
+        RenderedQuery rendered = new PostgresQueryRenderer().render(
+            new SimpleMortarDb()
+                .from(clients)
+                .select(id)
+                .where(PostgresPredicates.arrayOverlaps(groups, List.of(betaGroup)))
+                .build()
+        );
+
+        try (Connection connection = DriverManager.getConnection(
+            POSTGRES.getJdbcUrl(),
+            POSTGRES.getUsername(),
+            POSTGRES.getPassword()
+        )) {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("drop table if exists client_groups");
+                statement.execute("create table client_groups (id bigint primary key, groups uuid[] not null)");
+                statement.execute(
+                    "insert into client_groups (id, groups) values "
+                        + "(1, array['" + betaGroup + "'::uuid]), "
+                        + "(2, array['" + inactiveGroup + "'::uuid])"
+                );
+            }
+
+            try (PreparedStatement statement = connection.prepareStatement(rendered.sql())) {
+                statement.setObject(1, betaGroup);
 
                 try (ResultSet resultSet = statement.executeQuery()) {
                     assertThat(resultSet.next()).isTrue();

@@ -12,6 +12,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * AssertJ assertions for rendered SQL, parameters, and metadata.
+ */
 public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertions, RenderedQuery> {
     private MortarSqlAssertions(RenderedQuery renderedQuery) {
         super(renderedQuery, MortarSqlAssertions.class);

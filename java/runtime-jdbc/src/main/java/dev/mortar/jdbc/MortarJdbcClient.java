@@ -32,6 +32,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * JDBC adapter that executes rendered and generated Mortar query plans.
+ */
 public final class MortarJdbcClient {
     private final DataSource dataSource;
     private final Connection connection;

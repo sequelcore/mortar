@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Projection target and column list for scalar, record, DTO, or nested mapping.
+ */
 public record Projection(
     ProjectionKind kind,
     Optional<Class<?>> targetType,

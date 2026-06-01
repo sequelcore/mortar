@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * Static analysis helpers for query specifications and rendered SQL batches.
+ */
 public final class QueryDiagnostics {
     private static final int DEFAULT_MAX_IN_LIST_VALUES = 100;
     private static final int DEFAULT_REPEATED_QUERY_WARNING_THRESHOLD = 10;

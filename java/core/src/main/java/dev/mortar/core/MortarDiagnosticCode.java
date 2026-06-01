@@ -1,5 +1,8 @@
 package dev.mortar.core;
 
+/**
+ * Stable diagnostic codes for query analysis.
+ */
 public enum MortarDiagnosticCode {
     INVALID_QUERY("MORTAR_CORE_001"),
     UNBOUNDED_QUERY("MORTAR_CORE_002"),

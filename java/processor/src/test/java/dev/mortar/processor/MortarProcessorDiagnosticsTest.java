@@ -122,6 +122,64 @@ final class MortarProcessorDiagnosticsTest {
         assertThat(result.errors()).anyMatch(message -> message.contains("MORTAR_PROCESSOR_004"));
     }
 
+    @Test
+    void rejectsBlankRelationTargetColumn() throws Exception {
+        CompilationResult result = compile("""
+            package example;
+
+            import dev.mortar.processor.MortarColumn;
+            import dev.mortar.processor.MortarEntity;
+            import dev.mortar.processor.MortarId;
+            import dev.mortar.processor.MortarRelation;
+
+            @MortarEntity(table = "routes")
+            final class Route {
+                @MortarId
+                @MortarColumn(name = "id")
+                Long id;
+            }
+
+            @MortarEntity(table = "clients")
+            final class Client {
+                @MortarId
+                @MortarColumn(name = "id")
+                Long id;
+
+                @MortarRelation(target = Route.class, localColumn = "route_id", targetColumn = " ")
+                Route route;
+            }
+            """);
+
+        assertThat(result.compiled()).isFalse();
+        assertThat(result.errors()).anyMatch(message -> message.contains("MORTAR_PROCESSOR_007"));
+    }
+
+    @Test
+    void rejectsInvalidSqlMetadata() throws Exception {
+        CompilationResult result = compile("""
+            package example;
+
+            import dev.mortar.processor.MortarColumn;
+            import dev.mortar.processor.MortarEntity;
+            import dev.mortar.processor.MortarId;
+
+            @MortarEntity(table = "clients;drop", alias = " ")
+            final class Client {
+                @MortarId
+                @MortarColumn(name = "id")
+                Long id;
+
+                @MortarColumn(name = "display-name")
+                String name;
+            }
+            """);
+
+        assertThat(result.compiled()).isFalse();
+        assertThat(result.errors()).anyMatch(message -> message.contains("MORTAR_PROCESSOR_005"));
+        assertThat(result.errors()).anyMatch(message -> message.contains("MORTAR_PROCESSOR_006"));
+        assertThat(result.errors()).anyMatch(message -> message.contains("MORTAR_PROCESSOR_007"));
+    }
+
     private CompilationResult compile(String source) throws Exception {
         Path sourceDir = tempDir.resolve("source-" + Math.abs(source.hashCode()));
         Path classDir = tempDir.resolve("classes-" + Math.abs(source.hashCode()));

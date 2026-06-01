@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Typed reference to a table column used for predicates, sorting, and projections.
+ */
 public record ColumnRef<T>(TableRef table, String propertyName, String columnName, Class<T> javaType) {
     public ColumnRef {
         Objects.requireNonNull(table, "table cannot be null");

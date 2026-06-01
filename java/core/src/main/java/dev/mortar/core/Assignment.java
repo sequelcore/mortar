@@ -2,6 +2,9 @@ package dev.mortar.core;
 
 import java.util.Objects;
 
+/**
+ * Value assignment for an insert or update mutation.
+ */
 public record Assignment<T>(ColumnRef<T> column, Parameter value) {
     public Assignment {
         Objects.requireNonNull(column, "column cannot be null");

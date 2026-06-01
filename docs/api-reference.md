@@ -3,6 +3,10 @@
 This page is the human entry point for Mortar's public Java APIs. Javadoc should
 remain the source of exact method signatures.
 
+Before the first release, handwritten public Java types include concise
+type-level Javadocs and generated `Q*` sources document SQL table, column,
+relation, and generated executor metadata for IDE visibility.
+
 ## Core
 
 Package: `dev.mortar.core`
@@ -33,6 +37,8 @@ Generated read executors:
 - accept a `QueryRenderer` so SQL is pre-rendered through the dialect boundary;
 - implement `MortarGeneratedQuery<P, T>` with direct JDBC bind and map methods;
 - map selected columns by projection index for the generated hot path.
+- include generated-source Javadocs for table metadata, selected columns, and
+  generated executor SQL shape.
 
 Current generated read executors:
 
@@ -40,6 +46,10 @@ Current generated read executors:
   `MortarNoParameters` binding and can be executed as `jdbcClient.fetch(query)`.
 - `findById(renderer)`: selects all mapped columns by identifier with
   `FindByIdParameters`.
+
+Processor diagnostics fail compilation for invalid entity metadata before a
+bad generated query can reach runtime. The stable processor diagnostic codes are
+listed in [`diagnostics.md`](diagnostics.md).
 
 ## PostgreSQL
 

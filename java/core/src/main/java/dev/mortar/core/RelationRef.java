@@ -2,6 +2,9 @@ package dev.mortar.core;
 
 import java.util.Objects;
 
+/**
+ * Generated relationship path that can produce explicit joins.
+ */
 public record RelationRef(
     String propertyName,
     TableRef targetTable,

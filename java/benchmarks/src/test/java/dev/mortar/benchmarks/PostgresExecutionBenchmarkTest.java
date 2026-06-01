@@ -18,6 +18,7 @@ final class PostgresExecutionBenchmarkTest {
         assertThat(PostgresExecutionBenchmark.QUERY_CLIENT_ID).isEqualTo(777L);
         assertThat(PostgresExecutionBenchmark.CREATE_SCHEMA_SQL)
             .contains("id bigint primary key")
+            .contains("route_id bigint not null")
             .contains("create index clients_active_id_idx");
         assertThat(PostgresExecutionBenchmark.seedClientName(PostgresExecutionBenchmark.QUERY_CLIENT_ID))
             .isEqualTo("client-0777");
@@ -50,11 +51,25 @@ final class PostgresExecutionBenchmarkTest {
             "plainJdbcFindByIdFetchOptional",
             "plainJdbcReusableFindByIdFetch",
             "plainJdbcReusableFindByIdFetchOptional",
+            "plainJdbcJoinPageFetch",
+            "mortarJoinPageFetch",
+            "plainJdbcUpdateBatch",
+            "mortarUpdateBatch",
+            "plainJdbcTunedReusableFindByIdFetch",
+            "mortarTunedProcessorGeneratedFindByIdFetch",
             "jooqFetch",
             "jooqFetchOptional",
             "querydslFetch",
             "querydslFetchOptional"
         );
+    }
+
+    @Test
+    void documentsTunedPgjdbcScenarioParameters() {
+        assertThat(PostgresExecutionBenchmark.TUNED_PGJDBC_PARAMETERS)
+            .contains("prepareThreshold=1")
+            .contains("preparedStatementCacheQueries=256")
+            .contains("binaryTransfer=true");
     }
 
     @Test

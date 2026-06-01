@@ -4,6 +4,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Immutable select query model consumed by SQL renderers and diagnostics.
+ */
 public record QuerySpec(
     Optional<String> name,
     TableRef table,

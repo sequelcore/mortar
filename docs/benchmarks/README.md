@@ -117,6 +117,12 @@ day retention.
 - `PostgresExecutionBenchmark.plainJdbcFindByIdFetchOptional`: real PostgreSQL generated-entity `findById` shape through plain JDBC at-most-one-row mapping.
 - `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetch`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement`.
 - `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetchOptional`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement` with at-most-one-row mapping.
+- `PostgresExecutionBenchmark.plainJdbcJoinPageFetch`: real PostgreSQL joined, ordered, paginated read through a reused plain JDBC `PreparedStatement`.
+- `PostgresExecutionBenchmark.mortarJoinPageFetch`: real PostgreSQL joined, ordered, paginated read through the Mortar DSL/JDBC path.
+- `PostgresExecutionBenchmark.plainJdbcUpdateBatch`: real PostgreSQL update batch through plain JDBC.
+- `PostgresExecutionBenchmark.mortarUpdateBatch`: real PostgreSQL update batch through Mortar mutation rendering and JDBC batch execution.
+- `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement` on a PgJDBC connection configured with `prepareThreshold=1`, `preparedStatementCacheQueries=256`, and `binaryTransfer=true`.
+- `PostgresExecutionBenchmark.mortarTunedProcessorGeneratedFindByIdFetch`: real PostgreSQL processor-generated `findById` through Mortar on the same tuned PgJDBC connection settings.
 - `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetch`: real PostgreSQL `findById` through the `QBenchmarkClient` executor emitted by the Mortar annotation processor.
 - `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetchOptional`: real PostgreSQL at-most-one-row `findById` through the processor-generated executor.
 - `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetch`: real PostgreSQL `findById` through a caller-owned reusable prepared query built from the processor-generated executor.
@@ -132,10 +138,12 @@ The controlled JDBC-double benchmarks measure adapter overhead, not database/net
 throughput. Public claims require full report data in
 [`performance-report-template.md`](../performance-report-template.md).
 
-The real PostgreSQL benchmarks measure one indexed select over a deterministic
-1,000-row dataset, using one live JDBC connection per JMH trial. They are closer
-to execution evidence than controlled JDBC doubles, but they still do not represent a full
-application workload, connection pooling, concurrent traffic, or database tuning.
+The real PostgreSQL benchmarks measure deterministic read and write shapes over
+a 1,000-row dataset, using live JDBC connections per JMH trial. They are closer
+to execution evidence than controlled JDBC doubles, but they still do not
+represent a full application workload, connection pooling, concurrent traffic,
+or production database tuning. Tuned PgJDBC scenarios are benchmark-local and do
+not change Mortar runtime defaults.
 The processor-generated `findById` scenarios use a benchmark-only annotated
 entity so the measured Mortar path is emitted by the real annotation processor,
 not by hand-written benchmark code.

@@ -29,11 +29,13 @@ rust/crates/mortar-cli     CLI tooling
 rust/crates/mortar-compiler Rust analysis/compiler foundation
 rust/crates/mortar-lsp     Language Server Protocol foundation for editor tooling
 examples/spring-boot-postgres Runnable Spring Boot PostgreSQL example
+examples/clean-architecture-postgres Clean Architecture repository adapter example
 ```
 
 ## Canonical Docs
 
 - [Getting started](docs/getting-started.md)
+- [Usage guide](docs/usage-guide.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture](docs/spec/architecture.md)
 - [API reference](docs/api-reference.md)

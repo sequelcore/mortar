@@ -3,6 +3,9 @@ package dev.mortar.core;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * Immutable insert mutation model rendered by dialect adapters.
+ */
 public record InsertSpec(
     TableRef table,
     List<Assignment<?>> assignments,

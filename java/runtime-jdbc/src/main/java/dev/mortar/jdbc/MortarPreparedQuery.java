@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+/**
+ * Reusable prepared generated query tied to a caller-owned JDBC connection.
+ */
 public final class MortarPreparedQuery<P, T> implements AutoCloseable {
     private final PreparedStatement statement;
     private final MortarGeneratedQuery<P, T> query;

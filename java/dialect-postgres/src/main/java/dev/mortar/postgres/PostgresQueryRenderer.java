@@ -25,6 +25,9 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * PostgreSQL SQL renderer for Mortar query and mutation specifications.
+ */
 public final class PostgresQueryRenderer implements QueryRenderer {
     private final PostgresSqlFormat sqlFormat;
 

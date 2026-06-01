@@ -17,6 +17,9 @@ Normal Spring query execution stays in Java:
 
 - SQL rendering cost with JMH.
 - JDBC execution with PostgreSQL/Testcontainers.
+- Joined reads, paginated reads, write batches, and generated-query hot paths.
+- Benchmark-local PgJDBC options such as server prepare threshold, statement
+  cache size, and binary transfer.
 - Query plan changes through `EXPLAIN`.
 - Allocation changes when query construction paths change.
 
@@ -49,3 +52,5 @@ Current performance strategy research:
 - Prefer simple generated SQL that PostgreSQL can plan predictably.
 - Treat maximum handwritten reusable JDBC as a ceiling unless Mortar measures
   otherwise on the same query shape and projection strategy.
+- Keep driver tuning in benchmark configuration or application configuration;
+  Mortar does not change PgJDBC defaults.
