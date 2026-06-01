@@ -142,75 +142,29 @@ After public-readiness cleanup, the next product decision should choose one of:
 
 The next slice should update [`roadmap.md`](roadmap.md) in the same change.
 
-## Active Slice: R15 Public API Readiness Hardening
+## Completed Slice: R15 Public API Readiness Hardening
 
-Status: In Progress
+Status: Done
 
-Objective: complete the remaining public API readiness hardening work before
-any first release tag is considered.
+Objective: complete public API readiness hardening before any first release tag
+is considered.
 
-Completed in the current R15 branch:
+Completed scope:
 
 - R15.1 generated `findAll(renderer)` on `Q*` metamodels.
 - R15.2 added `MortarNoParameters` and no-parameter generated query overloads.
+- R15.3 hardened Spring Boot starter properties, diagnostics, and examples.
+- R15.4 expanded PostgreSQL dialect syntax and Testcontainers coverage.
+- R15.5 strengthened processor diagnostics and generated-source documentation.
+- R15.6 upgraded public usage guidance beyond example snippets.
+- R15.7 broadened benchmark scenarios for joins, pages, writes, and tuned
+  PgJDBC cases without making unsupported public performance claims.
+- R15.8 added a CI-compiling Clean Architecture PostgreSQL example.
+- R15.9 finalized the pre-1.0 compatibility and release policy.
+- R15.10 completed public Javadocs for handwritten Java APIs and generated
+  executor contracts.
 
-Remaining implementation order:
-
-1. R15.3 Spring Boot starter ergonomics.
-   Files: `java/spring-boot-starter/src/main/java/dev/mortar/spring/*`,
-   `java/spring-boot-starter/src/test/java/dev/mortar/spring/*`,
-   `examples/spring-boot-postgres/src/main/resources/application.yml`,
-   `docs/spring-boot-postgres-example.md`,
-   `docs/spring-boot-compatibility.md`, and `docs/roadmap.md`.
-   Verification: `gradlew.bat :java:spring-boot-starter:test --no-daemon` and
-   `gradlew.bat :examples:spring-boot-postgres:test --no-daemon`.
-
-2. R15.4 PostgreSQL dialect coverage.
-   Files: `java/dialect-postgres/src/test/java/dev/mortar/postgres/*` and
-   `docs/roadmap.md`.
-   Verification: focused PostgreSQL renderer and Testcontainers tests covering
-   joins, pagination, writes, and PostgreSQL-specific predicates.
-
-3. R15.5 Processor diagnostics and generated-source documentation.
-   Files: `java/processor/src/main/java/dev/mortar/processor/MortarProcessor.java`,
-   `java/processor/src/test/java/dev/mortar/processor/*`,
-   `docs/diagnostics.md`, `docs/api-reference.md`, and `docs/roadmap.md`.
-   Verification: javac diagnostic tests fail first for invalid public metadata,
-   then pass after fail-fast validation and generated executor documentation.
-
-4. R15.6 Public usage guidance.
-   Files: `README.md`, `docs/getting-started.md`, new or updated usage docs
-   under `docs/`, and `docs/roadmap.md`.
-   Verification: documentation scrub plus Java example compilation.
-
-5. R15.7 Broader benchmark scenarios.
-   Files: `java/benchmarks/src/main/java/dev/mortar/benchmarks/*`,
-   `java/benchmarks/src/test/java/dev/mortar/benchmarks/*`,
-   `java/benchmarks/build.gradle.kts`, `.github/workflows/benchmarks.yml`,
-   `docs/benchmarks/README.md`, `docs/performance.md`, and
-   `docs/roadmap.md`.
-   Verification: `gradlew.bat :java:benchmarks:check --no-daemon`.
-   Benchmark claims remain draft-only until retained JMH artifacts are reviewed.
-
-6. R15.8 Additional end-to-end examples.
-   Files: `settings.gradle.kts`, new modules under `examples/`, example tests,
-   README/doc links, and `docs/roadmap.md`.
-   Verification: example module `check` tasks and root Java gate.
-
-7. R15.9 Pre-1.0 compatibility policy.
-   Files: `docs/release.md`, `CHANGELOG.md`, `README.md`, and
-   `docs/roadmap.md`.
-   Verification: documentation scrub and release workflow dry-run checks from
-   root `check`.
-
-8. R15.10 Public Javadocs.
-   Files: public Java source in `java/core`, `java/dialect-postgres`,
-   `java/runtime-jdbc`, `java/spring-boot-starter`, `java/processor`, and
-   `java/testkit`, plus `docs/api-reference.md` and `docs/roadmap.md`.
-   Verification: Java compile with `-Xlint:all -Werror`, public API review, and
-   final full gates.
-
-Non-goals:
+Non-goals preserved for release review:
 
 - no release, tag, Maven Central publication, or merge to `main`;
 - no new dialects;
@@ -218,7 +172,7 @@ Non-goals:
 - no Spring dependency in `java/core` or `java/runtime-jdbc`;
 - no Rust dependency in the default Java/Spring query runtime.
 
-Final verification:
+Final verification record:
 
 - `gradlew.bat check --no-daemon`;
 - from `rust`: `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`;
@@ -226,7 +180,7 @@ Final verification:
 - public path scrub excluding build outputs and caches;
 - `git diff --check`.
 
-Risks:
+Remaining release-review risks:
 
 - Testcontainers-dependent tests may skip locally without Docker and still need
   CI evidence.
