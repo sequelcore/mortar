@@ -1,0 +1,5 @@
+Mortar
+Copyright 2026 Sequel
+
+Mortar is a public Java + Rust project for Java-first, refactor-safe,
+SQL-transparent data access in Spring applications.

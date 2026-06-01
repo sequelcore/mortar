@@ -1,0 +1,22 @@
+[package]
+name = "mortar-lsp"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+readme.workspace = true
+rust-version.workspace = true
+description = "Language Server Protocol foundation for Mortar editor tooling."
+
+[[bin]]
+name = "mortar-lsp"
+path = "src/main.rs"
+
+[dependencies]
+lsp-server.workspace = true
+lsp-types.workspace = true
+mortar-compiler = { version = "0.1.0", path = "../mortar-compiler" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true

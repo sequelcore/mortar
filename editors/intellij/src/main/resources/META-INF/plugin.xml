@@ -1,0 +1,28 @@
+<idea-plugin>
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <documentationProvider implementation="dev.mortar.intellij.MortarDocumentationProvider"/>
+        <gotoDeclarationHandler implementation="dev.mortar.intellij.MortarSnapshotNavigationProvider"/>
+        <annotator language="JAVA" implementationClass="dev.mortar.intellij.MortarSnapshotAnnotator"/>
+        <notificationGroup id="Mortar" displayType="BALLOON"/>
+    </extensions>
+
+    <actions>
+        <action
+            id="dev.mortar.copyGeneratedSql"
+            class="dev.mortar.intellij.MortarCopyGeneratedSqlAction"
+            text="Copy Generated SQL"
+            description="Copy the generated Mortar SQL for the current query">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+        <action
+            id="dev.mortar.runExplain"
+            class="dev.mortar.intellij.MortarRunExplainAction"
+            text="Run PostgreSQL EXPLAIN"
+            description="Run PostgreSQL EXPLAIN through the configured Mortar CLI">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

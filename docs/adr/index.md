@@ -1,0 +1,6 @@
+# ADR Index
+
+- [ADR-0001: Java-First SQL-Transparent Architecture](0001-java-first-sql-transparent-architecture.md)
+- [ADR-0002: Apache-2.0 License For Public Distribution](0002-apache-2-license.md)
+- [ADR-0003: IntelliJ Plugin Adapter Boundary](0003-intellij-plugin-adapter-boundary.md)
+- [ADR-0004: Generated JDBC Executor Runtime Contract](0004-generated-jdbc-executor.md)

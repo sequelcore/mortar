@@ -1,0 +1,13 @@
+mortar:
+  sql-format: pretty
+  jdbc:
+    logging:
+      enabled: true
+  diagnostics:
+    enabled: true
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/mortar_example
+    username: postgres
+    password: postgres

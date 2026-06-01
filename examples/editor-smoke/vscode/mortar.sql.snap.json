@@ -1,0 +1,25 @@
+{
+  "format": "mortar-sql-snapshot-v1",
+  "snapshots": [
+    {
+      "name": "ClientRepository.findById",
+      "sql": "select c.id from clients c where c.id = ?",
+      "parameters": [
+        {
+          "position": 1,
+          "java_type": "java.lang.Long",
+          "value": "7"
+        }
+      ],
+      "metadata": {
+        "tables": [
+          "clients"
+        ],
+        "columns": [
+          "clients.id"
+        ],
+        "joins": []
+      }
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "benchmark": "dev.mortar.benchmarks.PostgresRenderingBenchmark.renderSelectQuery",
+  "min_ops_per_second": 1,
+  "max_allocation_bytes_per_operation": 1048576,
+  "status": "bootstrap-threshold",
+  "notes": "Bootstrap threshold only verifies the threshold mechanism exists. Tighten after publishing reproducible baseline data."
+}

@@ -1,0 +1,88 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      jmhIncludes:
+        description: "JMH benchmark include regex"
+        required: true
+        default: "PostgresExecutionBenchmark.*FindById.*"
+      profile:
+        description: "Benchmark profile to run: throughput, allocation, latency, or all"
+        required: true
+        default: "all"
+      repeatCount:
+        description: "Number of repeated runs for the selected profile"
+        required: true
+        default: "1"
+
+jobs:
+  postgres-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Confirm Docker
+        run: docker info
+
+      - name: Run selected JMH profiles
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repeat_count="${{ inputs.repeatCount }}"
+          if ! [[ "$repeat_count" =~ ^[1-9][0-9]*$ ]]; then
+            echo "repeatCount must be a positive integer" >&2
+            exit 1
+          fi
+
+          profile="${{ inputs.profile }}"
+          includes="${{ inputs.jmhIncludes }}"
+          report_dir="java/benchmarks/build/reports/jmh"
+
+          run_profile() {
+            local task_name="$1"
+            local output_name="$2"
+            local run_index="$3"
+
+            ./gradlew ":java:benchmarks:${task_name}" "-PjmhIncludes=${includes}" --no-daemon
+            cp "${report_dir}/${output_name}.json" "${report_dir}/${output_name}-run-${run_index}.json"
+          }
+
+          mkdir -p "${report_dir}"
+          for run_index in $(seq 1 "$repeat_count"); do
+            case "$profile" in
+              throughput)
+                run_profile "jmhPostgresExecution" "postgres-execution" "$run_index"
+                ;;
+              allocation)
+                run_profile "jmhPostgresExecutionAllocation" "postgres-execution-allocation" "$run_index"
+                ;;
+              latency)
+                run_profile "jmhPostgresExecutionLatency" "postgres-execution-latency" "$run_index"
+                ;;
+              all)
+                run_profile "jmhPostgresExecution" "postgres-execution" "$run_index"
+                run_profile "jmhPostgresExecutionAllocation" "postgres-execution-allocation" "$run_index"
+                run_profile "jmhPostgresExecutionLatency" "postgres-execution-latency" "$run_index"
+                ;;
+              *)
+                echo "Unsupported profile: ${profile}" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+      - name: Upload JMH JSON artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mortar-jmh-${{ inputs.profile }}-${{ github.run_id }}
+          path: java/benchmarks/build/reports/jmh/*.json
+          if-no-files-found: error
+          retention-days: 30

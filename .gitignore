@@ -1,0 +1,14 @@
+.gradle/
+.intellijPlatform/
+.kiln/
+memory/
+build/
+out/
+target/
+.idea/
+*.iml
+*.log
+*.class
+node_modules/
+editors/vscode/dist/
+editors/vscode/.vscode-test/

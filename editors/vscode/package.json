@@ -1,0 +1,69 @@
+{
+  "name": "mortar-vscode",
+  "displayName": "Mortar",
+  "description": "VS Code client for Mortar SQL transparency tooling.",
+  "version": "0.1.0",
+  "publisher": "sequel",
+  "license": "Apache-2.0",
+  "engines": {
+    "vscode": "^1.120.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onLanguage:java"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "mortar.copySql",
+        "title": "Mortar: Copy Generated SQL"
+      },
+      {
+        "command": "mortar.explainSql",
+        "title": "Mortar: Run PostgreSQL EXPLAIN"
+      }
+    ],
+    "configuration": {
+      "title": "Mortar",
+      "properties": {
+        "mortar.lsp.path": {
+          "type": "string",
+          "default": "mortar-lsp",
+          "description": "Path to the mortar-lsp executable."
+        },
+        "mortar.cli.path": {
+          "type": "string",
+          "default": "mortar",
+          "description": "Path to the mortar CLI executable."
+        },
+        "mortar.postgres.connection": {
+          "type": "string",
+          "default": "",
+          "description": "PostgreSQL connection string used by Mortar EXPLAIN actions."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "bun run compile && cargo build -p mortar-lsp -p mortar-cli --manifest-path ../../rust/Cargo.toml && node ./dist/test/runTest.js",
+    "test:screenshots": "bun run compile && cargo build -p mortar-lsp -p mortar-cli --manifest-path ../../rust/Cargo.toml && node ./dist/test/runTest.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "vscode-languageclient": "9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.41",
+    "@types/mocha": "10.0.10",
+    "@types/vscode": "1.120.0",
+    "@types/ws": "8.18.1",
+    "@vscode/test-electron": "2.5.2",
+    "mocha": "11.7.6",
+    "typescript": "5.6.3",
+    "ws": "8.21.0"
+  }
+}
