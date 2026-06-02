@@ -79,12 +79,14 @@ The planned sequence is:
 - R16: Java-First Ergonomics And Query Authoring.
 - R17: Real-Query Coverage Gate.
 - R18: Stability, Refactor Safety And Tooling Hardening.
-- R19: Pre-Release Candidate Hardening.
+- R19: Java Call Resolution And Editor Semantics Hardening.
+- R20: Performance And Runtime Efficiency.
 
 Existing application migration waits until Mortar is much more mature. R17 must
 prove R16 ergonomics against a realistic public fixture corpus before any such
-migration is considered, and R19 is a go/no-go gate for future beta or controlled
-migration pilot planning rather than a release promise.
+migration is considered. R19 must harden source-map-backed editor call
+resolution before R20 performance work or any future beta, controlled migration
+pilot, release-candidate, or public demo claim.
 
 ## Verification Matrix
 
@@ -1785,7 +1787,8 @@ for R19.
 
 Expected output: schema-drift workflow over the R17 named cases, final review
 against R16/R17 constraints, updated roadmap evidence, and a handoff that keeps
-R19 as a go/no-go pre-release-candidate hardening gate rather than a release.
+R19 focused on Java call-resolution and editor-semantics hardening rather than
+a release.
 
 Non-goals: no release, publish, tag, private migration, or performance claim.
 
@@ -1795,10 +1798,14 @@ Completed R18.6 evidence:
   `docs/refactor-safety.md`, `docs/roadmap.md`, and this plan to describe the
   source-map-backed editor contract, fail-closed behavior, and legacy marker
   limits.
-- R19 handoff remains pre-release candidate hardening only. Performance work
-  should gather repeated clean-commit JMH/PostgreSQL artifacts, Windows/Linux CI
-  confidence, release dry-run evidence, upgrade notes, and a go/no-go checklist
-  before any public claim or beta/release-candidate decision.
+- R19 handoff identifies Java call-resolution and editor-semantics hardening as
+  the next risk: R18's lightweight Java matcher supports canonical generated
+  fixed-read calls, but not local aliases, helper-returned receivers, or
+  arbitrary Java call semantics.
+- R20 remains the performance phase. Performance work should gather repeated
+  clean-commit JMH/PostgreSQL artifacts, Windows/Linux CI confidence, release
+  dry-run evidence, upgrade notes, and a go/no-go checklist before any public
+  claim or beta/release-candidate decision.
 - R18.6 does not implement R19, does not add Java public API, and does not
   authorize release, push, tag, publication, private migration, or broad editor
   UX work.
@@ -1921,6 +1928,172 @@ only for deterministic clean compile and semantic SQL/schema cases.
   cross-tool metadata format, source-map format, stale-detection behavior,
   public API, or official processor incremental classification.
 
+## R19 Canonical Design: Java Call Resolution And Editor Semantics Hardening
+
+Status: Planned
+
+R19 is a design target for implementation slices, not an implementation record.
+It must not be marked `Done` until product code, tests, docs, verification
+evidence, and review evidence exist. This planning slice only records the
+canonical direction.
+
+### Problem Statement
+
+R18.5 made VS Code/LSP source-map-backed hover, copy SQL, PostgreSQL EXPLAIN
+code actions, snapshot-entry definition, stale-source-map diagnostics, and
+snapshot-definition routing work for canonical generated read calls:
+
+```java
+QClient.CLIENT.read(renderer).findById(id);
+QClient.CLIENT.read(renderer).findAll();
+CLIENT.read(renderer).findById(id);
+```
+
+R18 deliberately used lightweight Java matching. That was appropriate for a
+contract-hardening gate because fresh `mortar-source-map-v1`,
+`mortar-metadata-v1`, and `mortar.sql.snap.json` were the primary trust
+boundary. The remaining risk is that developers naturally introduce local
+aliases around generated metamodels or read namespaces, while arbitrary helper
+methods, reassignment, shadowing, wildcard imports, and Java type inference can
+make a token-only resolver either miss valid code or, worse, route editor SQL
+to the wrong snapshot.
+
+R19 exists to harden that boundary before R20 performance work and before any
+public demo claim.
+
+### Decision
+
+R19 adopts the ADR-0008 bounded hybrid:
+
+- keep `mortar-source-map-v1` plus fresh `mortar-metadata-v1` authoritative;
+- move call recovery toward local syntax-aware Java resolution in the Rust LSP;
+- broaden support only to explicit same-file local alias patterns that do not
+  require Java type binding;
+- keep hover, copy SQL, EXPLAIN, definition, and diagnostics driven by one
+  resolver result;
+- fail closed for unsupported generated-looking calls rather than guessing.
+
+`tree-sitter-java` is the preferred implementation candidate because it fits
+the Rust tooling path and provides local syntax structure. R19 planning does
+not claim a full Java parser, full Java semantic resolution, classpath-aware
+binding, or helper-returned receiver support.
+
+### R19 Slices
+
+R19.1: Call-resolution contract and ADR/update.
+
+- Owns ADR-0008, this plan, and roadmap sequencing.
+- Defines supported and unsupported call-resolution patterns before
+  implementation.
+- Verification: docs review for R18 scope accuracy, ADR-0007 compatibility,
+  no implementation claims, and no fake parser promises.
+
+R19.2: Local Java syntax resolution foundation.
+
+- Owns Rust LSP resolver structure only.
+- Preserves R18 canonical direct-call behavior before adding aliases.
+- Evaluates the parser dependency and parser boundary with tests.
+- Verification: Rust resolver matrix for R18 direct calls, explicit static
+  imports, stale source maps, missing metadata, and ambiguous source-map
+  entries.
+
+R19.3: Canonical aliases, local variables, and static import resolution.
+
+- Supports only same-method or same-block local aliases assigned once to a
+  generated metamodel constant or to a resolved `.read(renderer)` namespace.
+- Keeps explicit static imports supported; wildcard static imports are not a
+  success path.
+- Verification: positive alias tests plus negative tests for reassignment,
+  conditional assignment, shadowing, field aliases, helper-returned receivers,
+  and cross-file aliases.
+
+R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion.
+
+- Ensures hover, copy SQL, EXPLAIN, definition, and diagnostics agree on the
+  same resolver outcome.
+- Adds VS Code smoke fixtures for canonical success, local alias success,
+  stale or missing source-map diagnostics, unsupported generated-looking calls,
+  and snapshot definition routing.
+- Verification: `cd rust && cargo test -p mortar-lsp`; from
+  `editors/vscode`, `bun run typecheck` and `bun run test`.
+
+R19.5: Editor semantics review and R20 performance handoff.
+
+- Reviews editor behavior against LSP semantics and public docs.
+- Updates `docs/lsp.md`, `docs/metadata.md`, `docs/vscode.md`, and the roadmap
+  only after implementation evidence exists.
+- Hands off to R20 with performance risks separated from editor correctness.
+- Verification: full Java, Rust, VS Code, diff, scrub, and review gates before
+  any R19 completion claim.
+
+### Non-Goals
+
+- no runtime Java API changes unless explicitly justified by a later slice;
+- no generated Java API expansion;
+- no performance implementation or performance claim;
+- no AI/agent-friendly phase;
+- no full IDE replacement;
+- no full Java semantic engine or classpath-aware type binding;
+- no helper-returned receiver support;
+- no arbitrary DSL call-site hover/navigation;
+- no editor-side SQL rendering;
+- no public release, release candidate, tag, publication, private migration, or
+  public demo claim.
+
+### Research Basis
+
+- LSP 3.17 documents hover, code action, definition, and diagnostics as
+  separate language features. A server can return no hover, no definition, or
+  no code action when it cannot resolve trustworthy data, and publish
+  diagnostics separately.
+- VS Code language-server guidance says language analysis can parse large
+  amounts of code and should run in a separate process to avoid extension-host
+  performance cost.
+- Tree-sitter provides parser infrastructure and Rust bindings; the
+  `tree-sitter-java` crate provides Java syntax support but not Java type
+  binding.
+- Java `JavaCompiler` and `Trees` can expose compiler diagnostics and syntax
+  trees, but deeper use would require Java process and classpath integration.
+- Eclipse JDT LS demonstrates the scale of a full Java language server,
+  including Gradle/Maven support, diagnostics, completion, navigation, and
+  annotation-processing integration.
+- JavaParser and JavaSymbolSolver demonstrate AST plus symbol-solving options,
+  but add Java dependency and workspace/classpath complexity that R19 avoids.
+
+### Architecture Debate Outcome
+
+The required xhigh debate concluded:
+
+- R19 should use a bounded hybrid: source-map freshness remains authoritative,
+  while Java call recovery becomes local syntax-aware resolution.
+- Continuing to broaden token matching was rejected because alias, scope,
+  shadowing, and reassignment handling would become an ad hoc parser.
+- Full `javac`, Eclipse JDT, or JavaParser symbol-solving integration was
+  rejected for R19 because the Java process, classpath, and workspace-model
+  burden exceeds the hardening goal.
+- Lexical alias heuristics without syntax structure were rejected because local
+  aliases need initializer and scope information.
+- R19 must describe itself as syntax-aware local resolution, not full Java call
+  resolution.
+- Returning no editor result for valid but unsupported Java is acceptable;
+  returning stale or wrong SQL is not.
+
+### Exit Criteria
+
+R19 can be marked `Done` only when:
+
+- R18 canonical generated fixed-read calls still work;
+- supported alias patterns are covered by positive resolver and VS Code smoke
+  tests;
+- unsupported generated-looking calls fail closed with diagnostics where
+  appropriate;
+- hover, copy SQL, EXPLAIN, definition, and diagnostics share one resolver
+  outcome;
+- docs clearly list unsupported patterns;
+- no public docs claim full Java parser support, full Java semantics, runtime
+  API changes, performance implementation, release, or migration;
+- full verification and review evidence is recorded in the roadmap.
+
 ## Future Maturity Gates
 
 R17 is planned as the real-query coverage gate above. It uses a public
@@ -1937,13 +2110,19 @@ transparency, schema drift workflow, and SQL snapshots as a normal developer
 workflow. It does not authorize generated API expansion, release work, or
 application migration.
 
-R19 is planned as pre-release candidate hardening. It should run a go/no-go
-review for a possible future public beta or release candidate gate, not
-automatically release. Its scope includes Windows and Linux CI confidence,
-release dry-run, benchmark artifacts from clean commits before claims, upgrade
-and migration notes for pre-1.0 changes, security/release/support policy review,
-complete CI-running examples, and a go/no-go checklist for a future beta or
-later controlled migration pilot.
+R19 is planned as Java call-resolution and editor-semantics hardening. It should
+preserve ADR-0007 source-map freshness as the trust boundary, replace or
+constrain R18's token-walking generated-call matcher with local syntax-aware
+resolution, broaden only to explicit same-file alias patterns, and fail closed
+for unsupported generated-looking calls. It does not authorize runtime Java API
+changes, generated API expansion, performance work, AI/agent-friendly behavior,
+full IDE replacement behavior, public release work, or public demo claims.
+
+R20 is planned as Performance And Runtime Efficiency. It should gather repeated
+clean-commit JMH/PostgreSQL artifacts, allocation and latency evidence,
+Windows/Linux CI confidence, upgrade notes, and performance-report updates only
+after R19 editor semantics are trustworthy enough that performance evidence is
+not paired with misleading SQL-transparency claims.
 
 ## Completed Slice: R15 Public API Readiness Hardening
 
