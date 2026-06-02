@@ -2,11 +2,13 @@
 
 ## Module Boundaries
 
-`java/core` defines the query model. It is framework-free.
+`java/core` defines the query model and framework-free rendered-query
+inspection contracts. It is framework-free.
 
 `java/dialect-postgres` converts query models into PostgreSQL SQL.
 
-`java/runtime-jdbc` executes rendered SQL through JDBC.
+`java/runtime-jdbc` executes rendered SQL through JDBC and owns JDBC row
+mapping contracts.
 
 `java/spring-boot-starter` wires Mortar into Spring Boot applications.
 
@@ -36,3 +38,13 @@ Generated application source can depend on runtime contracts:
 ```text
 generated Q* executor -> runtime-jdbc -> core
 ```
+
+R16.1 keeps bound read-query inspection and JDBC execution split:
+
+```text
+generated read facade -> core MortarBoundQuery
+runtime JDBC adapter -> runtime-jdbc MortarJdbcBoundQuery -> core MortarBoundQuery
+```
+
+Generated query objects must not execute themselves. Editors and LSP consume
+processor metadata but do not own query semantics.

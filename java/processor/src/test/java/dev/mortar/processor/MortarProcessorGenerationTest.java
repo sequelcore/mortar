@@ -252,6 +252,69 @@ final class MortarProcessorGenerationTest {
     }
 
     @Test
+    void doesNotGenerateR16ReadFacadeNamespaceYet() throws Exception {
+        Path sourceDir = tempDir.resolve("r16-guard-source");
+        Path classDir = tempDir.resolve("r16-guard-classes");
+        Path generatedDir = tempDir.resolve("r16-guard-generated");
+        Files.createDirectories(sourceDir.resolve("example"));
+        Files.createDirectories(classDir);
+        Files.createDirectories(generatedDir);
+
+        Path clientSource = sourceDir.resolve("example").resolve("Client.java");
+        Files.writeString(clientSource, """
+            package example;
+
+            import dev.mortar.processor.MortarColumn;
+            import dev.mortar.processor.MortarEntity;
+            import dev.mortar.processor.MortarId;
+
+            @MortarEntity(table = "clients", alias = "c")
+            final class Client {
+                @MortarId
+                @MortarColumn(name = "id", nullable = false)
+                Long id;
+
+                @MortarColumn(name = "name")
+                String name;
+            }
+            """, StandardCharsets.UTF_8);
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.ROOT, StandardCharsets.UTF_8)) {
+            fileManager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(classDir));
+            fileManager.setLocationFromPaths(StandardLocation.SOURCE_OUTPUT, List.of(generatedDir));
+
+            boolean compiled = compiler.getTask(
+                null,
+                fileManager,
+                null,
+                List.of(
+                    "-classpath",
+                    System.getProperty("java.class.path"),
+                    "-processor",
+                    MortarProcessor.class.getName()
+                ),
+                null,
+                fileManager.getJavaFileObjectsFromPaths(List.of(clientSource))
+            ).call();
+
+            assertThat(compiled).isTrue();
+        }
+
+        String generatedSource = Files.readString(
+            generatedDir.resolve("example").resolve("QClient.java"),
+            StandardCharsets.UTF_8
+        ).replace("\r\n", "\n");
+
+        assertThat(generatedSource)
+            .doesNotContain("public static final class Read")
+            .doesNotContain(" read(dev.mortar.core.QueryRenderer renderer)")
+            .doesNotContain("projectRecord(")
+            .doesNotContain("projectDto(")
+            .doesNotContain("fetch(");
+    }
+
+    @Test
     void generatesQClassForAnnotatedRecord() throws Exception {
         Path sourceDir = tempDir.resolve("record-source");
         Path classDir = tempDir.resolve("record-classes");

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.Join;
 import dev.mortar.core.JoinType;
+import dev.mortar.core.MortarBoundQuery;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.QueryMetadata;
 import dev.mortar.core.RenderedQuery;
@@ -21,6 +22,20 @@ final class MortarSqlAssertionsTest {
         assertThatSql(new RenderedQuery("select 1", List.of()))
             .hasSql("select 1")
             .renders("select 1");
+    }
+
+    @Test
+    void assertsBoundQuerySql() {
+        MortarBoundQuery<ClientRow> query = MortarBoundQuery.of(
+            "ClientRepository.findById",
+            new RenderedQuery("select id from clients where id = ?", List.of(Parameter.of(7L))),
+            ClientRow.class
+        );
+
+        assertThatSql(query)
+            .hasSql("select id from clients where id = ?")
+            .hasParameters(7L)
+            .hasParameterTypes(Long.class);
     }
 
     @Test
@@ -134,7 +149,10 @@ final class MortarSqlAssertionsTest {
 
     @Test
     void rejectsNullRenderedQuery() {
-        assertThatThrownBy(() -> assertThatSql(null).hasSql("select 1"))
+        assertThatThrownBy(() -> assertThatSql((RenderedQuery) null).hasSql("select 1"))
             .isInstanceOf(AssertionError.class);
+    }
+
+    private record ClientRow(Long id) {
     }
 }
