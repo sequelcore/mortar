@@ -62,12 +62,17 @@ MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT
     .findById(7L)
     .named("ClientRepository.findById");
 
+assertThatSql(query)
+    .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
+    .hasParameters(7L)
+    .hasParameterTypes(Long.class);
+
 Optional<QClient.FindByIdRow> row = jdbcClient.fetchOptional(query);
 ```
 
 The facade renders SQL through the configured renderer, exposes SQL and
-parameters through `MortarBoundQuery`, and still requires explicit execution
-through `MortarJdbcClient`.
+parameters through `MortarBoundQuery`, supports direct testkit assertions, and
+still requires explicit execution through `MortarJdbcClient`.
 
 Use `docs/sql-snapshots.md` and `docs/cli.md` when you want snapshot checks or
 offline inspection.

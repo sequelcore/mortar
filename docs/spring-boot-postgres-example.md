@@ -60,6 +60,19 @@ The generated facade renders SQL through the configured renderer, returns an
 immutable `MortarBoundQuery`, and still executes only when passed to
 `MortarJdbcClient`.
 
+Repository tests can assert the generated facade without a database:
+
+```java
+MortarBoundQuery<QClient.FindByIdRow> query = CLIENT.read(renderer)
+    .findById(7L)
+    .named("ClientRepository.findById");
+
+MortarSqlAssertions.assertThatSql(query)
+    .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
+    .hasParameters(7L)
+    .hasParameterTypes(Long.class);
+```
+
 ## Starter Properties
 
 The example configures the starter explicitly:

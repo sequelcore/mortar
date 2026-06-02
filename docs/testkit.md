@@ -8,19 +8,26 @@ SQL snapshot file format and CLI update behavior are documented in
 
 ## SQL Assertions
 
-Use `MortarSqlAssertions.assertThatSql` with a `RenderedQuery` from any dialect
-renderer or a framework-free `MortarBoundQuery<?>`.
+Use `MortarSqlAssertions.assertThatSql` with a framework-free
+`MortarBoundQuery<?>` from a generated read facade or with a lower-level
+`RenderedQuery` from any dialect renderer.
 
 ```java
 import static dev.mortar.testkit.MortarSqlAssertions.assertThatSql;
 
-assertThatSql(renderedQuery)
-    .hasSql("select c.id from clients c where c.id = ?");
+MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT.read(renderer)
+    .findById(7L)
+    .named("ClientRepository.findById");
+
+assertThatSql(query)
+    .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
+    .hasParameters(7L)
+    .hasParameterTypes(Long.class);
 ```
 
-R16.1 `MortarBoundQuery<?>` assertions unwrap the canonical `RenderedQuery`.
-The testkit still depends only on `java/core`; JDBC row mapping remains outside
-the testkit contract.
+`MortarBoundQuery<?>` failures include the rendered SQL, query name, and row
+type. The testkit still depends only on `java/core`; JDBC row mapping remains
+outside the testkit contract.
 
 `renders(...)` is kept as a readable alias for `hasSql(...)`.
 
@@ -30,7 +37,7 @@ Assert parameter values separately from SQL text so CI failures point to the
 actual contract that changed.
 
 ```java
-assertThatSql(renderedQuery)
+assertThatSql(query)
     .hasParameters(7L, "active")
     .hasParameterTypes(Long.class, String.class);
 ```
@@ -44,7 +51,7 @@ Rendered query metadata can be asserted with the same generated/table references
 used by application code.
 
 ```java
-assertThatSql(renderedQuery)
+assertThatSql(query)
     .hasTables(CLIENTS, ROUTES)
     .hasColumns(CLIENTS.id(), ROUTES.clientId())
     .hasJoins(clientRouteJoin);

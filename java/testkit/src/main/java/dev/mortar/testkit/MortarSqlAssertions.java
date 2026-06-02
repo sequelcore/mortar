@@ -17,8 +17,17 @@ import java.util.Objects;
  * AssertJ assertions for rendered SQL, parameters, and metadata.
  */
 public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertions, RenderedQuery> {
+    private final String queryName;
+    private final Class<?> rowType;
+
     private MortarSqlAssertions(RenderedQuery renderedQuery) {
+        this(renderedQuery, null, null);
+    }
+
+    private MortarSqlAssertions(RenderedQuery renderedQuery, String queryName, Class<?> rowType) {
         super(renderedQuery, MortarSqlAssertions.class);
+        this.queryName = queryName;
+        this.rowType = rowType;
     }
 
     public static MortarSqlAssertions assertThatSql(RenderedQuery renderedQuery) {
@@ -27,7 +36,7 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
 
     public static MortarSqlAssertions assertThatSql(MortarBoundQuery<?> query) {
         Objects.requireNonNull(query, "query cannot be null");
-        return new MortarSqlAssertions(query.rendered());
+        return new MortarSqlAssertions(query.rendered(), query.queryName().orElse("<unnamed>"), query.rowType());
     }
 
     public MortarSqlAssertions hasSql(String expectedSql) {
@@ -38,7 +47,7 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
                 Expected SQL to be:
                   <%s>
                 but was:
-                  <%s>""", expectedSql, actual.sql());
+                  <%s>%s""", expectedSql, actual.sql(), queryContext());
         }
         return this;
     }
@@ -63,7 +72,7 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
                 but were:
                   <%s>
                 SQL:
-                  <%s>""", expected, actualValues, actual.sql());
+                  <%s>%s""", expected, actualValues, actual.sql(), queryContext());
         }
         return this;
     }
@@ -88,7 +97,7 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
                 but were:
                   <%s>
                 SQL:
-                  <%s>""", expectedTypeNames, actualTypeNames, actual.sql());
+                  <%s>%s""", expectedTypeNames, actualTypeNames, actual.sql(), queryContext());
         }
         return this;
     }
@@ -119,8 +128,20 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
                 but were:
                   <%s>
                 SQL:
-                  <%s>""", metadataName, expected, actualValues, actual.sql());
+                  <%s>%s""", metadataName, expected, actualValues, actual.sql(), queryContext());
         }
         return this;
+    }
+
+    private String queryContext() {
+        if (queryName == null || rowType == null) {
+            return "";
+        }
+        return """
+
+            Query:
+              <%s>
+            Row type:
+              <%s>""".formatted(queryName, rowType.getName());
     }
 }

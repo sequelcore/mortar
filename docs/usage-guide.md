@@ -89,6 +89,20 @@ See `examples/clean-architecture-postgres` for a CI-compiling example.
 Use fast adapter tests for expected SQL:
 
 ```java
+MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT.read(renderer)
+    .findById(7L)
+    .named("ClientRepository.findById");
+
+MortarSqlAssertions.assertThatSql(query)
+    .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
+    .hasParameters(7L)
+    .hasParameterTypes(Long.class);
+```
+
+For hand-built DSL queries, assert the renderer output at the same adapter
+boundary:
+
+```java
 MortarSqlAssertions.assertThatSql(renderer.render(query))
     .hasSql("select c.id, c.name from clients c where c.active = ? order by c.id asc limit ? offset ?")
     .hasParameters(true, 20, 20);
