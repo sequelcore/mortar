@@ -3,6 +3,7 @@ package dev.mortar.jdbc;
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.DeleteSpec;
 import dev.mortar.core.InsertSpec;
+import dev.mortar.core.MortarBoundQuery;
 import dev.mortar.core.MutationSpec;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.Projection;
@@ -102,6 +103,30 @@ public final class MortarJdbcClient {
         Objects.requireNonNull(mapper, "mapper cannot be null");
 
         return fetchOptionalRendered(renderedQuery, mapper);
+    }
+
+    public <T> List<T> fetch(MortarBoundQuery<T> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+
+        return fetchRendered(query.rendered(), rowTypeMapper(query));
+    }
+
+    public <T> Optional<T> fetchOptional(MortarBoundQuery<T> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+
+        return fetchOptionalRendered(query.rendered(), rowTypeMapper(query));
+    }
+
+    public <T> List<T> fetch(MortarJdbcBoundQuery<T> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+
+        return fetchRendered(query.rendered(), query.rowMapper());
+    }
+
+    public <T> Optional<T> fetchOptional(MortarJdbcBoundQuery<T> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+
+        return fetchOptionalRendered(query.rendered(), query.rowMapper());
     }
 
     public <P, T> List<T> fetch(MortarGeneratedQuery<P, T> query, P parameters) {
@@ -270,6 +295,14 @@ public final class MortarJdbcClient {
         }
 
         return fetch(query, new ConstructorRowMapper<>(targetType, projection.columns()));
+    }
+
+    private <T> RowMapper<T> rowTypeMapper(MortarBoundQuery<T> query) {
+        List<ColumnRef<?>> columns = query.metadata().columns();
+        if (columns.isEmpty()) {
+            throw new IllegalArgumentException("bound query metadata columns are required for row-type mapping");
+        }
+        return new ConstructorRowMapper<>(query.rowType(), columns);
     }
 
     public int[] executeBatch(List<? extends MutationSpec> mutations) {

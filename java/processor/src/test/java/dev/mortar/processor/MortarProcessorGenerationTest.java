@@ -252,7 +252,7 @@ final class MortarProcessorGenerationTest {
     }
 
     @Test
-    void doesNotGenerateR16ReadFacadeNamespaceYet() throws Exception {
+    void generatesR16ReadFacadeNamespaceForFixedSingleTableReads() throws Exception {
         Path sourceDir = tempDir.resolve("r16-guard-source");
         Path classDir = tempDir.resolve("r16-guard-classes");
         Path generatedDir = tempDir.resolve("r16-guard-generated");
@@ -276,6 +276,43 @@ final class MortarProcessorGenerationTest {
 
                 @MortarColumn(name = "name")
                 String name;
+
+                @MortarColumn(name = "active")
+                Boolean active;
+            }
+            """, StandardCharsets.UTF_8);
+        Path usageSource = sourceDir.resolve("example").resolve("ClientUsage.java");
+        Files.writeString(usageSource, """
+            package example;
+
+            import dev.mortar.core.MortarBoundQuery;
+            import dev.mortar.core.QueryRenderer;
+            import dev.mortar.jdbc.MortarJdbcClient;
+            import java.util.List;
+            import java.util.Optional;
+
+            final class ClientUsage {
+                MortarBoundQuery<QClient.FindByIdRow> findByIdQuery(QueryRenderer renderer, Long id) {
+                    return QClient.CLIENT.read(renderer)
+                        .findById(id)
+                        .named("ClientUsage.findById");
+                }
+
+                Optional<QClient.FindByIdRow> findById(MortarJdbcClient jdbcClient, QueryRenderer renderer, Long id) {
+                    return jdbcClient.fetchOptional(
+                        QClient.CLIENT.read(renderer)
+                            .findById(id)
+                            .named("ClientUsage.findById")
+                    );
+                }
+
+                List<QClient.FindAllRow> findAll(MortarJdbcClient jdbcClient, QueryRenderer renderer) {
+                    return jdbcClient.fetch(
+                        QClient.CLIENT.read(renderer)
+                            .findAll()
+                            .named("ClientUsage.findAll")
+                    );
+                }
             }
             """, StandardCharsets.UTF_8);
 
@@ -295,7 +332,7 @@ final class MortarProcessorGenerationTest {
                     MortarProcessor.class.getName()
                 ),
                 null,
-                fileManager.getJavaFileObjectsFromPaths(List.of(clientSource))
+                fileManager.getJavaFileObjectsFromPaths(List.of(clientSource, usageSource))
             ).call();
 
             assertThat(compiled).isTrue();
@@ -307,11 +344,21 @@ final class MortarProcessorGenerationTest {
         ).replace("\r\n", "\n");
 
         assertThat(generatedSource)
-            .doesNotContain("public static final class Read")
-            .doesNotContain(" read(dev.mortar.core.QueryRenderer renderer)")
+            .contains("public Read read(dev.mortar.core.QueryRenderer renderer)")
+            .contains("public static final class Read")
+            .contains("public dev.mortar.core.MortarBoundQuery<FindByIdRow> findById(java.lang.Long id)")
+            .contains("return dev.mortar.core.MortarBoundQuery.unnamed(renderer.render(findByIdSpec(id)), FindByIdRow.class);")
+            .contains("public dev.mortar.core.MortarBoundQuery<FindAllRow> findAll()")
+            .contains("return dev.mortar.core.MortarBoundQuery.unnamed(renderer.render(findAllSpec()), FindAllRow.class);")
             .doesNotContain("projectRecord(")
             .doesNotContain("projectDto(")
-            .doesNotContain("fetch(");
+            .doesNotContain("public Write")
+            .doesNotContain(" write(")
+            .doesNotContain(" fetch(")
+            .doesNotContain(" fetchOptional(")
+            .doesNotContain(" execute(")
+            .doesNotContain(" count(")
+            .doesNotContain(" exists(");
     }
 
     @Test

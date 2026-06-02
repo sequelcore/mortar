@@ -99,8 +99,8 @@ final class MortarProcessorMetadataFileTest {
                           "shape": "findAll",
                           "generated_source": {
                             "java_type": "example.QClient",
-                            "member": "findAll",
-                            "generated_type": "example.QClient.FindAllQuery"
+                            "member": "read.findAll",
+                            "generated_type": "example.QClient.Read"
                           },
                           "parameters": [],
                           "row_type": "example.QClient.FindAllRow",
@@ -112,8 +112,8 @@ final class MortarProcessorMetadataFileTest {
                           "shape": "findById",
                           "generated_source": {
                             "java_type": "example.QClient",
-                            "member": "findById",
-                            "generated_type": "example.QClient.FindByIdQuery"
+                            "member": "read.findById",
+                            "generated_type": "example.QClient.Read"
                           },
                           "parameters": [
                             {

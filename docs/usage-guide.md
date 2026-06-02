@@ -6,11 +6,28 @@ identity maps, or transaction policy.
 
 ## Choosing The Query Path
 
-Use generated executors for common stable reads:
+Use generated fixed read facades for common stable reads:
 
-- primary-key lookup with `QClient.CLIENT.findById(renderer)`;
-- full table reads for small reference data with `QClient.CLIENT.findAll(renderer)`;
-- hot paths where pre-rendered SQL and direct JDBC bind/map code are useful.
+- primary-key lookup with `QClient.CLIENT.read(renderer).findById(id)`;
+- explicit full-table reads for small reference data with
+  `QClient.CLIENT.read(renderer).findAll()`;
+- repository paths where SQL and parameters should be inspectable before
+  explicit `MortarJdbcClient` execution.
+
+Name generated facade queries on the immutable bound query value:
+
+```java
+MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT
+    .read(renderer)
+    .findById(7L)
+    .named("ClientRepository.findById");
+
+Optional<QClient.FindByIdRow> row = jdbcClient.fetchOptional(query);
+```
+
+The older direct generated executor methods remain available for hot paths that
+need the `MortarGeneratedQuery` contract, but the fixed `Read` facade is the
+canonical R16.2 repository shape.
 
 Use the Java DSL when the query has application-specific predicates, joins,
 projection shape, sorting, or pagination:

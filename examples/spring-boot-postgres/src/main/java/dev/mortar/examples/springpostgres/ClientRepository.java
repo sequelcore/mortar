@@ -28,12 +28,20 @@ public final class ClientRepository {
     }
 
     public Optional<ClientSummary> findById(long id) {
-        return jdbcClient.fetchOptional(CLIENT.findById(renderer), new QClient.FindByIdParameters(id))
+        return jdbcClient.fetchOptional(
+                CLIENT.read(renderer)
+                    .findById(id)
+                    .named("ClientRepository.findById")
+            )
             .map(row -> new ClientSummary(row.id(), row.name()));
     }
 
     public List<ClientSummary> findAll() {
-        return jdbcClient.fetch(CLIENT.findAll(renderer))
+        return jdbcClient.fetch(
+                CLIENT.read(renderer)
+                    .findAll()
+                    .named("ClientRepository.findAll")
+            )
             .stream()
             .map(row -> new ClientSummary(row.id(), row.name()))
             .toList();

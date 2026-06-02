@@ -32,6 +32,10 @@ public record MortarBoundQuery<T>(
         return new MortarBoundQuery<>(Optional.empty(), rendered, rowType);
     }
 
+    public MortarBoundQuery<T> named(String queryName) {
+        return MortarBoundQuery.of(queryName, rendered, rowType);
+    }
+
     public String sql() {
         return rendered.sql();
     }
