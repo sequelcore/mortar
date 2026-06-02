@@ -767,19 +767,67 @@ Current evidence:
 
 Status: Planned
 
-Goal: let a Java user write the majority of real application queries with less
-friction than raw SQL, strong autocomplete, early errors, and visible SQL.
+Goal: let a Java user write bounded fixed-shape read queries with less friction
+than handwritten SQL plus JDBC binding and row mapping, while preserving strong
+autocomplete, early errors, and visible SQL.
 
 Scope:
 
-- shorter API for common queries;
-- generated query facades;
-- less repository ceremony;
-- better VS Code autocomplete and SQL hover;
-- clear diagnostics when fields, classes, or columns change;
-- repository and service examples;
+- generated fixed single-table read facades for `findById` and `findAll`;
+- fixed DTO/record projection ergonomics for those read shapes;
+- bound-parameter and visible-SQL runtime/testkit contract;
+- one generated read namespace per entity with a strict public API budget;
+- query-id/source-map metadata contract for future editor tooling;
+- repository and service examples that keep Mortar inside infrastructure
+  adapters;
 - no hidden ORM behavior;
 - no loss of SQL transparency.
+
+R16 slices:
+
+- R16.1: Contract, ADR, and API budget. Status: Planned.
+- R16.2: Fixed single-table read facades. Status: Planned.
+- R16.3: Bound parameters, visible SQL, and testkit contract. Status: Planned.
+- R16.4: Examples and usage guidance. Status: Planned.
+
+Non-goals:
+
+- no optional-filter overload matrices;
+- no joins, relation read models, `count`, `exists`, stable page, generated
+  writes, or batches;
+- no generated repository classes or Spring Data-style method derivation;
+- no generated query object execution methods such as
+  `query.fetchOptional(jdbcClient)`;
+- no custom LSP completion engine;
+- no migration of existing Sequel apps;
+- no release, tag, publication, merge, or push implied by this planning slice.
+
+Architecture debate outcome:
+
+- An xhigh architecture challenge narrowed R16 from broad query authoring to
+  fixed single-table read ergonomics. Optional filters, joins, richer
+  projections, `count`, `exists`, writes, and batches must prove value in R17's
+  public real-query corpus before entering the product surface.
+- Generated facade API growth is the primary risk, so R16 has an explicit API
+  budget: one generated read namespace per entity, a fixed read method set, no
+  overload explosion, and no self-executing generated query objects.
+- Source-map-backed SQL hover/navigation is realistic only after the metadata
+  contract exists and is hardened against generated sources; R16 defines the
+  contract, while R18 owns editor hardening.
+- Clean Architecture remains mandatory: generated query plans expose SQL and
+  metadata, but `java/runtime-jdbc` executes them and domain ports stay
+  Mortar-free.
+
+Exit criteria:
+
+- public generated API growth stays within the approved budget;
+- fixed read examples compile and keep SQL visible through tests/snapshots;
+- generated query plans expose SQL, parameter types, rendered metadata, and
+  testkit inputs;
+- processor-generated source still calls a supplied `QueryRenderer` and does
+  not render SQL itself;
+- `MortarJdbcClient` remains the execution boundary;
+- no ORM-like behavior is introduced.
 
 ### R17: Real-Query Coverage Gate
 
@@ -796,6 +844,7 @@ Scope:
 - stable pagination;
 - count and exists queries;
 - DTO projections;
+- richer read-model projections;
 - search-style queries;
 - simple writes;
 - batches;
@@ -805,6 +854,9 @@ Constraint:
 
 - if a capability is not needed by the realistic query corpus, it should not
   enter R17.
+- R17 must prove broader query shapes are actually simpler than the current DSL
+  or handwritten SQL plus JDBC binding and row mapping before expanding the
+  generated facade surface.
 
 ### R18: Stability, Refactor Safety And Tooling Hardening
 
@@ -821,6 +873,8 @@ Scope:
 - clearer diagnostics for entity, field, and column metadata changes;
 - VS Code and IntelliJ behavior against real generated contracts, not fragile
   transitional paths;
+- source-map-backed SQL hover/navigation over generated facade calls;
+- stale generated metadata diagnostics;
 - schema drift workflow;
 - SQL snapshots as a normal developer workflow.
 
