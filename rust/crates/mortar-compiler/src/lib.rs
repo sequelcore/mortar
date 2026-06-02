@@ -297,6 +297,43 @@ pub fn detect_schema_drift(
                 });
             }
         }
+
+        for relation in &entity.relations {
+            if !table.columns.contains(&relation.local_column) {
+                drift.push(SchemaDrift {
+                    table: entity.table.clone(),
+                    column: Some(relation.local_column.clone()),
+                    message: format!(
+                        "Missing database column: {}.{}",
+                        entity.table, relation.local_column
+                    ),
+                });
+            }
+
+            let Some(target_table) = database_schema
+                .tables
+                .iter()
+                .find(|table| table.name == relation.target_table)
+            else {
+                drift.push(SchemaDrift {
+                    table: relation.target_table.clone(),
+                    column: None,
+                    message: format!("Missing database table: {}", relation.target_table),
+                });
+                continue;
+            };
+
+            if !target_table.columns.contains(&relation.target_column) {
+                drift.push(SchemaDrift {
+                    table: relation.target_table.clone(),
+                    column: Some(relation.target_column.clone()),
+                    message: format!(
+                        "Missing database column: {}.{}",
+                        relation.target_table, relation.target_column
+                    ),
+                });
+            }
+        }
     }
     drift
 }
@@ -327,8 +364,9 @@ fn validate_sql_snapshot_file(snapshot_file: &SqlSnapshotFile) -> Result<(), Mor
 #[cfg(test)]
 mod tests {
     use super::{
-        MortarCompilerError, SqlSnapshot, SqlSnapshotFile, SqlSnapshotMetadata,
-        SqlSnapshotParameter, inspect_sql, parse_sql_snapshot_file, postgres_explain_sql,
+        DatabaseSchema, DatabaseTable, MortarCompilerError, SqlSnapshot, SqlSnapshotFile,
+        SqlSnapshotMetadata, SqlSnapshotParameter, detect_schema_drift, inspect_sql,
+        parse_mortar_metadata_file, parse_sql_snapshot_file, postgres_explain_sql,
         redact_connection_string, redact_parameter_value, render_sql_snapshot_file,
         sql_snapshot_format,
     };
@@ -623,7 +661,7 @@ mod tests {
 
     #[test]
     fn detects_schema_drift_for_missing_table_and_column() {
-        let metadata = super::parse_mortar_metadata_file(
+        let metadata = parse_mortar_metadata_file(
             r#"{
   "format": "mortar-metadata-v1",
   "entities": [
@@ -656,17 +694,143 @@ mod tests {
 }"#,
         )
         .expect("metadata should parse");
-        let schema = super::DatabaseSchema {
-            tables: vec![super::DatabaseTable {
+        let schema = DatabaseSchema {
+            tables: vec![DatabaseTable {
                 name: "clients".to_string(),
                 columns: vec!["id".to_string()],
             }],
         };
 
-        let drift = super::detect_schema_drift(&metadata, &schema);
+        let drift = detect_schema_drift(&metadata, &schema);
 
         assert_eq!(drift.len(), 2);
         assert_eq!(drift[0].message, "Missing database column: clients.name");
         assert_eq!(drift[1].message, "Missing database table: routes");
+    }
+
+    #[test]
+    fn detects_r17_schema_drift_cases_from_ticket_fixture_metadata() {
+        let metadata = parse_mortar_metadata_file(
+            r#"{
+  "format": "mortar-metadata-v1",
+  "entities": [
+    {
+      "java_type": "dev.mortar.examples.querycorpus.postgres.TicketRecord",
+      "table": "tickets",
+      "alias": "t",
+      "columns": [
+        {
+          "property": "id",
+          "column": "id",
+          "java_type": "java.lang.Long"
+        },
+        {
+          "property": "summary",
+          "column": "summary",
+          "java_type": "java.lang.String"
+        },
+        {
+          "property": "priority",
+          "column": "priority",
+          "java_type": "java.lang.String"
+        },
+        {
+          "property": "openedOn",
+          "column": "opened_on",
+          "java_type": "java.time.LocalDate"
+        }
+      ],
+      "relations": [
+        {
+          "property": "customer",
+          "local_column": "customer_id",
+          "target_table": "customers",
+          "target_alias": "cu",
+          "target_column": "id",
+          "nullable": false
+        },
+        {
+          "property": "assignedTechnician",
+          "local_column": "assigned_technician_id",
+          "target_table": "technicians",
+          "target_alias": "te",
+          "target_column": "id",
+          "nullable": true
+        },
+        {
+          "property": "status",
+          "local_column": "status_code",
+          "target_table": "ticket_statuses",
+          "target_alias": "ts",
+          "target_column": "code",
+          "nullable": false
+        }
+      ]
+    },
+    {
+      "java_type": "dev.mortar.examples.querycorpus.postgres.TechnicianRecord",
+      "table": "technicians",
+      "alias": "te",
+      "columns": [
+        {
+          "property": "id",
+          "column": "id",
+          "java_type": "java.lang.Long"
+        },
+        {
+          "property": "displayName",
+          "column": "display_name",
+          "java_type": "java.lang.String"
+        },
+        {
+          "property": "region",
+          "column": "region",
+          "java_type": "java.lang.String"
+        }
+      ],
+      "relations": []
+    }
+  ]
+}"#,
+        )
+        .expect("R17 metadata should parse");
+        let database_schema = DatabaseSchema {
+            tables: vec![
+                DatabaseTable {
+                    name: "tickets".to_string(),
+                    columns: vec![
+                        "id".to_string(),
+                        "summary".to_string(),
+                        "priority".to_string(),
+                        "opened_on".to_string(),
+                    ],
+                },
+                DatabaseTable {
+                    name: "customers".to_string(),
+                    columns: vec!["id".to_string()],
+                },
+                DatabaseTable {
+                    name: "technicians".to_string(),
+                    columns: vec!["id".to_string(), "display_name".to_string()],
+                },
+                DatabaseTable {
+                    name: "ticket_statuses".to_string(),
+                    columns: vec![],
+                },
+            ],
+        };
+
+        let drift = detect_schema_drift(&metadata, &database_schema);
+
+        let messages = drift
+            .iter()
+            .map(|drift| drift.message.as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(drift.len(), 5);
+        assert!(messages.contains(&"Missing database column: tickets.customer_id"));
+        assert!(messages.contains(&"Missing database column: tickets.assigned_technician_id"));
+        assert!(messages.contains(&"Missing database column: tickets.status_code"));
+        assert!(messages.contains(&"Missing database column: ticket_statuses.code"));
+        assert!(messages.contains(&"Missing database column: technicians.region"));
     }
 }

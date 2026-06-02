@@ -1071,7 +1071,7 @@ R17 completion record:
 
 ### R18: Stability, Refactor Safety And Tooling Hardening
 
-Status: Planned
+Status: In Progress
 
 Goal: harden the R16/R17 surface and the R17 fixture corpus against stale
 generated code, stale metadata, refactor failures, snapshot drift, editor
@@ -1127,8 +1127,8 @@ R18 concrete guarantees:
 
 R18 slices:
 
-- R18.1: Refactor-safety fixture contract. Status: Planned.
-- R18.2: R17 refactor failure matrix. Status: Planned.
+- R18.1: Refactor-safety fixture contract. Status: Done.
+- R18.2: R17 refactor failure matrix. Status: Done.
 - R18.3: Generated metadata and source-map contract hardening. Status:
   Planned.
 - R18.4: Gradle incremental and multi-module verification. Status: Planned.
@@ -1182,6 +1182,50 @@ Planning debate outcome:
   explicit R18 risk to verify.
 - New ADRs are required only for cross-tool contract changes, not for slice
   sequencing.
+
+R18.1 and R18.2 completion record:
+
+- Added `docs/refactor-safety.md` as the canonical R18.1 contract defining
+  Mortar refactor safety, supported R17-derived cases, deferred cases, stable
+  diagnostic categories, baseline/fail/recover matrix shape, and forbidden
+  brittle assertions.
+- Added executable clean temp-compile matrix coverage in
+  `java/processor/src/test/java/dev/mortar/processor/MortarRefactorSafetyMatrixTest.java`
+  for annotated field rename/deletion, relation deletion, processor relation
+  metadata diagnostics, generated metadata inventory, and changed
+  column/relation metadata SQL inputs.
+- Added R17 infrastructure rendered-SQL drift evidence in
+  `examples/query-corpus-infrastructure-postgres/src/test/java/dev/mortar/examples/querycorpus/postgres/PostgresTicketReaderTest.java`
+  showing that the baseline generated `TicketReader.findHeader` SQL matches
+  the current snapshot expectation, while a changed `TicketRecord.summary`
+  column-metadata variant no longer matches that stale expectation until the
+  updated SQL expectation is asserted.
+- Extended `rust/crates/mortar-compiler/src/lib.rs` schema-drift diagnostics
+  to inspect relation local/target columns and added R17-shaped coverage for
+  `tickets.customer_id`, `tickets.assigned_technician_id`,
+  `tickets.status_code`, and `technicians.region`.
+- The R18.1/R18.2 xhigh debate approved executable evidence now for
+  deterministic clean compile and semantic SQL/schema cases, while keeping
+  generated metadata freshness, source-map freshness, Gradle incremental
+  convergence, and full schema-drift workflow claims in later R18 slices.
+- Focused verification passed on 2026-06-02:
+  `gradlew.bat :java:processor:test --tests
+  dev.mortar.processor.MortarRefactorSafetyMatrixTest --no-daemon`;
+  `gradlew.bat :examples:query-corpus-infrastructure-postgres:test --tests
+  dev.mortar.examples.querycorpus.postgres.PostgresTicketReaderTest.changedColumnMetadataIsASemanticSqlSnapshotDriftCase --no-daemon`;
+  and
+  `cd rust && cargo test
+  detects_r17_schema_drift_cases_from_ticket_fixture_metadata`.
+- Final verification passed on 2026-06-02: `gradlew.bat check --no-daemon`;
+  from `rust`, `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`;
+  `git diff --check`; and the private path/private project scrub excluding
+  build outputs and caches.
+- Migration note: no public API, generated API, metadata format, source-map
+  format, or processor incremental classification changed; no ADR was required.
+- Release note: no release, tag, publication, merge, push, or private
+  application migration is authorized by this slice.
 
 ### R19: Pre-Release Candidate Hardening
 
@@ -1242,3 +1286,8 @@ If implementation discovers that a slice is wrong, do not silently drift. Update
 - PostgreSQL 16 full-text search documents match operator `@@` and `websearch_to_tsquery`, supporting Mortar's full-text predicate rendering: https://www.postgresql.org/docs/16/functions-textsearch.html and https://www.postgresql.org/docs/16/textsearch-intro.html
 - Empirical Java database-access research found SQL query, schema, and API bugs account for 84.2% of studied database access bugs, supporting Mortar's focus on query/schema/API safety: https://arxiv.org/abs/2405.15008
 - 2026 research on static type checking for database access code reinforces the need to bridge Java types and database dictionaries during compilation: https://arxiv.org/abs/2605.02569
+- Gradle incremental annotation processing distinguishes isolating and aggregating processors, requires processor opt-in metadata, and makes shared outputs an explicit convergence risk to prove before incremental claims: https://docs.gradle.org/current/userguide/java_plugin.html#sec:incremental_annotation_processing
+- Gradle incremental build guidance documents task inputs, outputs, and stale-output handling, supporting R18's separation of clean compile evidence from later incremental convergence evidence: https://docs.gradle.org/current/userguide/incremental_build.html
+- Oracle `javac` annotation processing documents processor discovery, processing rounds, generated sources, and final compilation, supporting R18 clean temp-compile matrix tests: https://docs.oracle.com/en/java/javase/11/tools/javac.html
+- Java annotation processing APIs provide `Messager`, `Filer`, and `Processor` contracts, supporting stable Mortar diagnostic-code assertions instead of full compiler-output snapshots: https://docs.oracle.com/en/java/javase/15/docs/api/java.compiler/javax/annotation/processing/package-summary.html
+- Google compile-testing validates compile-test patterns for javac and annotation processors, though R18.2 uses Mortar's existing direct `JavaCompiler` harness to avoid adding a new dependency: https://github.com/google/compile-testing

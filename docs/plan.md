@@ -1566,6 +1566,21 @@ checks over publishable Java APIs plus documented file formats such as
 Non-goals: no product code, no API expansion, no release claim, no binary
 compatibility promise for generated `Q*` types across user refactors.
 
+Completed R18.1 evidence:
+
+- Added the canonical contract in [`refactor-safety.md`](refactor-safety.md).
+- Defined supported R17-derived cases for annotated field rename/deletion,
+  relation deletion, relation metadata change, column metadata change, stale
+  metadata/source-map/snapshot fail-closed behavior, and schema drift.
+- Defined deferred cases, stable diagnostic categories, the
+  baseline/fail/recover matrix, and the explicit assertion limits: no brittle
+  full `javac` snapshots, no undocumented line-number claims, no
+  screenshot-only evidence, and no private application migration proof.
+- Research basis: Gradle incremental annotation processing and stale-output
+  guidance, Oracle `javac` and annotation processing docs, existing
+  compile-test patterns, and the decision to use Mortar's current direct
+  `JavaCompiler` harness rather than adding a new test dependency.
+
 #### R18.2: R17 Refactor Failure Matrix
 
 Objective: turn the R17 handoff into baseline/fail/recover fixture cases.
@@ -1577,6 +1592,48 @@ full compiler-message snapshots.
 
 Non-goals: no new query families, no fixture-only product helpers, no private
 application cases.
+
+Completed R18.2 evidence:
+
+- Added
+  `java/processor/src/test/java/dev/mortar/processor/MortarRefactorSafetyMatrixTest.java`
+  with clean temporary-source baseline/fail/recover compile cases for
+  `TicketRecord.summary`, `TechnicianRecord.displayName`,
+  `TicketStatusRecord.code`, `TicketRecord.customer`,
+  `TicketRecord.assignedTechnician`, `TicketRecord.status`, relation metadata
+  validation, and changed column/relation metadata.
+- The matrix asserts semantic categories: compile pass/fail, affected
+  generated symbol names, stable `MORTAR_PROCESSOR_*` diagnostics, generated
+  metadata inventory, and generated SQL inputs. It does not assert full
+  compiler output or mutate checked-in R17 fixture sources.
+- Extended Rust schema-drift coverage in
+  `rust/crates/mortar-compiler/src/lib.rs` for the R17 handoff cases
+  `tickets.customer_id`, `tickets.assigned_technician_id`,
+  `tickets.status_code`, and `technicians.region`.
+- Added an infrastructure SQL drift fixture in
+  `examples/query-corpus-infrastructure-postgres/src/test/java/dev/mortar/examples/querycorpus/postgres/PostgresTicketReaderTest.java`
+  proving that the baseline generated `TicketReader.findHeader` SQL matches
+  the current snapshot expectation, and a changed `TicketRecord.summary`
+  column-metadata variant no longer matches that stale expectation until the
+  updated SQL expectation is asserted.
+- Focused verification passed on 2026-06-02:
+  `gradlew.bat :java:processor:test --tests
+  dev.mortar.processor.MortarRefactorSafetyMatrixTest --no-daemon`;
+  `gradlew.bat :examples:query-corpus-infrastructure-postgres:test --tests
+  dev.mortar.examples.querycorpus.postgres.PostgresTicketReaderTest.changedColumnMetadataIsASemanticSqlSnapshotDriftCase --no-daemon`;
+  and
+  `cd rust && cargo test
+  detects_r17_schema_drift_cases_from_ticket_fixture_metadata`.
+- R18.2 intentionally does not claim Gradle incremental convergence,
+  source-map freshness, VS Code source-map behavior, or full schema-drift
+  workflow completion. Those remain R18.3, R18.4, R18.5, and R18.6 work.
+- Final R18.1/R18.2 verification passed on 2026-06-02:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`;
+  `git diff --check`; and the private path/private project scrub excluding
+  build outputs and caches.
 
 #### R18.3: Generated Metadata And Source-Map Contract Hardening
 
@@ -1694,6 +1751,29 @@ contract-hardening gate, not a general tooling or editor-feature release.
 - New ADRs are required only if R18 changes cross-tool contracts such as
   metadata format, source-map format, stale-detection behavior, or public
   compatibility policy. Slice sequencing alone does not need an ADR.
+
+### R18.1/R18.2 Architecture Debate Outcome
+
+The required xhigh R18.1/R18.2 debate approved executable evidence now, but
+only for deterministic clean compile and semantic SQL/schema cases.
+
+- R18.2 should implement compile-fail tests for R17-shaped field
+  rename/deletion and relation deletion because temporary source workspaces can
+  model baseline/fail/recover without mutating repository sources.
+- R18.2 should not claim generated metadata freshness, source-map freshness, or
+  Gradle incremental correctness. The existing processor `isolating`
+  declaration remains good enough for clean compile tests, but shared
+  `META-INF/mortar/entities.json` output is an R18.4 convergence risk.
+- Compiler assertions should match semantic categories: compile failure plus
+  affected generated symbol, stable Mortar processor diagnostic code, or named
+  SQL/snapshot metadata semantics. Full compiler-message snapshots remain
+  forbidden.
+- Changed column metadata should be tested as SQL snapshot drift now when it
+  changes rendered SQL or query metadata for a named R17 query. External
+  database schema drift remains a separate tooling workflow.
+- No new ADR is required for R18.1/R18.2 because they do not change a
+  cross-tool metadata format, source-map format, stale-detection behavior,
+  public API, or official processor incremental classification.
 
 ## Future Maturity Gates
 
