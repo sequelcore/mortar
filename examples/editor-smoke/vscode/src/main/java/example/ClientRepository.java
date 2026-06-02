@@ -1,8 +1,9 @@
 package example;
 
-public final class ClientRepository {
-    // mortar:snapshot=ClientRepository.findById
-    public void findById(Long id) {
-        throw new UnsupportedOperationException("Editor smoke fixture only: " + id);
+import dev.mortar.core.QueryRenderer;
+
+final class ClientRepository {
+    void read(QueryRenderer renderer, Long id) {
+        QClient.CLIENT.read(renderer).findById(id);
     }
 }

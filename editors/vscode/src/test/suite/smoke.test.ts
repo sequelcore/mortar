@@ -46,7 +46,7 @@ suite("Mortar VS Code extension smoke", () => {
     await vscode.window.showTextDocument(document);
     await delay(500);
 
-    const position = new vscode.Position(4, 16);
+    const position = new vscode.Position(6, 40);
     const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
       "vscode.executeHoverProvider",
       uri,
@@ -69,6 +69,21 @@ suite("Mortar VS Code extension smoke", () => {
     const titles = actions.map((action) => action.title);
     assert.ok(titles.includes("Copy generated SQL"));
     assert.ok(titles.includes("Run PostgreSQL EXPLAIN"));
+
+    const definitions = await vscode.commands.executeCommand<vscode.Location[]>(
+      "vscode.executeDefinitionProvider",
+      uri,
+      position,
+    );
+    assert.ok(
+      definitions.some((definition) => {
+        return (
+          definition.uri.fsPath.endsWith("mortar.sql.snap.json") &&
+          definition.range.start.line === 4
+        );
+      }),
+      "Definition should navigate to the matching SQL snapshot entry",
+    );
   });
 
   test("publishes diagnostics for missing snapshot markers", async () => {

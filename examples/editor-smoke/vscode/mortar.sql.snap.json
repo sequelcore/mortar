@@ -2,7 +2,7 @@
   "format": "mortar-sql-snapshot-v1",
   "snapshots": [
     {
-      "name": "ClientRepository.findById",
+      "name": "example.Client.findById",
       "sql": "select c.id from clients c where c.id = ?",
       "parameters": [
         {

@@ -150,5 +150,20 @@ adding editor behavior or changing the public Java API.
 
 Rust tooling must treat missing, mismatched, or stale source-map entries as a
 fail-closed condition before any editor hover, navigation, or copy-SQL feature
-uses the data. R18.3 only defines and parses the contract; editor behavior
-remains later R18 scope.
+uses the data.
+
+R18.5 makes the Rust LSP consume `mortar-source-map-v1` for generated fixed
+reads only. The LSP resolves canonical generated read-facade calls such as
+`QClient.CLIENT.read(renderer).findById(id)` and
+`QClient.CLIENT.read(renderer).findAll()` by generated metamodel/read namespace
+context plus the generated member (`read.findById` or `read.findAll`). It never
+selects source-map entries by `generated_member` alone, because that member is
+shared across entities. The matching entry's `snapshot` key is used to read SQL
+from `mortar.sql.snap.json`, and definition requests navigate to the matching
+snapshot entry. The source-map artifact still does not store rendered SQL,
+editor commands, or generated Java line/column locations.
+
+If metadata, source-map, snapshot evidence, or generated metamodel context is
+stale, missing, ambiguous, or unparseable for a generated fixed-read call,
+editor tooling must return no SQL/navigation result and surface a
+stale-source-map diagnostic rather than falling back to manual snapshot markers.

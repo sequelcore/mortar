@@ -18,7 +18,7 @@ export interface ExplainSqlResult {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const configuration = vscode.workspace.getConfiguration("mortar");
-  const command = configuration.get<string>("lsp.path", "mortar-lsp");
+  const command = resolveWorkspacePath(configuration.get<string>("lsp.path", "mortar-lsp"));
   const outputChannel = vscode.window.createOutputChannel("Mortar");
   const serverOptions: ServerOptions = {
     command,
@@ -63,7 +63,7 @@ async function explainSql(
   outputChannel: vscode.OutputChannel,
 ): Promise<ExplainSqlResult> {
   const configuration = vscode.workspace.getConfiguration("mortar");
-  const cliPath = configuration.get<string>("cli.path", "mortar");
+  const cliPath = resolveWorkspacePath(configuration.get<string>("cli.path", "mortar"));
   const connection = configuration.get<string>("postgres.connection", "");
 
   if (connection.trim() === "") {
@@ -114,6 +114,15 @@ function appendIfPresent(
   if (value !== undefined && value.trim() !== "") {
     outputChannel.appendLine(value.trimEnd());
   }
+}
+
+function resolveWorkspacePath(value: string): string {
+  const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+  if (workspaceFolder === undefined) {
+    return value;
+  }
+
+  return value.replace(/\$\{workspaceFolder\}/g, workspaceFolder.uri.fsPath);
 }
 
 function errorOutput(error: unknown): string {
