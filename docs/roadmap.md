@@ -787,7 +787,7 @@ R16 slices:
 
 - R16.1: Contract, ADR, and API budget. Status: Done.
 - R16.2: Fixed single-table read facades. Status: Done.
-- R16.3: Bound parameters, visible SQL, and testkit contract. Status: Planned.
+- R16.3: Bound parameters, visible SQL, and testkit contract. Status: Done.
 - R16.4: Examples and usage guidance. Status: Planned.
 
 Non-goals:
@@ -875,8 +875,7 @@ Current evidence:
   `gradlew.bat check --no-daemon`; from `rust`,
   `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`,
   and `cargo test`; from `editors/vscode`, `bun run typecheck`; `git diff --check`;
-  and the private path scrub for `Proyectos`, `Users`, `R3XED`, `CANITAS`,
-  `Sequel/mortar`, and `Sequel\\mortar` excluding build outputs and caches.
+  and the private path scrub excluding build outputs and caches.
 - Changed modules/docs: `java/core`, `java/runtime-jdbc`, `java/processor`,
   `java/testkit`, `rust/crates/mortar-compiler`, `docs/adr`,
   `docs/api-reference.md`, `docs/metadata.md`, `docs/lsp.md`,
@@ -885,6 +884,42 @@ Current evidence:
 - Architecture note: core owns rendered query inspection, runtime-jdbc owns JDBC
   row mapping/execution, the processor still does not render SQL, and generated
   query objects still do not execute themselves.
+- Release note: no release, tag, publication, merge, push, or application
+  migration is authorized by this slice.
+- R16.3 strengthened the public testkit contract for `MortarBoundQuery<?>` by
+  adding query name and row type context to bound-query assertion failures while
+  keeping the assertion API limited to SQL text, parameter values, parameter
+  types, and metadata. The Spring example repository test now asserts generated
+  facade SQL through `assertThatSql(query)`, proves
+  `read(renderer).findById(7L)` exposes the supplied identifier as the rendered
+  parameter, proves `Long.class` parameter type visibility, checks metadata and
+  row type, and verifies null boxed identifiers fail before SQL rendering.
+- R16.3 architecture debate outcome: keep `MortarBoundQuery<T>` as the sole
+  framework-free visible-SQL contract, keep `RenderedQuery` as the lower-level
+  renderer fallback, reject generated self-execution and any second visible-SQL
+  abstraction, and leave runtime execution adapter-owned in `MortarJdbcClient`.
+- Focused R16.3 verification on 2026-06-02:
+  `gradlew.bat :java:testkit:test --tests
+  dev.mortar.testkit.MortarSqlAssertionsTest --no-daemon` failed first because
+  bound-query assertion failures did not include query name and row type, then
+  passed after implementation. `gradlew.bat
+  :examples:spring-boot-postgres:test --tests
+  dev.mortar.examples.springpostgres.ClientRepositoryTest --no-daemon` passed
+  for generated facade SQL, parameter value, parameter type, metadata, row
+  type, and null-id boundary behavior.
+- Final R16.3 verification on 2026-06-02 passed:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`; `git diff --check`;
+  and the private path scrub excluding build outputs and caches.
+- Changed modules/docs: `java/testkit`, `examples/spring-boot-postgres`,
+  `docs/api-reference.md`, `docs/getting-started.md`, `docs/plan.md`,
+  `docs/roadmap.md`, `docs/spring-boot-postgres-example.md`,
+  `docs/testkit.md`, and `docs/usage-guide.md`.
+- Architecture note: no generated execution methods, repositories, joins,
+  optional filters, writes, counts, exists queries, JDBC dependencies in
+  `java/core`, or editor source-map hardening were added.
 - Release note: no release, tag, publication, merge, push, or application
   migration is authorized by this slice.
 

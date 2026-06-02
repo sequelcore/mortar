@@ -106,5 +106,7 @@ Package: `dev.mortar.spring`
 Package: `dev.mortar.testkit`
 
 - `MortarSqlAssertions`: SQL, parameter, and metadata assertions.
-  Accepts `RenderedQuery` and `MortarBoundQuery<?>`.
+  Accepts `MortarBoundQuery<?>` for generated facade tests and `RenderedQuery`
+  for lower-level renderer assertions. Bound-query failure messages include the
+  query name and row type.
 - `MortarExplainPlanAssertions`: PostgreSQL EXPLAIN text assertions.

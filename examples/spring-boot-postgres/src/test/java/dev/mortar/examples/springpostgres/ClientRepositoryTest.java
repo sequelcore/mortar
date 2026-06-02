@@ -1,6 +1,8 @@
 package dev.mortar.examples.springpostgres;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static dev.mortar.testkit.MortarSqlAssertions.assertThatSql;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -8,10 +10,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.Parameter;
 import dev.mortar.core.QuerySpec;
 import dev.mortar.jdbc.MortarJdbcClient;
 import dev.mortar.postgres.PostgresQueryRenderer;
-import dev.mortar.testkit.MortarSqlAssertions;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -26,10 +28,23 @@ final class ClientRepositoryTest {
             .findById(7L)
             .named("ClientRepository.findById");
 
-        assertThat(query.sql()).isEqualTo("select c.id, c.name, c.active from clients c where c.id = ?");
-        assertThat(query.parameters()).extracting(parameter -> parameter.value()).containsExactly(7L);
+        assertThatSql(query)
+            .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
+            .hasParameters(7L)
+            .hasParameterTypes(Long.class)
+            .hasTables(QClient.CLIENT.table)
+            .hasColumns(QClient.CLIENT.id, QClient.CLIENT.name, QClient.CLIENT.active);
+        assertThat(query.parameters()).containsExactly(Parameter.of(7L));
         assertThat(query.parameterTypes()).containsExactly(Long.class);
         assertThat(query.queryName()).contains("ClientRepository.findById");
+        assertThat(query.rowType()).isEqualTo(QClient.FindByIdRow.class);
+    }
+
+    @Test
+    void rejectsNullGeneratedFindByIdBeforeRenderingSql() {
+        assertThatThrownBy(() -> QClient.CLIENT.read(renderer).findById(null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("id cannot be null");
     }
 
     @Test
@@ -48,7 +63,7 @@ final class ClientRepositoryTest {
         ClientRepository repository = new ClientRepository(mock(MortarJdbcClient.class), renderer);
         QuerySpec query = repository.findActiveByIdQuery(7L);
 
-        MortarSqlAssertions.assertThatSql(renderer.render(query))
+        assertThatSql(renderer.render(query))
             .hasSql("select c.id, c.name from clients c where c.id = ? and c.active = ?")
             .hasParameters(7L, true);
     }

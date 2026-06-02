@@ -26,16 +26,47 @@ final class MortarSqlAssertionsTest {
 
     @Test
     void assertsBoundQuerySql() {
+        TableRef clients = new TableRef("clients", "c");
+        ColumnRef<Long> id = clients.column("id", "id", Long.class);
         MortarBoundQuery<ClientRow> query = MortarBoundQuery.of(
             "ClientRepository.findById",
-            new RenderedQuery("select id from clients where id = ?", List.of(Parameter.of(7L))),
+            new RenderedQuery(
+                "select c.id from clients c where c.id = ?",
+                List.of(Parameter.of(7L)),
+                new QueryMetadata(List.of(clients), List.of(id), List.of())
+            ),
             ClientRow.class
         );
 
         assertThatSql(query)
-            .hasSql("select id from clients where id = ?")
+            .hasSql("select c.id from clients c where c.id = ?")
             .hasParameters(7L)
-            .hasParameterTypes(Long.class);
+            .hasParameterTypes(Long.class)
+            .hasTables(clients)
+            .hasColumns(id);
+    }
+
+    @Test
+    void reportsBoundQueryParameterMismatchWithQueryContext() {
+        MortarBoundQuery<ClientRow> query = MortarBoundQuery.of(
+            "ClientRepository.findById",
+            new RenderedQuery("select c.id from clients c where c.id = ?", List.of(Parameter.of(7L))),
+            ClientRow.class
+        );
+
+        assertThatThrownBy(() -> assertThatSql(query).hasParameters(8L))
+            .isInstanceOf(AssertionError.class)
+            .hasMessage("""
+                Expected SQL parameters to be:
+                  <[8]>
+                but were:
+                  <[7]>
+                SQL:
+                  <select c.id from clients c where c.id = ?>
+                Query:
+                  <ClientRepository.findById>
+                Row type:
+                  <dev.mortar.testkit.MortarSqlAssertionsTest$ClientRow>""");
     }
 
     @Test
