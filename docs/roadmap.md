@@ -1574,7 +1574,7 @@ Slices:
 - R20.1: Benchmark readiness audit and source-backed research. Status: Done.
 - R20.2: Canonical performance plan and public-claim policy. Status: Done.
 - R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
-  Status: Planned.
+  Status: Done.
 - R20.4: Generated fixed-read overhead and allocation profiling. Status:
   Planned.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
@@ -1612,6 +1612,48 @@ R20.1/R20.2 completion record:
   PostgreSQL prepared-plan behavior, HikariCP statement-cache guidance,
   jOOQ/QueryDSL comparison risks, Criterion, tree-sitter, rust-analyzer
   performance practice, and public benchmark reporting discipline.
+
+R20.3 completion record:
+
+- The required xhigh benchmark debate concluded that R20.3 should be an
+  artifact-readiness slice, not an optimization slice. The retained bundle is
+  the evidence unit; terminal output and unbundled build-directory JSON remain
+  insufficient for public claims.
+- `.github/workflows/benchmarks.yml` now defaults to the canonical R20.3
+  fixed-read include regex, requires `repeatCount >= 2`, runs throughput,
+  allocation, and latency profiles, and uploads
+  `java/benchmarks/build/reports/jmh/r20.3/**` with 90 day retention.
+- The retained bundle contains raw JMH JSON in `results/`, plus
+  `manifest.json`, `commands.txt`, `summary.md`, `review-notes.md`, and
+  environment files. `docs/benchmarks/r20-postgres-baseline-manifest-template.json`
+  records the same manifest shape for explicitly retained local bundles.
+- The R20.3 matrix rows are ordinary JDBC, reusable prepared JDBC, ordinary JDBC
+  `findById`, reusable prepared JDBC `findById`, tuned PgJDBC reusable JDBC,
+  Mortar render-per-call, Mortar pre-rendered SQL, Mortar processor-generated
+  executor, Mortar prepared processor-generated executor, Mortar tuned
+  processor-generated executor, jOOQ reference, and QueryDSL SQL reference.
+- Optional variants, handwritten generated-style Mortar rows, join/page rows,
+  update-batch rows, and controlled fake-JDBC rows are excluded from R20.3
+  interpretation and remain scoped to R20.4 or R20.5.
+- Changed files/docs: `.github/workflows/benchmarks.yml`, `build.gradle.kts`,
+  `java/benchmarks/src/test/java/dev/mortar/benchmarks/PostgresExecutionBenchmarkTest.java`,
+  `docs/benchmarks/r20-postgres-baseline-manifest-template.json`,
+  `docs/benchmarks/r20-benchmark-readiness.md`,
+  `docs/benchmarks/README.md`, `docs/performance.md`, `docs/plan.md`, and this
+  roadmap.
+- Migration note: no Java public API, runtime behavior, benchmark threshold,
+  generated Java API, Rust tooling behavior, release, publication, migration,
+  optimization, or public performance claim changed.
+- Verification passed on 2026-06-02:
+  `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`,
+  `gradlew.bat verifyBenchmarkWorkflow --no-daemon`, a focused live PostgreSQL
+  JMH smoke that generated
+  `java/benchmarks/build/reports/jmh/r20.3-smoke.json` as build output,
+  `gradlew.bat check --no-daemon`, `cd rust && cargo fmt --all --check`,
+  `cd rust && cargo clippy --all-targets --all-features -- -D warnings`,
+  `cd rust && cargo test`, `cd editors/vscode && bun run typecheck`,
+  `git diff --check`, and private path/project scrub excluding build, cache,
+  dependency, and generated outputs.
 
 ## Canonical Update Protocol
 

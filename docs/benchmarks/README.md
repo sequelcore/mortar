@@ -91,14 +91,73 @@ the R20 audit disagree, the R20 audit is the stricter rule for public claims.
 Workflow inputs:
 
 - `jmhIncludes`: JMH include regex. Default:
-  `PostgresExecutionBenchmark.*FindById.*`.
+  `PostgresExecutionBenchmark\\.(plainJdbcFetch|plainJdbcReusableStatementFetch|plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch|jooqFetch|querydslFetch)$`.
 - `profile`: `throughput`, `allocation`, `latency`, or `all`.
-- `repeatCount`: positive integer repeat count.
+- `repeatCount`: integer greater than or equal to `2`.
 
 The workflow runs PostgreSQL benchmarks on `ubuntu-latest`, confirms Docker is
 available, writes JMH JSON under `java/benchmarks/build/reports/jmh`, copies
-each repeated run to a numbered JSON file, and uploads the JSON files with 30
-day retention.
+each repeated run into
+`java/benchmarks/build/reports/jmh/r20.3/results`, writes a retained
+`manifest.json`, `commands.txt`, `summary.md`, `review-notes.md`, and
+environment files under `java/benchmarks/build/reports/jmh/r20.3`, then uploads
+the bundle with 90 day retention.
+
+## R20.3 PostgreSQL Baseline Matrix
+
+R20.3 is measurement-only. It configures retained artifact generation for the
+Java runtime PostgreSQL baseline matrix; it does not authorize public
+performance claims or runtime optimization.
+
+Canonical include regex:
+
+```text
+PostgresExecutionBenchmark\.(plainJdbcFetch|plainJdbcReusableStatementFetch|plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch|jooqFetch|querydslFetch)$
+```
+
+Run the retained CI bundle from the manual `Benchmarks` workflow with:
+
+- `profile`: `all`;
+- `repeatCount`: `2` minimum for retained evidence;
+- `jmhIncludes`: the canonical regex above.
+
+The workflow runs throughput, allocation, and sample-time latency profiles for
+each repeated run. Raw JSON is retained under `results/`; the manifest records
+the commit, clean-worktree state, command inputs, JMH profile settings,
+environment files, PostgreSQL/Testcontainers/PgJDBC versions, tuned PgJDBC
+parameters, dataset shape, matrix row names, and relative artifact paths.
+
+Local smoke command for proving live PostgreSQL JSON generation:
+
+```bash
+gradlew.bat :java:benchmarks:jmhPostgresExecution "-PjmhIncludes=PostgresExecutionBenchmark[.]plainJdbcFetch$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r20.3-smoke.json" --no-daemon
+```
+
+The local smoke command intentionally uses one R20.3 method so it is shell-safe
+on Windows and quick enough to prove Testcontainers/JMH JSON output. The full
+R20.3 matrix is retained through the manual workflow. Local smoke output
+remains build output and must not be committed. Use
+[`r20-postgres-baseline-manifest-template.json`](r20-postgres-baseline-manifest-template.json)
+when creating an explicitly retained local bundle outside GitHub Actions.
+
+R20.3 matrix rows:
+
+- ordinary JDBC: `PostgresExecutionBenchmark.plainJdbcFetch`;
+- reusable prepared JDBC: `PostgresExecutionBenchmark.plainJdbcReusableStatementFetch`;
+- ordinary JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcFindByIdFetch`;
+- reusable prepared JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetch`;
+- tuned PgJDBC reusable JDBC: `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`;
+- Mortar render-per-call: `PostgresExecutionBenchmark.mortarJdbcFetch`;
+- Mortar pre-rendered SQL: `PostgresExecutionBenchmark.mortarPreRenderedJdbcFetch`;
+- Mortar processor-generated executor: `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetch`;
+- Mortar prepared processor-generated executor: `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetch`;
+- Mortar tuned processor-generated executor: `PostgresExecutionBenchmark.mortarTunedProcessorGeneratedFindByIdFetch`;
+- jOOQ reference row: `PostgresExecutionBenchmark.jooqFetch`;
+- QueryDSL SQL reference row: `PostgresExecutionBenchmark.querydslFetch`.
+
+Optional variants, handwritten generated-style Mortar rows, join/page rows, and
+update-batch rows are not R20.3 baseline rows. They remain available benchmark
+methods, but their interpretation belongs to R20.4 or R20.5.
 
 ## Current Scenarios
 

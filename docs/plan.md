@@ -2376,7 +2376,7 @@ Canonical slices:
 - R20.1: Benchmark readiness audit and source-backed research. Status: Done.
 - R20.2: Canonical performance plan and public-claim policy. Status: Done.
 - R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
-  Status: Planned.
+  Status: Done.
 - R20.4: Generated fixed-read overhead and allocation profiling. Status:
   Planned.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
@@ -2389,13 +2389,41 @@ Canonical slices:
 
 ### R20.3 Java Runtime Baseline Matrix
 
-Status: Planned.
+Status: Done.
 
-Measure the existing PostgreSQL matrix on a clean commit with retained
-throughput, allocation, and sample-time latency artifacts. Keep ordinary JDBC,
-tuned PgJDBC, reusable prepared JDBC, Mortar render-per-call, Mortar
-pre-rendered, processor-generated Mortar, and prepared processor-generated
-Mortar separate.
+R20.3 configures retained artifact generation for the Java runtime
+JMH/PostgreSQL baseline matrix. The manual `Benchmarks` workflow now defaults
+to the canonical fixed-read include regex, requires at least two repeated runs,
+and uploads a retained bundle under
+`java/benchmarks/build/reports/jmh/r20.3` with raw JMH JSON, `manifest.json`,
+`commands.txt`, `summary.md`, `review-notes.md`, and environment files.
+
+The R20.3 matrix rows are ordinary JDBC, reusable prepared JDBC, ordinary JDBC
+`findById`, reusable prepared JDBC `findById`, tuned PgJDBC reusable JDBC,
+Mortar render-per-call, Mortar pre-rendered SQL, Mortar processor-generated
+executor, Mortar prepared processor-generated executor, Mortar tuned
+processor-generated executor, jOOQ reference, and QueryDSL SQL reference.
+jOOQ and QueryDSL are reference-library rows only.
+
+R20.3 explicitly excludes optional variants, handwritten generated-style Mortar
+rows, join/page rows, update-batch rows, and controlled fake-JDBC rows from the
+baseline matrix. Those move to R20.4 or R20.5. R20.3 makes no public
+performance claim, changes no runtime code, and changes no Java public API.
+
+Verification passed on 2026-06-02:
+
+- `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`;
+- `gradlew.bat verifyBenchmarkWorkflow --no-daemon`;
+- focused live PostgreSQL JMH smoke generated
+  `java/benchmarks/build/reports/jmh/r20.3-smoke.json` as build output;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/project scrub excluding build, cache, dependency, and generated
+  outputs.
 
 ### R20.4 Generated Fixed-Read Profiling
 

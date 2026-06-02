@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -12,6 +13,21 @@ import dev.mortar.postgres.PostgresQueryRenderer;
 import org.junit.jupiter.api.Test;
 
 final class PostgresExecutionBenchmarkTest {
+    private static final Map<String, String> R20_3_BASELINE_MATRIX = Map.ofEntries(
+        Map.entry("ordinary-jdbc", "plainJdbcFetch"),
+        Map.entry("reusable-prepared-jdbc", "plainJdbcReusableStatementFetch"),
+        Map.entry("ordinary-jdbc-find-by-id", "plainJdbcFindByIdFetch"),
+        Map.entry("reusable-prepared-jdbc-find-by-id", "plainJdbcReusableFindByIdFetch"),
+        Map.entry("tuned-pgjdbc-reusable-jdbc", "plainJdbcTunedReusableFindByIdFetch"),
+        Map.entry("mortar-render-per-call", "mortarJdbcFetch"),
+        Map.entry("mortar-pre-rendered-sql", "mortarPreRenderedJdbcFetch"),
+        Map.entry("mortar-processor-generated-executor", "mortarProcessorGeneratedFindByIdFetch"),
+        Map.entry("mortar-prepared-processor-generated-executor", "mortarPreparedProcessorGeneratedFindByIdFetch"),
+        Map.entry("mortar-tuned-processor-generated-executor", "mortarTunedProcessorGeneratedFindByIdFetch"),
+        Map.entry("jooq-reference", "jooqFetch"),
+        Map.entry("querydsl-sql-reference", "querydslFetch")
+    );
+
     @Test
     void fixtureDefinesDeterministicIndexedLookupDataset() {
         assertThat(PostgresExecutionBenchmark.DATASET_SIZE).isEqualTo(1_000);
@@ -61,6 +77,39 @@ final class PostgresExecutionBenchmarkTest {
             "jooqFetchOptional",
             "querydslFetch",
             "querydslFetchOptional"
+        );
+    }
+
+    @Test
+    void r20BaselineMatrixUsesOnlyLivePostgresFixedReadScenarioNames() {
+        Set<String> methodNames = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .collect(Collectors.toSet());
+
+        assertThat(R20_3_BASELINE_MATRIX)
+            .containsKeys(
+                "ordinary-jdbc",
+                "reusable-prepared-jdbc",
+                "tuned-pgjdbc-reusable-jdbc",
+                "mortar-render-per-call",
+                "mortar-pre-rendered-sql",
+                "mortar-processor-generated-executor",
+                "mortar-prepared-processor-generated-executor",
+                "jooq-reference",
+                "querydsl-sql-reference"
+            );
+        assertThat(methodNames).containsAll(R20_3_BASELINE_MATRIX.values());
+        assertThat(R20_3_BASELINE_MATRIX.values()).doesNotContain(
+            "plainJdbcFetchOptional",
+            "plainJdbcReusableStatementFetchOptional",
+            "plainJdbcFindByIdFetchOptional",
+            "plainJdbcReusableFindByIdFetchOptional",
+            "mortarJdbcFetchOptional",
+            "mortarPreRenderedJdbcFetchOptional",
+            "mortarGeneratedJdbcFetch",
+            "mortarPreparedGeneratedJdbcFetch",
+            "mortarJoinPageFetch",
+            "mortarUpdateBatch"
         );
     }
 
