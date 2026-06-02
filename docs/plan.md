@@ -129,7 +129,7 @@ Public documentation scrub:
 
 ## R16 Canonical Design: Java-First Ergonomics And Query Authoring
 
-Status: In Progress
+Status: Done
 
 R16 is a design target for implementation slices, not an implementation record.
 It must not be marked `In Progress` until product code exists, and it must not
@@ -914,23 +914,310 @@ finalized. The critique narrowed R16 in six ways:
   examples/docs. Broader query authoring moves to R17; editor hardening moves
   to R18.
 
+## R17 Canonical Design: Real-Query Coverage Gate
+
+Status: Planned
+
+R17 is a planning and evidence gate, not a feature bucket. It must not be
+marked `In Progress` until a public fixture app, query corpus, or implementation
+exists. It must not be marked `Done` until the corpus is implemented, the
+queries are tested, decisions are recorded, and the final verification evidence
+exists.
+
+### Problem Statement
+
+R16 made the fixed read path easier without expanding the generated surface
+beyond `read(renderer).findById(id)`, `read(renderer).findAll()`, immutable
+`.named(...)`, visible SQL, testkit assertions, and explicit
+`MortarJdbcClient` execution. That surface is intentionally small.
+
+The next risk is adding generated methods because they look useful in abstract
+planning rather than because realistic repository code proves they reduce
+friction. Optional filters, joins, projections, stable pagination, `count`, and
+`exists` can quickly become an API explosion or an ORM-like abstraction if they
+are generated without evidence.
+
+R17 exists to build that evidence with public fixtures before Mortar adds more
+generated Java-first API.
+
+### Why R17 Follows R16
+
+R16 answered whether fixed single-table reads can be shorter while keeping SQL
+visible. R17 asks a different question: when real repositories need broader
+query shapes, is the existing explicit DSL already the right answer, or is
+there repeated pain that justifies a small generated addition?
+
+R17 must preserve the R16 constraints while collecting evidence:
+
+- generated APIs remain inspection-only;
+- `MortarJdbcClient` remains the execution boundary;
+- domain ports remain Mortar-free;
+- generated method count must not grow with filter, projection, or join
+  combinations;
+- editor/source-map hardening remains R18 scope;
+- no existing application migration is authorized.
+
+### Public Fixture Strategy
+
+R17 uses a small public mini-domain, not private application code and not a
+renamed private migration. The fixture should be realistic enough to exercise
+repository decisions but small enough to maintain.
+
+The fixture should model a neutral operational domain with two or three
+bounded contexts and clear read use cases. Suitable public examples include an
+order desk, library circulation, or service-ticket workflow. The chosen fixture
+must include:
+
+- at least four annotated entities;
+- at least two relationships with explicit generated relationship metadata;
+- one small reference table where `findAll()` remains appropriate;
+- repository/service ports that expose business methods and DTOs, not Mortar
+  query types;
+- infrastructure adapters that own `Q*`, `QuerySpec`, `MortarBoundQuery<?>`,
+  `MortarJdbcClient`, snapshots, and SQL tests;
+- seed data and schema small enough for fast CI;
+- stable query names and snapshot keys for every corpus query;
+- documented expected SQL shape, parameter values, parameter types, metadata,
+  and compile-failure behavior.
+
+The fixture should be multi-module or structured so R18 can reuse it for Gradle
+incremental compilation, metadata drift, rename/delete refactor failures, and
+editor/source-map hardening.
+
+### Query Families To Evaluate
+
+R17 evaluates query families through realistic repository flows. A query enters
+the corpus only when it has a user-visible reason in the mini-domain.
+
+- **Fixed lookup and reference reads:** keep R16 `Read` facade examples as the
+  baseline for comparison.
+- **Optional filters:** search screens with nullable request fields, empty
+  strings, enum/status filters, date ranges, and explicit skipped filters.
+- **Multi-predicate reads:** fixed business predicates such as active records,
+  ownership, status, and tenant-like scoping in one repository method.
+- **Joins through generated relationship metadata:** explicit read-model
+  joins with named relation paths and join type, without aggregate loading or
+  implicit traversal.
+- **DTO/record projections:** repository methods that return domain-facing
+  summaries, detail records, or read models without exposing generated row
+  types to callers.
+- **Stable pagination:** paged list and search flows that require deterministic
+  `orderBy(...)` before pagination.
+- **Count:** count rows for a filtered list only when the use case actually
+  needs a total.
+- **Exists:** existence checks for business validation without loading rows.
+- **Repository-level SQL drift tests:** adapter tests that fail when SQL,
+  parameter values, parameter types, metadata, or query names drift.
+- **Snapshot/testkit expectations:** snapshot names, `assertThatSql(...)`
+  expectations, and CLI snapshot checks for every corpus query that becomes a
+  canonical fixture.
+
+### API Decision Framework
+
+Every R17 query family is evaluated with the same decision rules.
+
+Generated facade support qualifies only when all are true:
+
+- the same query family appears across multiple fixture use cases;
+- the generated shape is materially shorter or safer than the explicit DSL;
+- the public method count stays bounded and predictable;
+- the generated API returns framework-free inspectable query values;
+- execution still happens through `MortarJdbcClient` or another adapter;
+- SQL, parameters, parameter types, metadata, and query name remain directly
+  testable;
+- Clean Architecture ports remain free of Mortar types;
+- processor metadata can represent the query without requiring R18
+  source-map hardening first.
+
+The explicit DSL remains the default when:
+
+- the query is one-off or domain-specific;
+- the query needs custom predicates, joins, projections, or ordering that are
+  clearer as explicit Java;
+- a generated API would require overload combinations;
+- the readability gain is marginal;
+- the shape pressures relation traversal, aggregate loading, implicit joins,
+  hidden pagination defaults, or repository generation.
+
+More evidence is required when:
+
+- only one fixture use case needs the shape;
+- the generated API needs scalar query types such as `count` or `exists`;
+- aliasing, projection naming, or join metadata becomes ambiguous;
+- the shape would require new metadata consumed by R18 tooling;
+- the implementation would change public runtime contracts.
+
+Reject the design when:
+
+- method count grows with the number of optional fields or join combinations;
+- generated method names derive queries from repository method names;
+- generated query objects execute themselves;
+- generated repositories or Spring Data-style adapters appear;
+- relation traversal implies aggregate loading or lazy loading;
+- writes, batches, or mutation helpers are added as part of this read-query
+  gate.
+
+Default R17 decision: optional filters are DSL-first. A hybrid generated
+filter-builder entry point may be considered only after the corpus proves
+repeated pain and the method set remains bounded. Generated-first optional
+filters and overload matrices are rejected.
+
+### Testing Strategy
+
+R17 implementation must use executable evidence, not aspirational examples.
+
+- Add fixture tests that compile the public mini-domain and its infrastructure
+  adapters.
+- Add repository tests for every corpus method with
+  `assertThatSql(query).hasSql(...).hasParameters(...).hasParameterTypes(...)`
+  or the equivalent rendered-query assertion for explicit DSL queries.
+- Add snapshot checks for named canonical corpus queries.
+- Add Testcontainers coverage only when the claim is PostgreSQL execution or
+  syntax compatibility, not for every fast repository drift test.
+- Add compile-fail or processor diagnostic tests for renamed fields, deleted
+  fields, invalid relationships, ambiguous projections, and missing ordering
+  before pagination.
+- Record query length, ceremony, drift-test readability, and boundary leakage
+  observations before deciding that generated API is warranted.
+- Keep R17 tests usable by R18 as golden, metadata, incremental compilation,
+  source-map, and editor behavior fixtures.
+
+### R17 Slices
+
+#### R17.1: Fixture App And Query Corpus Contract
+
+Objective: create the public neutral mini-domain plan, query inventory, naming
+rules, snapshot keys, coverage rubric, and Clean Architecture boundaries before
+any new generated API is considered.
+
+Expected output: a documented fixture contract and planned repository flows for
+fixed lookup, optional-filter search, stable page, explicit join read model,
+DTO projection, `count`, `exists`, and refactor-failure cases.
+
+Non-goals: no product API changes, no generated filters, no generated joins, no
+scalar query contract, no writes, no app migration.
+
+#### R17.2: DSL-First Corpus Implementation
+
+Objective: implement the corpus queries with the current R16 facade plus the
+explicit DSL inside infrastructure adapters, proving what already works before
+adding generated surface.
+
+Expected output: compile-backed fixture repositories, SQL drift tests,
+snapshot expectations, and ergonomics notes comparing R16 fixed reads with DSL
+query families.
+
+Non-goals: no generated optional-filter API, no generated projections, no
+generated joins, no `count`/`exists` public API changes.
+
+#### R17.3: Optional Filter Decision
+
+Objective: decide whether optional filters stay DSL-only or need one bounded
+hybrid generated filter-builder entry point.
+
+Decision rules: reject overload matrices; require repeated corpus evidence;
+require explicit skipped-filter semantics; keep generated query values
+inspection-only; keep execution adapter-owned.
+
+Expected output: decision record, implementation plan if approved, or explicit
+rejection/defer note if the DSL is sufficient.
+
+#### R17.4: Joins, Projections, Pagination, Count, And Exists Decisions
+
+Objective: evaluate broader read shapes as separate decisions instead of one
+large generated facade expansion.
+
+Required decision split:
+
+- joins and projections: evaluate aliasing, relation metadata, read-model
+  clarity, and DTO mapping without aggregate loading;
+- stable pagination: require explicit ordering before page execution;
+- `count` and `exists`: treat as ADR-sized because scalar results may reopen
+  the visible-query and runtime execution contracts.
+
+Expected output: decision records that say generated, DSL-only, deferred, or
+rejected for each family.
+
+#### R17.5: R18 Fixture Handoff And Roadmap Update
+
+Objective: package the final corpus as the input to R18 hardening.
+
+Expected output: R18-ready fixture inventory covering generator golden tests,
+metadata diagnostics, rename/delete failures, schema drift, incremental
+compilation, snapshot workflow, source-map-backed hover/navigation, and editor
+behavior against real generated contracts.
+
+### R17 Exit Criteria
+
+R17 can be marked `Done` only when:
+
+- a public non-application-specific fixture corpus exists and compiles in CI;
+- every corpus query has a named repository use case and adapter-boundary SQL
+  drift test;
+- snapshot/testkit expectations are recorded for canonical corpus queries;
+- optional filters, joins, projections, stable pagination, `count`, and
+  `exists` have explicit generated/DSL/defer/reject decisions;
+- no generated API expands beyond evidence-backed decisions;
+- no generated repositories, generated writes, optional-filter overload
+  matrices, self-executing query objects, or ORM behavior are introduced;
+- Clean Architecture boundaries are verified: domain and application ports
+  remain Mortar-free;
+- R18 receives a concrete fixture handoff for tooling and refactor-safety
+  hardening;
+- verification evidence is recorded in the roadmap.
+
+### R17 Risks
+
+- Optional-filter overloads can create an unbounded generated API.
+- A weak synthetic corpus can make generated API look useful without proving
+  real repository value.
+- Joins and projections can pressure aliasing, metadata, and source-map
+  contracts before R18 hardens them.
+- `count` and `exists` can force a second visible-query abstraction or awkward
+  scalar mapping if treated as small conveniences.
+- Clean Architecture can drift if generated query types leak into domain ports
+  or services.
+- Feature parity pressure with Spring Data, jOOQ, QueryDSL, or ORM tools can
+  pull Mortar away from Java-first SQL transparency.
+
+### R17 Architecture Debate Outcome
+
+The required xhigh R17 challenge concluded that R17 should stay an evidence
+gate, not a feature bucket.
+
+- The existing DSL already covers projections, predicates, joins, ordering, and
+  paging, so R17 should prove those shapes against real repository flows before
+  generating anything.
+- The Clean Architecture example shows the desired split: generated fixed reads
+  for common lookups and explicit DSL for broader paged queries inside
+  infrastructure adapters.
+- Optional filters should default to DSL-first, with a bounded hybrid generated
+  filter builder considered only if repeated public fixture evidence proves
+  the need. Generated-first optional filters and overload matrices are
+  rejected.
+- `count` and `exists` should be separate ADR-sized decisions because scalar
+  query results may reopen the R16 visible-SQL and runtime contracts.
+- The fixture must be public and neutral, not private application code or a
+  disguised migration.
+- R17 should deliberately feed R18 by preserving stable query names, snapshot
+  keys, expected SQL, metadata, compile-failure cases, and fixture structure
+  for future tooling/refactor-safety hardening.
+
 ## Future Maturity Gates
 
-R17 is planned as the real-query coverage gate. It should use a public
-non-application-specific fixture app and query corpus to cover optional filters,
-joins, stable pagination, count and exists queries, DTO projections,
-search-style queries, simple writes, batches, and compile-time or refactor
-failure cases for renamed or deleted fields. If a capability is not needed by
-that realistic query corpus, it should not enter R17. R17 is where broader
-Java-first query shapes prove they are actually simpler than current DSL or
-handwritten SQL plus JDBC binding and row mapping.
+R17 is planned as the real-query coverage gate above. It uses a public
+non-application-specific fixture app and query corpus to decide which broader
+read-query families should remain explicit DSL, become generated Java-first
+ergonomics, require more evidence, or be rejected. It does not authorize
+private app migration, generated writes, generated repositories, or release
+work.
 
 R18 is planned as stability, refactor-safety, and tooling hardening. It should
-cover generator golden tests, source and binary compatibility checks, Gradle
-incremental compilation, multi-module cases, metadata-change diagnostics, editor
-behavior against real generated contracts, source-map-backed hover/navigation,
-stale metadata diagnostics, schema drift workflow, and SQL snapshots as a
-normal developer workflow.
+consume the R17 corpus for generator golden tests, source and binary
+compatibility checks, Gradle incremental compilation, multi-module cases,
+metadata-change diagnostics, editor behavior against real generated contracts,
+source-map-backed hover/navigation, stale metadata diagnostics, schema drift
+workflow, and SQL snapshots as a normal developer workflow.
 
 R19 is planned as pre-release candidate hardening. It should decide whether
 Mortar is ready for a serious public beta or release candidate gate, not

@@ -967,22 +967,33 @@ Current evidence:
 
 Status: Planned
 
-Goal: prove R16 ergonomics against realistic public query fixtures before any
-existing application migration.
+Goal: prove broader read-query ergonomics against realistic public query
+fixtures before adding more generated API or considering any existing
+application migration.
 
 Scope:
 
-- public non-application-specific fixture app and query corpus;
-- optional filters;
-- joins;
-- stable pagination;
-- count and exists queries;
-- DTO projections;
-- richer read-model projections;
-- search-style queries;
-- simple writes;
-- batches;
+- public non-application-specific mini-domain and query corpus;
+- realistic repository/service flows that keep Mortar inside infrastructure
+  adapters;
+- optional-filter searches;
+- explicit joins through generated relationship metadata;
+- stable pagination that requires deterministic ordering;
+- `count` and `exists` use cases evaluated as scalar-query decisions;
+- DTO/record projections and richer read-model projections;
+- multi-predicate reads;
+- repository-level SQL drift tests;
+- snapshot/testkit expectations;
 - compile-time and refactor failure cases for renamed or deleted fields.
+
+R17 slices:
+
+- R17.1: Fixture app and query corpus contract. Status: Planned.
+- R17.2: DSL-first corpus implementation. Status: Planned.
+- R17.3: Optional filter decision. Status: Planned.
+- R17.4: Joins, projections, pagination, count, and exists decisions. Status:
+  Planned.
+- R17.5: R18 fixture handoff and roadmap update. Status: Planned.
 
 Constraint:
 
@@ -991,12 +1002,46 @@ Constraint:
 - R17 must prove broader query shapes are actually simpler than the current DSL
   or handwritten SQL plus JDBC binding and row mapping before expanding the
   generated facade surface.
+- default to DSL-first evaluation; generated API support requires repeated
+  fixture evidence and a bounded public method set.
+- reject generated optional-filter overload matrices, generated repositories,
+  self-executing query objects, implicit relation traversal, aggregate loading,
+  and generated writes or batches.
+- do not use private application code or disguised private migrations as the
+  fixture source.
+
+API decision rules:
+
+- Generate only repeated query families that appear across multiple public
+  fixture use cases and are materially shorter or safer than the explicit DSL.
+- Keep generated APIs inspection-only and framework-free; execution remains in
+  `MortarJdbcClient` or another adapter.
+- Keep domain and application ports Mortar-free.
+- Require explicit ordering before paged execution.
+- Require explicit join paths and join types; no implicit aggregate loading or
+  lazy traversal.
+- Treat `count` and `exists` as ADR-sized decisions because scalar results may
+  reopen the visible-query and runtime execution contracts.
+
+Exit criteria:
+
+- public fixture corpus exists and compiles in CI;
+- each corpus query has a named repository use case and adapter-boundary SQL
+  drift test;
+- canonical corpus queries have snapshot/testkit expectations;
+- optional filters, joins, projections, stable pagination, `count`, and
+  `exists` each have explicit generated/DSL/defer/reject decisions;
+- no generated API expands without evidence-backed decision records;
+- Clean Architecture boundaries are verified;
+- R18 receives a concrete fixture handoff for tooling and refactor-safety
+  hardening.
 
 ### R18: Stability, Refactor Safety And Tooling Hardening
 
 Status: Planned
 
-Goal: harden the R16/R17 surface before real projects depend on it.
+Goal: harden the R16/R17 surface and the R17 fixture corpus before real
+projects depend on it.
 
 Scope:
 
@@ -1005,9 +1050,11 @@ Scope:
 - Gradle incremental compilation cases;
 - multi-module cases;
 - clearer diagnostics for entity, field, and column metadata changes;
+- R17 fixture rename/delete compile-failure cases;
 - VS Code and IntelliJ behavior against real generated contracts, not fragile
   transitional paths;
 - source-map-backed SQL hover/navigation over generated facade calls;
+- source-map and metadata behavior for any R17-approved generated shape;
 - stale generated metadata diagnostics;
 - schema drift workflow;
 - SQL snapshots as a normal developer workflow.
