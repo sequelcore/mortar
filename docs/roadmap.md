@@ -1233,6 +1233,14 @@ R18.1 and R18.2 completion record:
   source-map fingerprints change semantically, clean and incremental source-map
   inventories converge for the same source state, and deleted annotated
   entities do not leave stale valid metadata/source-map entries.
+- Pre-R18.5 source-map contract hardening on 2026-06-02 added a shared
+  Java-emitted `mortar-metadata-v1` and `mortar-source-map-v1` fixture covering
+  columns, relation metadata, parameterized and zero-parameter fixed reads,
+  generated-source coordinates, row types, snapshot keys, and semantic
+  fingerprints. Java processor tests prove the checked-in fixture remains exact
+  processor output; Rust compiler tests consume the same bytes and require
+  source-map freshness validation to pass. This is contract evidence only, not
+  VS Code/LSP editor UX.
 - R18.3/R18.4 focused verification passed on 2026-06-02:
   `gradlew.bat :java:processor:test --no-daemon`; and from `rust`,
   `cargo test -p mortar-compiler`.

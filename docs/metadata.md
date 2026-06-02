@@ -142,6 +142,12 @@ metadata, ordered parameter metadata, row type, and snapshot key. They do not
 include timestamps, absolute paths, temp directories, usernames, local build
 paths, rendered SQL, or full generated source text.
 
+The R18 contract is backed by a shared Java-emitted fixture that contains
+`entities.json` and `source-map.json`. Java processor tests prove the fixture is
+still exact processor output, and Rust compiler tests prove the same bytes parse
+and pass freshness validation. This strengthens the fingerprint contract without
+adding editor behavior or changing the public Java API.
+
 Rust tooling must treat missing, mismatched, or stale source-map entries as a
 fail-closed condition before any editor hover, navigation, or copy-SQL feature
 uses the data. R18.3 only defines and parses the contract; editor behavior

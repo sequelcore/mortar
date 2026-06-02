@@ -1,0 +1,96 @@
+{
+  "format": "mortar-source-map-v1",
+  "metadata": {
+    "format": "mortar-metadata-v1",
+    "path": "META-INF/mortar/entities.json",
+    "fingerprint": "sha256:a2d2f4f269d4d6743beeb633bbaf62d6149d485025f67d15b84de41d6fb594f0"
+  },
+  "queries": [
+    {
+      "id": "example.Account.findAll",
+      "entity_type": "example.Account",
+      "generated_entity_type": "example.QAccount",
+      "generated_read_namespace": "example.QAccount.Read",
+      "generated_member": "read.findAll",
+      "query_name": "findAll",
+      "snapshot": "example.Account.findAll",
+      "row_type": "example.QAccount.FindAllRow",
+      "parameters": [],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Account",
+        "member": "findAll"
+      },
+      "freshness": {
+        "fingerprint": "sha256:129602b5534197b0994d500748cb8438a29d27378bd3eada59ec03aad1217d87"
+      }
+    },
+    {
+      "id": "example.Account.findById",
+      "entity_type": "example.Account",
+      "generated_entity_type": "example.QAccount",
+      "generated_read_namespace": "example.QAccount.Read",
+      "generated_member": "read.findById",
+      "query_name": "findById",
+      "snapshot": "example.Account.findById",
+      "row_type": "example.QAccount.FindByIdRow",
+      "parameters": [
+        {
+          "name": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Account",
+        "member": "findById"
+      },
+      "freshness": {
+        "fingerprint": "sha256:0d5b91f09605cc43a8965788428dbef391870f62080c03142d05eb2d745e0481"
+      }
+    },
+    {
+      "id": "example.Client.findAll",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findAll",
+      "query_name": "findAll",
+      "snapshot": "example.Client.findAll",
+      "row_type": "example.QClient.FindAllRow",
+      "parameters": [],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findAll"
+      },
+      "freshness": {
+        "fingerprint": "sha256:d1f1a39c156fb92dfe39229c1e5d8968ffe7fab6e34d68d43bd5ae7250c48597"
+      }
+    },
+    {
+      "id": "example.Client.findById",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findById",
+      "query_name": "findById",
+      "snapshot": "example.Client.findById",
+      "row_type": "example.QClient.FindByIdRow",
+      "parameters": [
+        {
+          "name": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findById"
+      },
+      "freshness": {
+        "fingerprint": "sha256:7196ccb7d298233e37f9f987263049279439572923730d97ba4315b24df36b84"
+      }
+    }
+  ]
+}
