@@ -4110,12 +4110,12 @@ public final class ClientRepository {
 
     #[test]
     fn preserves_unix_absolute_paths_from_file_uris() {
-        let path = file_uri_to_path("file:///home/ricardo/mortar%20workspace")
+        let path = file_uri_to_path("file:///workspace/mortar%20workspace")
             .expect("URI should convert to a path");
 
         assert_eq!(
             path.to_string_lossy().replace('\\', "/"),
-            "/home/ricardo/mortar workspace"
+            "/workspace/mortar workspace"
         );
     }
 

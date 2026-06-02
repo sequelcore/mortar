@@ -142,20 +142,21 @@ metadata, ordered parameter metadata, row type, and snapshot key. They do not
 include timestamps, absolute paths, temp directories, usernames, local build
 paths, rendered SQL, or full generated source text.
 
-The R18 contract is backed by a shared Java-emitted fixture that contains
+The source-map contract is backed by a shared Java-emitted fixture that contains
 `entities.json` and `source-map.json`. Java processor tests prove the fixture is
 still exact processor output, and Rust compiler tests prove the same bytes parse
 and pass freshness validation. This strengthens the fingerprint contract without
-adding editor behavior or changing the public Java API.
+changing the public Java API.
 
 Rust tooling must treat missing, mismatched, or stale source-map entries as a
 fail-closed condition before any editor hover, navigation, or copy-SQL feature
 uses the data.
 
-R18.5 makes the Rust LSP consume `mortar-source-map-v1` for generated fixed
-reads only. The LSP resolves canonical generated read-facade calls such as
+The Rust LSP consumes `mortar-source-map-v1` for generated fixed reads only. It
+resolves canonical generated read-facade calls such as
 `QClient.CLIENT.read(renderer).findById(id)` and
-`QClient.CLIENT.read(renderer).findAll()` by generated metamodel/read namespace
+`QClient.CLIENT.read(renderer).findAll()`, plus the finite R19.3 same-file local
+alias shapes documented in `docs/lsp.md`, by generated metamodel/read namespace
 context plus the generated member (`read.findById` or `read.findAll`). It never
 selects source-map entries by `generated_member` alone, because that member is
 shared across entities. The matching entry's `snapshot` key is used to read SQL
@@ -164,6 +165,9 @@ snapshot entry. The source-map artifact still does not store rendered SQL,
 editor commands, or generated Java line/column locations.
 
 If metadata, source-map, snapshot evidence, or generated metamodel context is
-stale, missing, ambiguous, or unparseable for a generated fixed-read call,
-editor tooling must return no SQL/navigation result and surface a
-stale-source-map diagnostic rather than falling back to manual snapshot markers.
+stale, missing, ambiguous, unsupported, or unparseable for a generated
+fixed-read call, editor tooling must return no SQL/navigation result and
+surface a reason-specific fail-closed diagnostic rather than falling back to
+manual snapshot markers. Current diagnostics distinguish unsupported alias
+syntax, ambiguous aliases, reassigned aliases, stale or missing source-map
+evidence, missing SQL snapshots, and malformed Java buffers.
