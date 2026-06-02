@@ -33,5 +33,8 @@ include(
     "java:benchmarks",
     "editors:intellij",
     "examples:spring-boot-postgres",
-    "examples:clean-architecture-postgres"
+    "examples:clean-architecture-postgres",
+    "examples:query-corpus-domain",
+    "examples:query-corpus-application",
+    "examples:query-corpus-infrastructure-postgres"
 )

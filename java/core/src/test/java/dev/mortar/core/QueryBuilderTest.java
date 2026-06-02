@@ -118,13 +118,13 @@ final class QueryBuilderTest {
     void createsBooleanPredicateComposition() {
         Predicate predicate = Predicate.or(List.of(
             name.containsIgnoreCase("rio"),
-            name.containsIgnoreCase("canitas")
+            name.containsIgnoreCase("delta")
         ));
 
         assertThat(predicate)
             .isEqualTo(new Predicate.CompositePredicate(
                 Predicate.CompositeOperator.OR,
-                List.of(name.containsIgnoreCase("rio"), name.containsIgnoreCase("canitas"))
+                List.of(name.containsIgnoreCase("rio"), name.containsIgnoreCase("delta"))
             ));
     }
 

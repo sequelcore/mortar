@@ -589,7 +589,7 @@ Current evidence:
 - R14.5-R14.8 release policy was completed on 2026-06-01 in `docs/release.md`. The policy covers pre-1.0 and post-1.0 versioning, Maven Central scope, GitHub release notes, and Rust crate publication order.
 - Maven publishing is restricted to public Java library modules only: `java:core`, `java:dialect-postgres`, `java:runtime-jdbc`, `java:spring-boot-starter`, `java:processor`, and `java:testkit`. Examples, benchmarks, aggregate projects, and editor plugins are excluded from Maven Central publication.
 - CI release dry-run was added on 2026-06-01 in `.github/workflows/ci.yml` after Java and Rust gates. It runs `./gradlew publishToMavenLocal` and `cargo publish --dry-run -p mortar-compiler` from the repository root paths.
-- Maven Central publishing follow-up on 2026-06-01 aligned Mortar with Vigil's release workflow while using the current Vanniktech Maven Publish Plugin 0.36.0. Public Java artifacts now publish under group `io.github.sequelcore` with artifact IDs `mortar-core`, `mortar-dialect-postgres`, `mortar-runtime-jdbc`, `mortar-spring-boot-starter`, `mortar-processor`, and `mortar-testkit`. `.github/workflows/publish.yml` publishes on semantic version tags `v*`, fetches Central Portal and GPG secrets from Doppler project `sequel-core` config `prd`, runs `./gradlew publishToMavenCentral --no-daemon --no-configuration-cache`, and creates a GitHub release. Verification passed locally with `gradlew.bat verifyPublishWorkflow --no-daemon` and `gradlew.bat publishToMavenLocal --no-daemon --no-configuration-cache`. Signing is conditional locally so Maven local dry-runs work without a private key; release publishing signs artifacts when CI injects `ORG_GRADLE_PROJECT_signingInMemoryKey`.
+- Maven Central publishing follow-up on 2026-06-01 aligned Mortar with the public release workflow while using the current Vanniktech Maven Publish Plugin 0.36.0. Public Java artifacts now publish under group `io.github.sequelcore` with artifact IDs `mortar-core`, `mortar-dialect-postgres`, `mortar-runtime-jdbc`, `mortar-spring-boot-starter`, `mortar-processor`, and `mortar-testkit`. `.github/workflows/publish.yml` publishes on semantic version tags `v*`, reads Maven Central and GPG secrets from CI-provided environment variables, runs `./gradlew publishToMavenCentral --no-daemon --no-configuration-cache`, and creates a GitHub release. Verification passed locally with `gradlew.bat verifyPublishWorkflow --no-daemon` and `gradlew.bat publishToMavenLocal --no-daemon --no-configuration-cache`. Signing is conditional locally so Maven local dry-runs work without a private key; release publishing signs artifacts when CI injects `ORG_GRADLE_PROJECT_signingInMemoryKey`.
 - Local release dry-run verification passed on 2026-06-01 with `gradlew.bat publishToMavenLocal --no-daemon --no-configuration-cache` and `cargo publish --dry-run -p mortar-compiler --allow-dirty`. The Rust command used `--allow-dirty` locally because this workspace has uncommitted implementation changes; CI runs without that flag on a clean checkout.
 - Rust verification passed on 2026-06-01 with `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`, and `cargo test`.
 - Java root verification passed on 2026-06-01 with `gradlew.bat check --no-daemon`.
@@ -965,7 +965,7 @@ Current evidence:
 
 ### R17: Real-Query Coverage Gate
 
-Status: Planned
+Status: Done
 
 Goal: prove broader read-query ergonomics against realistic public query
 fixtures before adding more generated API or considering any existing
@@ -988,12 +988,12 @@ Scope:
 
 R17 slices:
 
-- R17.1: Fixture app and query corpus contract. Status: Planned.
-- R17.2: DSL-first corpus implementation. Status: Planned.
-- R17.3: Optional filter decision. Status: Planned.
+- R17.1: Fixture app and query corpus contract. Status: Done.
+- R17.2: DSL-first corpus implementation. Status: Done.
+- R17.3: Optional filter decision. Status: Done.
 - R17.4: Joins, projections, pagination, count, and exists decisions. Status:
-  Planned.
-- R17.5: R18 fixture handoff and roadmap update. Status: Planned.
+  Done.
+- R17.5: R18 fixture handoff and roadmap update. Status: Done.
 
 Constraint:
 
@@ -1035,6 +1035,39 @@ Exit criteria:
 - Clean Architecture boundaries are verified;
 - R18 receives a concrete fixture handoff for tooling and refactor-safety
   hardening.
+
+R17 completion record:
+
+- Added public fixture modules `examples:query-corpus-domain`,
+  `examples:query-corpus-application`, and
+  `examples:query-corpus-infrastructure-postgres`.
+- Added the neutral service-ticket corpus with four annotated entities
+  (`TicketRecord`, `CustomerRecord`, `TechnicianRecord`, and
+  `TicketStatusRecord`) and explicit relation metadata for customer,
+  assigned-technician, and status joins.
+- Added realistic Mortar-free application ports and adapter-owned PostgreSQL
+  query flows for fixed lookup, reference reads, optional-filter search,
+  explicit join projections, multi-predicate reads, ordered pages, and
+  unordered-page diagnostic evidence.
+- Added canonical snapshot inventory at
+  `examples/query-corpus-infrastructure-postgres/src/test/resources/r17-query-corpus/mortar.sql.snap.json`.
+- Added `docs/r17-query-corpus.md` as the R18 handoff covering stable query
+  names, snapshot keys, expected SQL, parameter and metadata expectations,
+  refactor failure cases, schema drift cases, and editor/source-map needs.
+- Accepted ADR-0006. R17 made no generated API expansion. Optional filters,
+  multi-predicate reads, joins, projections, and stable pagination remain
+  DSL-first; `count` and `exists` are deferred scalar-contract decisions;
+  generated optional-filter overload matrices, repositories, writes, batches,
+  self-executing query objects, implicit traversal, aggregate loading, lazy
+  loading, identity maps, and ORM behavior are rejected.
+- Focused verification passed on 2026-06-02:
+  `gradlew.bat :examples:query-corpus-domain:test :examples:query-corpus-application:test :examples:query-corpus-infrastructure-postgres:test --no-daemon`.
+- Final verification passed on 2026-06-02: `gradlew.bat check --no-daemon`;
+  from `rust`, `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`;
+  `git diff --check`; and the private path/private project scrub excluding
+  build outputs and caches.
 
 ### R18: Stability, Refactor Safety And Tooling Hardening
 

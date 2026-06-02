@@ -101,9 +101,8 @@ Local dry run:
 ```
 
 Signed Maven Central publishing is handled by `.github/workflows/publish.yml`
-on version tags. The workflow follows the Vigil release pattern and fetches
-Central Portal and GPG credentials from Doppler project `sequel-core`, config
-`prd`.
+on version tags. The workflow follows the public release pattern and reads
+Central Portal and GPG credentials from CI-provided environment variables.
 
 Required injected environment variables:
 
