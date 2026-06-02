@@ -455,9 +455,9 @@ Current evidence:
 
 Status: Done
 
-Goal: Make SQL transparency visible in Ricardo's primary editor first while keeping the implementation editor-neutral.
+Goal: Make SQL transparency visible in the primary editor first while keeping the implementation editor-neutral.
 
-Ordering note: On 2026-05-31, Ricardo confirmed VS Code is his primary Java editor. Mortar therefore prioritizes LSP and VS Code before heavyweight IDE-specific plugins.
+Ordering note: On 2026-05-31, VS Code was confirmed as the primary Java editor path. Mortar therefore prioritizes LSP and VS Code before heavyweight IDE-specific plugins.
 
 Slices:
 
@@ -1073,34 +1073,127 @@ R17 completion record:
 
 Status: Planned
 
-Goal: harden the R16/R17 surface and the R17 fixture corpus before real
-projects depend on it.
+Goal: harden the R16/R17 surface and the R17 fixture corpus against stale
+generated code, stale metadata, refactor failures, snapshot drift, editor
+misreporting, and Gradle multi-module workflow gaps before real projects depend
+on it.
 
 Scope:
 
-- generator golden tests;
-- source and binary compatibility checks for public APIs;
-- Gradle incremental compilation cases;
-- multi-module cases;
-- clearer diagnostics for entity, field, and column metadata changes;
-- R17 fixture rename/delete compile-failure cases;
-- VS Code and IntelliJ behavior against real generated contracts, not fragile
-  transitional paths;
-- source-map-backed SQL hover/navigation over generated facade calls;
-- source-map and metadata behavior for any R17-approved generated shape;
-- stale generated metadata diagnostics;
-- schema drift workflow;
+- contract definition for what `refactor-safe` means in Mortar;
+- R17 fixture baseline/fail/recover cases for renamed fields, deleted fields,
+  deleted relations, changed column metadata, stale generated metadata, and
+  recovery updates;
+- compatibility checks over publishable handwritten Java APIs and documented
+  file formats such as `mortar-metadata-v1` and `mortar-sql-snapshot-v1`;
+- generator golden tests for fixed reads, relation metadata, query IDs,
+  source-map entries, and snapshot keys;
+- Gradle clean-build and incremental-build convergence across the
+  domain/application/infrastructure fixture modules;
+- explicit verification of the processor incremental-classification risk where
+  shared metadata output must not leave stale state;
+- source-map-backed SQL hover and copy SQL for generated fixed-read calls in
+  the R17 fixture, specifically `TicketReader.findHeader` through generated
+  `read.findById` metadata and `TicketReader.listStatusOptions` through
+  generated `read.findAll` metadata;
+- stale metadata/source-map/snapshot diagnostics that fail closed before
+  misleading editor output;
+- VS Code as the primary editor proof path through the shared LSP contract;
+- IntelliJ only as a secondary thin-adapter check if it does not expand scope;
+- schema drift workflow as a separate CLI/tooling diagnostic path;
 - SQL snapshots as a normal developer workflow.
+
+R18 concrete guarantees:
+
+- renamed entity fields used by generated reads or DSL query code cause
+  compile-time or processor diagnostic failure while consumers remain stale, or
+  regenerate consistent `Q*`, metadata, source-map, and snapshot state after
+  consumers are updated;
+- deleted fields, deleted relation metadata, or deleted query metadata inputs
+  fail deterministically before runtime execution;
+- changed column metadata changes SQL snapshot/test expectations when rendered
+  SQL changes;
+- stale metadata is detected before hover, navigation, or copy SQL presents old
+  output as current;
+- generated Java source maps connect generated fixed-read facade symbols,
+  query IDs, snapshot keys, rendered SQL or snapshot evidence, row types,
+  parameters, and generated source locations, including the R17 repository
+  methods that wrap those generated calls;
+- VS Code hover/copy SQL uses source-map-backed data for real R17 fixture
+  generated read calls;
+- domain and application fixture modules remain Mortar-free;
+- multi-module Gradle behavior remains correct for clean and incremental
+  builds.
+
+R18 slices:
+
+- R18.1: Refactor-safety fixture contract. Status: Planned.
+- R18.2: R17 refactor failure matrix. Status: Planned.
+- R18.3: Generated metadata and source-map contract hardening. Status:
+  Planned.
+- R18.4: Gradle incremental and multi-module verification. Status: Planned.
+- R18.5: VS Code source-map hover and copy SQL hardening. Status: Planned.
+- R18.6: Schema drift, completion review, and R19 handoff. Status: Planned.
+
+Non-goals:
+
+- no private application migration;
+- no public release, release candidate, tag, publication, or performance claim;
+- no generated API expansion beyond the R16 fixed-read surface;
+- no generated optional-filter API or optional-filter overload matrices;
+- no generated joins, projections, repositories, writes, or batches;
+- no `count` or `exists` scalar contract unless separately ADR-approved;
+- no self-executing query objects;
+- no ORM behavior, lazy loading, aggregate loading, identity maps, or implicit
+  relation traversal;
+- no arbitrary DSL call-site hover/navigation;
+- no editor-side SQL rendering or editor-owned query semantics;
+- no broad editor UX, completion, refactoring commands, or quick-fix program;
+- no IntelliJ parity program that distracts from VS Code and core reliability.
+
+Exit criteria:
+
+- R17 corpus remains the evidence source for refactor safety, metadata
+  freshness, Gradle behavior, schema drift, snapshots, and editor hardening;
+- named R17 rename/delete/changing-column cases have baseline/fail/recover
+  evidence;
+- source-map-backed VS Code hover/copy SQL works for real generated fixed-read
+  fixture calls and fails closed when metadata is stale;
+- clean and incremental Gradle builds converge or fail deterministically across
+  the fixture modules;
+- domain and application modules remain Mortar-free;
+- schema drift is documented and verified as a separate CLI/tooling workflow;
+- no R16/R17 API decision is reversed or expanded;
+- any new metadata, source-map, stale-detection, or compatibility contract has
+  an accepted ADR before implementation;
+- final verification evidence is recorded in this roadmap.
+
+Planning debate outcome:
+
+- R18 is a contract-hardening gate, not a general editor tooling release.
+- `Refactor-safe` must distinguish compile-time Java failures, tooling
+  freshness failures, and schema drift diagnostics.
+- Rename/delete tests should use semantic baseline/fail/recover fixture cases,
+  not brittle compiler-message or screenshot snapshots.
+- Source-map-backed behavior is limited to generated fixed reads in R18.
+- VS Code is primary because it exercises the shared LSP path; IntelliJ remains
+  secondary.
+- The processor `isolating` declaration with shared metadata output is an
+  explicit R18 risk to verify.
+- New ADRs are required only for cross-tool contract changes, not for slice
+  sequencing.
 
 ### R19: Pre-Release Candidate Hardening
 
 Status: Planned
 
-Goal: decide whether Mortar is ready for a serious public beta or release
+Goal: run a go/no-go review for a possible future public beta or release
 candidate gate, not automatically release.
 
 Scope:
 
+- consume R18 hardening evidence before any beta or controlled migration pilot
+  decision;
 - CI confidence on Windows and Linux;
 - release dry-run;
 - benchmark artifacts from clean commits before claims;
