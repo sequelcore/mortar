@@ -33,7 +33,7 @@ intellijPlatform {
         }
         vendor {
             name.set("Sequel")
-            url.set("https://github.com/sequela02/mortar")
+            url.set("https://github.com/sequelcore/mortar")
         }
     }
 

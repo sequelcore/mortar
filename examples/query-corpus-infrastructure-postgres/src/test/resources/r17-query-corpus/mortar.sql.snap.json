@@ -1,0 +1,54 @@
+{
+  "queries": [
+    {
+      "snapshotKey": "r17.ticket.header-by-id",
+      "name": "TicketReader.findHeader",
+      "sql": "select t.id, t.summary, t.priority, t.opened_on from tickets t where t.id = ?",
+      "parameters": ["<ticketId:Long>"],
+      "tables": ["tickets"],
+      "columns": ["tickets.id", "tickets.summary", "tickets.priority", "tickets.opened_on"],
+      "joins": []
+    },
+    {
+      "snapshotKey": "r17.ticket.status-options",
+      "name": "TicketReader.listStatusOptions",
+      "sql": "select ts.code, ts.name from ticket_statuses ts",
+      "parameters": [],
+      "tables": ["ticket_statuses"],
+      "columns": ["ticket_statuses.code", "ticket_statuses.name"],
+      "joins": []
+    },
+    {
+      "snapshotKey": "r17.ticket.search",
+      "name": "TicketReader.searchTickets",
+      "sql": "select t.id, ts.name, t.priority, cu.name, te.display_name, t.opened_on from tickets t inner join customers cu on t.customer_id = cu.id left join technicians te on t.assigned_technician_id = te.id inner join ticket_statuses ts on t.status_code = ts.code where t.status_code = ? and t.priority = ? and te.region = ? and cu.name ilike ? and t.opened_on >= ? and t.opened_on <= ? and t.assigned_technician_id is not null order by t.opened_on desc, t.id asc limit ? offset ?",
+      "parameters": ["open:String", "critical:String", "north:String", "%ada%:String", "2026-06-01:LocalDate", "2026-06-02:LocalDate", "25:Integer", "0:Integer"],
+      "tables": ["tickets", "customers", "technicians", "ticket_statuses"],
+      "joins": ["ticket.customer inner", "ticket.assignedTechnician left", "ticket.status inner"]
+    },
+    {
+      "snapshotKey": "r17.ticket.open-region-page",
+      "name": "TicketReader.findOpenTicketsForRegion",
+      "sql": "select t.id, ts.name, t.priority, cu.name, te.display_name, t.opened_on from tickets t inner join customers cu on t.customer_id = cu.id left join technicians te on t.assigned_technician_id = te.id inner join ticket_statuses ts on t.status_code = ts.code where t.status_code = ? and te.region = ? order by t.opened_on desc, t.id asc limit ? offset ?",
+      "parameters": ["open:String", "north:String", "10:Integer", "10:Integer"],
+      "tables": ["tickets", "customers", "technicians", "ticket_statuses"],
+      "joins": ["ticket.customer inner", "ticket.assignedTechnician left", "ticket.status inner"]
+    },
+    {
+      "snapshotKey": "r17.ticket.unassigned-critical-page",
+      "name": "TicketReader.findUnassignedCriticalTickets",
+      "sql": "select t.id, ts.name, t.priority, cu.name, te.display_name, t.opened_on from tickets t inner join customers cu on t.customer_id = cu.id left join technicians te on t.assigned_technician_id = te.id inner join ticket_statuses ts on t.status_code = ts.code where t.status_code = ? and t.priority = ? and t.assigned_technician_id is null order by t.opened_on desc, t.id asc limit ? offset ?",
+      "parameters": ["open:String", "critical:String", "10:Integer", "0:Integer"],
+      "tables": ["tickets", "customers", "technicians", "ticket_statuses"],
+      "joins": ["ticket.customer inner", "ticket.assignedTechnician left", "ticket.status inner"]
+    },
+    {
+      "snapshotKey": "r17.ticket.detail",
+      "name": "TicketReader.findDetail",
+      "sql": "select t.id, t.summary, ts.name, cu.name, te.display_name, te.region from tickets t inner join customers cu on t.customer_id = cu.id left join technicians te on t.assigned_technician_id = te.id inner join ticket_statuses ts on t.status_code = ts.code where t.id = ?",
+      "parameters": ["<ticketId:Long>"],
+      "tables": ["tickets", "customers", "technicians", "ticket_statuses"],
+      "joins": ["ticket.customer inner", "ticket.assignedTechnician left", "ticket.status inner"]
+    }
+  ]
+}

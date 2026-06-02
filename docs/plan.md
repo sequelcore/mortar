@@ -916,7 +916,7 @@ finalized. The critique narrowed R16 in six ways:
 
 ## R17 Canonical Design: Real-Query Coverage Gate
 
-Status: Planned
+Status: Done
 
 R17 is a planning and evidence gate, not a feature bucket. It must not be
 marked `In Progress` until a public fixture app, query corpus, or implementation
@@ -1202,6 +1202,96 @@ gate, not a feature bucket.
 - R17 should deliberately feed R18 by preserving stable query names, snapshot
   keys, expected SQL, metadata, compile-failure cases, and fixture structure
   for future tooling/refactor-safety hardening.
+
+### R17 Execution Plan
+
+The R17 implementation uses a public service-ticket query corpus with
+compile-separated fixture modules:
+
+- `examples/query-corpus-domain`: domain vocabulary only; no Mortar
+  dependencies.
+- `examples/query-corpus-application`: business ports, criteria, DTO records,
+  and service flow; no Mortar dependencies.
+- `examples/query-corpus-infrastructure-postgres`: annotated persistence
+  models, generated `Q*` metadata, PostgreSQL adapter queries, SQL drift tests,
+  and snapshot fixture data.
+
+The fixture includes four annotated entities: ticket, customer, technician, and
+ticket status. Ticket-to-customer, ticket-to-technician, and ticket-to-status
+relations exercise generated relationship metadata while keeping joins
+explicit in adapter DSL code. Ticket status is the reference table used for the
+existing R16 generated `findAll()` baseline.
+
+Implementation sequence:
+
+1. Add failing fixture tests for module boundaries, generated fixed reads,
+   optional-filter DSL searches, explicit join projections, stable ordered
+   pagination, and R18 snapshot inventory.
+2. Implement only the public fixture modules and adapter code needed to pass
+   those tests. Do not change product API modules.
+3. Record the R17 query-family decisions in an ADR. Optional filters,
+   multi-predicate reads, joins, projections, and stable pagination remain
+   DSL-first in R17. Generated optional-filter overload matrices, generated
+   repositories, generated writes/batches, self-executing queries, implicit
+   traversal, aggregate loading, and ORM behavior remain rejected. `count` and
+   `exists` are deferred as scalar-contract decisions.
+4. Package the R18 handoff with stable query names, snapshot keys, expected
+   SQL, parameter values, parameter types, metadata expectations,
+   rename/delete failure cases, schema drift cases, and editor/source-map
+   needs.
+
+Stable pagination is evaluated through corpus tests and diagnostics, not by
+silently changing the core DSL in R17. Corpus page queries must call
+`orderBy(...)` before `page(...)`; unordered paging remains a diagnostic and a
+future enforcement decision.
+
+### R17 Completion Record
+
+R17.1 through R17.5 were completed through the public service-ticket query
+corpus and ADR-0006.
+
+Completed scope:
+
+- added compile-separated domain, application, and PostgreSQL infrastructure
+  fixture modules;
+- implemented four annotated public fixture entities and three explicit
+  generated relation metadata paths;
+- implemented generated fixed lookup/reference reads through the existing R16
+  `Read` facade;
+- implemented optional filters, multi-predicate reads, joins, projections, and
+  stable ordered pages through explicit adapter-owned DSL;
+- recorded canonical snapshot keys and SQL expectations in
+  `examples/query-corpus-infrastructure-postgres/src/test/resources/r17-query-corpus/mortar.sql.snap.json`;
+- documented the R18 fixture handoff in `docs/r17-query-corpus.md`;
+- accepted ADR-0006 with no generated API expansion.
+
+Decisions:
+
+- optional filters: DSL-only in R17; generated overload matrices rejected;
+- joins: DSL-only through explicit `RelationRef` paths; implicit traversal
+  rejected;
+- projections: DSL-only through explicit record/DTO projection;
+- stable pagination: DSL-only with explicit ordering in corpus queries; hidden
+  default ordering rejected and core enforcement deferred;
+- `count` and `exists`: deferred as scalar-contract decisions;
+- generated repositories, writes, batches, self-executing query objects, and
+  ORM behavior: rejected.
+
+Focused fixture verification:
+
+- `gradlew.bat :examples:query-corpus-domain:test :examples:query-corpus-application:test :examples:query-corpus-infrastructure-postgres:test --no-daemon`
+  passed on 2026-06-02.
+
+Final verification:
+
+- `gradlew.bat check --no-daemon` passed on 2026-06-02.
+- From `rust`, `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test` passed on 2026-06-02.
+- From `editors/vscode`, `bun run typecheck` passed on 2026-06-02.
+- `git diff --check` passed on 2026-06-02.
+- Private path and private project scrub passed with zero matches outside
+  build/cache outputs on 2026-06-02.
 
 ## Future Maturity Gates
 
