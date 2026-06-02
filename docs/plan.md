@@ -175,8 +175,9 @@ R16 implementation targets:
   and at-most-one-row execution.
 - `findAll`: explicit full-table read for small reference tables only, with SQL
   visible and diagnostics able to flag unbounded usage.
-- Fixed single-table DTO projection: select an explicit column set into a Java
-  record or DTO constructor for the fixed read shapes above.
+- Repository DTO mapping: repositories map generated fixed-read rows into
+  application DTOs or domain-facing records after explicit
+  `MortarJdbcClient` execution.
 - Repository/service usage: examples must keep Mortar inside infrastructure
   adapters. Domain ports and services expose business methods and DTOs, not
   Mortar query types.
@@ -201,10 +202,10 @@ Rejected for R16:
 - query objects that execute themselves;
 - generated aggregate loading or relation traversal.
 
-### API Proposal
+### Implemented API Shape
 
-The examples below are proposed R16 shapes. They are compile-looking design
-targets, not current API claims.
+The examples below distinguish the implemented R16 fixed-read surface from
+deferred design targets.
 
 Current R15 style for an application-specific query:
 
@@ -224,13 +225,13 @@ QuerySpec findActiveByIdQuery(long id) {
 }
 ```
 
-Proposed R16 generated facade style for primary-key lookup:
+Implemented R16 generated facade style for primary-key lookup:
 
 ```java
 public Optional<ClientSummary> findById(long id) {
     QClient.Read client = CLIENT.read(renderer);
 
-    MortarBoundQuery<QClient.Row> query = client.findById(id)
+    MortarBoundQuery<QClient.FindByIdRow> query = client.findById(id)
         .named("ClientRepository.findById");
 
     return jdbcClient.fetchOptional(query)
@@ -242,7 +243,7 @@ Expected visible SQL from the same object:
 
 ```java
 QClient.Read client = CLIENT.read(renderer);
-MortarBoundQuery<QClient.Row> query = client.findById(7L)
+MortarBoundQuery<QClient.FindByIdRow> query = client.findById(7L)
     .named("ClientRepository.findById");
 
 assertThat(query.sql())
@@ -251,7 +252,7 @@ assertThat(query.parameterTypes())
     .containsExactly(Long.class);
 ```
 
-Proposed R16 fixed DTO projection style:
+Deferred generated projection style:
 
 ```java
 public Optional<ClientSummary> findById(long id) {
@@ -263,6 +264,9 @@ public Optional<ClientSummary> findById(long id) {
     return jdbcClient.fetchOptional(query);
 }
 ```
+
+Generated `Read` facade projections are not part of the implemented R16 API
+budget. They remain deferred until a later real-query corpus proves the need.
 
 Deferred R17 style for optional filters and stable pagination:
 
@@ -340,7 +344,7 @@ public int deactivate(long id) {
 ```
 
 Repository usage stays explicit. The facade can reduce construction ceremony,
-but the repository still owns business method names, projection choices, query
+but the repository still owns business method names, row-to-DTO mapping, query
 names, transactions, and tests:
 
 ```java
@@ -356,11 +360,11 @@ public final class ClientRepository {
 
     public Optional<ClientSummary> findById(long id) {
         return jdbcClient.fetchOptional(
-            CLIENT.read(renderer)
-                .findById(id)
-                .projectRecord(ClientSummary.class, c -> c.id, c -> c.name)
-                .named("ClientRepository.findById")
-        );
+                CLIENT.read(renderer)
+                    .findById(id)
+                    .named("ClientRepository.findById")
+            )
+            .map(row -> new ClientSummary(row.id(), row.name()));
     }
 }
 ```
@@ -368,22 +372,20 @@ public final class ClientRepository {
 The same query must be testable without hitting a database:
 
 ```java
-MortarBoundQuery<ClientSummary> query = CLIENT.read(renderer)
+MortarBoundQuery<QClient.FindByIdRow> query = CLIENT.read(renderer)
     .findById(7L)
-    .projectRecord(ClientSummary.class, c -> c.id, c -> c.name)
     .named("ClientRepository.findById");
 
 MortarSqlAssertions.assertThatSql(query)
-    .hasSql("select c.id, c.name from clients c where c.id = ?")
+    .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
     .hasParameters(7L)
     .hasParameterTypes(Long.class);
 ```
 
 SQL snapshot expectations stay visible:
 
-```java
-MortarSqlSnapshots.assertThat(query)
-    .matchesSnapshot("ClientRepository.findById");
+```bash
+mortar snapshot check --file mortar.sql.snap.json
 ```
 
 VS Code hover should show the rendered SQL over the generated query call once
@@ -393,8 +395,7 @@ contracts:
 
 ```java
 CLIENT.read(renderer)
-    .findById(id)
-    .projectRecord(ClientSummary.class, c -> c.id, c -> c.name);
+    .findById(id);
 ```
 
 Expected hover content:
@@ -413,8 +414,7 @@ traceability:
 - repositories no longer need to construct `SimpleMortarDb` or generated
   parameter records for common reads;
 - IDE autocomplete starts from generated `Q*` fields and facade methods, then
-  leads the user through the approved fixed read method set and projection
-  choices;
+  leads the user through the approved fixed read method set;
 - Java field renames fail at compile time or annotation-processor time, not as
   runtime string query surprises;
 - generated SQL is available from the query object, generated-source Javadocs,
@@ -424,7 +424,8 @@ traceability:
 - no implicit runtime query construction from method names;
 - no execution methods on generated query objects; execution stays in
   `MortarJdbcClient`;
-- no generated writes, batches, optional-filter matrices, or joins in R16;
+- no generated writes, batches, optional-filter matrices, joins, projections,
+  `count`, or `exists` in R16;
 - no custom LSP completion engine in R16;
 - no public performance claim is made without retained benchmark evidence and
   reviewer sign-off.
@@ -464,21 +465,22 @@ Allowed R16 generated artifacts:
 
 - one generated read entry point per entity, such as `QClient.Read` or an
   adjacent `QClientReads`, not a combinatorial method family;
-- fixed read executors for `findById` and `findAll`;
+- fixed read facades for `findById` and `findAll`;
 - bound parameter objects where they materially improve SQL visibility or JDBC
   execution, but repositories should not usually instantiate them manually;
-- projection row types for all mapped columns and explicitly requested fixed
-  projection shapes;
+- projection row types for all mapped columns used by fixed `findById` and
+  `findAll` reads;
 - query-id and source-map contract records linking generated facade methods,
   Java field metadata, rendered SQL, and snapshot names.
 
 API-surface budget:
 
 - at most one generated read namespace per entity;
-- fixed R16 method set: `findById`, `findAll`, `projectRecord`, `projectDto`,
-  `named`, `sql`, `rendered`, `parameterTypes`, and `metadata`;
+- fixed R16 method set: `findById`, `findAll`, `named`, `sql`, `rendered`,
+  `parameterTypes`, and `metadata`;
 - no overload matrix for optional filter combinations;
 - no generated write namespace in R16;
+- no generated projection methods in R16;
 - no generated execution methods such as `query.fetch(jdbcClient)`,
   `query.fetchOptional(jdbcClient)`, `query.count(jdbcClient)`, or
   `query.exists(jdbcClient)`.
@@ -486,7 +488,7 @@ API-surface budget:
 Required explicit choices:
 
 - query name through `named(...)`;
-- selected projection columns;
+- row-to-DTO mapping in the repository after execution;
 - `orderBy(...)` before stable pagination when R17 adds paged queries;
 - join path and join type when R17 adds read-model joins;
 - update columns and predicates remain on the explicit mutation DSL in R16;
@@ -499,10 +501,10 @@ Generation limits:
 - do not generate repository classes or Spring Data repository adapters;
 - do not generate aggregate loaders or navigation methods that execute SQL;
 - do not generate methods for every possible projection permutation;
+- do not generate facade projection methods in R16;
 - do not generate facade methods for relations in R16;
 - keep generated public names predictable: `Read`, `Row`, `FindById`,
-  `FindAll`, and projection-specific row names only when generated by explicit
-  annotations or fixture needs.
+  and `FindAll`.
 
 ### VS Code And LSP Requirements
 
@@ -789,6 +791,59 @@ no public performance claim, no generated repository classes.
 Acceptance criteria: public examples compile in CI, demonstrate shorter
 repository code, keep SQL visible through tests and snapshot docs, and prove
 domain-facing ports stay Mortar-free.
+
+Status: Done on 2026-06-02.
+
+R16.4 architecture debate outcome:
+
+- The xhigh pre-edit challenge approved R16.4 as a docs/examples convergence
+  slice around the shipped R16.2/R16.3 surface.
+- The accepted correction was to move the Clean Architecture example from the
+  legacy direct generated executor plus parameter record path to the canonical
+  `Q*.read(renderer).findById(id).named(...)` bound-query flow.
+- Public guidance must keep `MortarGeneratedQuery` as an advanced hot-path
+  contract, not the canonical repository path.
+- Generated projections, joins, optional filters, `count`, `exists`, writes,
+  generated repositories, self-executing query objects, and source-map/LSP
+  hardening remain outside R16.4.
+
+Completed scope:
+
+- Updated `examples/clean-architecture-postgres` so
+  `PostgresClientReader.findById(...)` uses the generated `Read` facade,
+  executes through `jdbcClient.fetchOptional(query)`, and maps generated rows
+  back to the domain-facing `ClientSummary`.
+- Added Clean Architecture adapter tests that assert the generated bound query
+  SQL, parameter value, and parameter type through `assertThatSql(query)`.
+- Refined public usage, Spring Boot, Clean Architecture, API reference, and
+  getting-started docs so Spring users can see when to use generated `Read`
+  facades, how SQL remains visible, how repository tests catch query drift, and
+  which R16 capabilities are intentionally not generated.
+- Corrected canonical planning to keep generated facade projections deferred
+  instead of implying they are part of the implemented R16 API budget.
+
+Focused verification:
+
+- `gradlew.bat :examples:clean-architecture-postgres:test --tests dev.mortar.examples.cleanpostgres.PostgresClientReaderTest --no-daemon`
+  failed first because the adapter still used `CLIENT.findById(renderer)` with
+  `FindByIdParameters`, then passed after the adapter moved to
+  `CLIENT.read(renderer).findById(id).named(...)`.
+- `gradlew.bat :examples:spring-boot-postgres:test --tests dev.mortar.examples.springpostgres.ClientRepositoryTest --no-daemon`
+  passed on 2026-06-02.
+- `gradlew.bat :examples:clean-architecture-postgres:check --no-daemon`
+  passed on 2026-06-02.
+
+Final R16.4 verification passed on 2026-06-02:
+`gradlew.bat check --no-daemon`; from `rust`,
+`cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`,
+and `cargo test`; from `editors/vscode`, `bun run typecheck`.
+`git diff --check` and the private path scrub are recorded in the final change
+review for this slice.
+
+Architecture note: R16.4 did not add generated execution methods, writes,
+joins, optional filters, `count`, `exists`, projections, generated
+repositories, or editor/LSP source-map hardening. `MortarJdbcClient` remains
+the execution boundary and domain-facing ports remain Mortar-free.
 
 ### Risks And Rejected Options
 

@@ -3,6 +3,9 @@
 This example shows how a Spring Boot application should use Mortar from an infrastructure adapter while keeping domain and application code independent from Spring, JDBC, and Mortar runtime details.
 
 The compiled fixture is `java/spring-boot-starter/src/test/java/dev/mortar/spring/MortarCleanArchitectureRepositoryExampleTest.java`.
+It demonstrates Spring auto-configuration and port wiring with a lower-level
+DSL query. For the canonical R16 generated `Read` facade flow, use the
+CI-compiling `examples/clean-architecture-postgres` module.
 
 ## Boundary
 

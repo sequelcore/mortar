@@ -53,6 +53,9 @@ Current generated fixed read facade methods:
 - `read(renderer).findAll()`: explicitly selects all mapped columns for
   full-table reads and can be executed as `jdbcClient.fetch(query)`.
 
+R16 generated `Read` facades do not generate execution methods, writes, joins,
+optional filters, `count`, `exists`, projections, or repository classes.
+
 The older direct generated executor methods remain available for generated
 hot-path execution through `MortarGeneratedQuery`, but R16.2 usage guidance
 uses `read(renderer)` as the canonical shorter repository path.
