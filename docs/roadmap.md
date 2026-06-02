@@ -1208,6 +1208,17 @@ R18.1 and R18.2 completion record:
   deterministic clean compile and semantic SQL/schema cases, while keeping
   generated metadata freshness, source-map freshness, Gradle incremental
   convergence, and full schema-drift workflow claims in later R18 slices.
+- The R18.2 unresolved-symbol cleanup xhigh debate concluded that javac
+  unresolved symbols do not expose a stable portable category beyond
+  `Diagnostic.Kind.ERROR` plus structured source evidence. The matrix now keeps
+  structured diagnostics and asserts stale consumer source, stale symbol token,
+  and independent regenerated `Q*` producer evidence instead of full messages,
+  javac diagnostic codes, exact counts, ordering, or line/column numbers.
+- R18.3 was reviewed after the unresolved-symbol cleanup, but not completed:
+  the existing `mortar-metadata-v1` fixed-read query fields do not yet define
+  source locations or freshness diagnostics. R18.3 remains planned until that
+  contract is designed clearly, with an ADR if the metadata/source-map format
+  changes.
 - Focused verification passed on 2026-06-02:
   `gradlew.bat :java:processor:test --tests
   dev.mortar.processor.MortarRefactorSafetyMatrixTest --no-daemon`;
@@ -1290,4 +1301,6 @@ If implementation discovers that a slice is wrong, do not silently drift. Update
 - Gradle incremental build guidance documents task inputs, outputs, and stale-output handling, supporting R18's separation of clean compile evidence from later incremental convergence evidence: https://docs.gradle.org/current/userguide/incremental_build.html
 - Oracle `javac` annotation processing documents processor discovery, processing rounds, generated sources, and final compilation, supporting R18 clean temp-compile matrix tests: https://docs.oracle.com/en/java/javase/11/tools/javac.html
 - Java annotation processing APIs provide `Messager`, `Filer`, and `Processor` contracts, supporting stable Mortar diagnostic-code assertions instead of full compiler-output snapshots: https://docs.oracle.com/en/java/javase/15/docs/api/java.compiler/javax/annotation/processing/package-summary.html
+- Java `Diagnostic` documents stable kind/source/position accessors while diagnostic codes are implementation-dependent and messages are localized, supporting R18.2's refusal to assert javac unresolved-symbol codes or full message snapshots: https://docs.oracle.com/en/java/javase/21/docs/api/java.compiler/javax/tools/Diagnostic.html
+- Java `JavaCompiler` documents diagnostic collection for tool integrations, supporting Mortar's direct compile-test harness for generated-source contract tests: https://docs.oracle.com/en/java/javase/22/docs/api/java.compiler/javax/tools/JavaCompiler.html
 - Google compile-testing validates compile-test patterns for javac and annotation processors, though R18.2 uses Mortar's existing direct `JavaCompiler` harness to avoid adding a new dependency: https://github.com/google/compile-testing
