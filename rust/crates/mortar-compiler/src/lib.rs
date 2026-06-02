@@ -4,6 +4,7 @@ use thiserror::Error;
 
 const SQL_SNAPSHOT_FORMAT: &str = "mortar-sql-snapshot-v1";
 const MORTAR_METADATA_FORMAT: &str = "mortar-metadata-v1";
+const MORTAR_SOURCE_MAP_FORMAT: &str = "mortar-source-map-v1";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct QueryInspection {
@@ -98,6 +99,53 @@ pub struct MortarQueryParameterMetadata {
     pub java_type: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarSourceMapFile {
+    pub format: String,
+    pub metadata: MortarSourceMapMetadataLink,
+    pub queries: Vec<MortarSourceMapQuery>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarSourceMapMetadataLink {
+    pub format: String,
+    pub path: String,
+    pub fingerprint: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarSourceMapQuery {
+    pub id: String,
+    pub entity_type: String,
+    pub generated_entity_type: String,
+    pub generated_read_namespace: String,
+    pub generated_member: String,
+    pub query_name: String,
+    pub snapshot: String,
+    pub row_type: String,
+    pub parameters: Vec<MortarQueryParameterMetadata>,
+    pub source_anchor: MortarSourceAnchor,
+    pub freshness: MortarSourceMapFreshness,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarSourceAnchor {
+    pub kind: String,
+    pub java_type: String,
+    pub member: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarSourceMapFreshness {
+    pub fingerprint: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SourceMapFreshnessIssue {
+    pub query_id: Option<String>,
+    pub message: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DatabaseSchema {
     pub tables: Vec<DatabaseTable>,
@@ -134,6 +182,10 @@ pub enum MortarCompilerError {
     InvalidMetadataFormat,
     #[error("Mortar metadata JSON is invalid: {0}")]
     InvalidMetadataJson(serde_json::Error),
+    #[error("Mortar source map format must be mortar-source-map-v1")]
+    InvalidSourceMapFormat,
+    #[error("Mortar source map JSON is invalid: {0}")]
+    InvalidSourceMapJson(serde_json::Error),
 }
 
 pub fn inspect_sql(sql: &str) -> Result<QueryInspection, MortarCompilerError> {
@@ -266,6 +318,67 @@ pub fn parse_mortar_metadata_file(
     Ok(metadata)
 }
 
+pub fn parse_mortar_source_map_file(
+    content: &str,
+) -> Result<MortarSourceMapFile, MortarCompilerError> {
+    let source_map: MortarSourceMapFile =
+        serde_json::from_str(content).map_err(MortarCompilerError::InvalidSourceMapJson)?;
+    if source_map.format != MORTAR_SOURCE_MAP_FORMAT {
+        return Err(MortarCompilerError::InvalidSourceMapFormat);
+    }
+    Ok(source_map)
+}
+
+pub fn detect_source_map_freshness(
+    metadata: &MortarMetadataFile,
+    source_map: &MortarSourceMapFile,
+) -> Vec<SourceMapFreshnessIssue> {
+    let expected = metadata_query_fingerprints(metadata);
+    let mut issues = Vec::new();
+
+    let expected_metadata_fingerprint = metadata_fingerprint(expected.values());
+    if source_map.metadata.format != MORTAR_METADATA_FORMAT
+        || source_map.metadata.path != "META-INF/mortar/entities.json"
+        || source_map.metadata.fingerprint != expected_metadata_fingerprint
+    {
+        issues.push(SourceMapFreshnessIssue {
+            query_id: None,
+            message: "Source map metadata fingerprint is stale".to_string(),
+        });
+    }
+
+    let actual = source_map
+        .queries
+        .iter()
+        .map(|query| (query.id.as_str(), query.freshness.fingerprint.as_str()))
+        .collect::<std::collections::BTreeMap<_, _>>();
+
+    for (query_id, fingerprint) in &expected {
+        match actual.get(query_id.as_str()) {
+            Some(actual_fingerprint) if *actual_fingerprint == fingerprint => {}
+            Some(_) => issues.push(SourceMapFreshnessIssue {
+                query_id: Some(query_id.clone()),
+                message: format!("Stale source map entry: {query_id}"),
+            }),
+            None => issues.push(SourceMapFreshnessIssue {
+                query_id: Some(query_id.clone()),
+                message: format!("Missing source map query: {query_id}"),
+            }),
+        }
+    }
+
+    for query in &source_map.queries {
+        if !expected.contains_key(&query.id) {
+            issues.push(SourceMapFreshnessIssue {
+                query_id: Some(query.id.clone()),
+                message: format!("Source map query is not present in metadata: {}", query.id),
+            });
+        }
+    }
+
+    issues
+}
+
 pub fn detect_schema_drift(
     metadata: &MortarMetadataFile,
     database_schema: &DatabaseSchema,
@@ -361,14 +474,213 @@ fn validate_sql_snapshot_file(snapshot_file: &SqlSnapshotFile) -> Result<(), Mor
     Ok(())
 }
 
+fn metadata_query_fingerprints(
+    metadata: &MortarMetadataFile,
+) -> std::collections::BTreeMap<String, String> {
+    let mut fingerprints = std::collections::BTreeMap::new();
+    for entity in &metadata.entities {
+        for query in &entity.queries {
+            fingerprints.insert(query.id.clone(), query_fingerprint(entity, query));
+        }
+    }
+    fingerprints
+}
+
+fn metadata_fingerprint<'a>(fingerprints: impl IntoIterator<Item = &'a String>) -> String {
+    let mut input = String::new();
+    let mut sorted = fingerprints.into_iter().collect::<Vec<_>>();
+    sorted.sort();
+    for fingerprint in sorted {
+        input.push_str(fingerprint);
+        input.push('\n');
+    }
+    sha256(&input)
+}
+
+fn query_fingerprint(entity: &MortarEntityMetadata, query: &MortarQueryMetadata) -> String {
+    let mut input = String::new();
+    input.push_str(&query.id);
+    input.push('\n');
+    input.push_str(&entity.java_type);
+    input.push('\n');
+    input.push_str(&entity.table);
+    input.push('\n');
+    input.push_str(&entity.alias);
+    input.push('\n');
+    input.push_str(&query.generated_source.java_type);
+    input.push('\n');
+    input.push_str(&query.generated_source.generated_type);
+    input.push('\n');
+    input.push_str(&query.generated_source.member);
+    input.push('\n');
+    input.push_str(&query.name);
+    input.push('\n');
+    input.push_str(&query.snapshot);
+    input.push('\n');
+    input.push_str(&query.row_type);
+    input.push('\n');
+    for column in &entity.columns {
+        input.push_str("column:");
+        input.push_str(&column.property);
+        input.push('|');
+        input.push_str(&column.column);
+        input.push('|');
+        input.push_str(&column.java_type);
+        input.push('|');
+        input.push_str(if query_parameter_is_id(query, column) {
+            "true"
+        } else {
+            "false"
+        });
+        input.push('\n');
+    }
+    for relation in &entity.relations {
+        input.push_str("relation:");
+        input.push_str(&relation.property);
+        input.push('|');
+        input.push_str(&relation.local_column);
+        input.push('|');
+        input.push_str(&relation.target_table);
+        input.push('|');
+        input.push_str(&relation.target_alias);
+        input.push('|');
+        input.push_str(&relation.target_column);
+        input.push('|');
+        input.push_str(if relation.nullable { "true" } else { "false" });
+        input.push('\n');
+    }
+    for parameter in &query.parameters {
+        input.push_str("parameter:");
+        input.push_str(&parameter.name);
+        input.push('|');
+        input.push_str(&parameter.java_type);
+        input.push('\n');
+    }
+    sha256(&input)
+}
+
+fn query_parameter_is_id(query: &MortarQueryMetadata, column: &MortarColumnMetadata) -> bool {
+    query.shape == "findById"
+        && query
+            .parameters
+            .first()
+            .is_some_and(|parameter| parameter.name == column.property)
+}
+
+fn sha256(input: &str) -> String {
+    const K: [u32; 64] = [
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4,
+        0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe,
+        0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f,
+        0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+        0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+        0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116,
+        0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7,
+        0xc67178f2,
+    ];
+    let mut bytes = input.as_bytes().to_vec();
+    let bit_len = (bytes.len() as u64) * 8;
+    bytes.push(0x80);
+    while bytes.len() % 64 != 56 {
+        bytes.push(0);
+    }
+    bytes.extend_from_slice(&bit_len.to_be_bytes());
+
+    let mut h = [
+        0x6a09e667u32,
+        0xbb67ae85,
+        0x3c6ef372,
+        0xa54ff53a,
+        0x510e527f,
+        0x9b05688c,
+        0x1f83d9ab,
+        0x5be0cd19,
+    ];
+
+    for chunk in bytes.chunks_exact(64) {
+        let mut w = [0u32; 64];
+        for index in 0..16 {
+            w[index] = u32::from_be_bytes([
+                chunk[index * 4],
+                chunk[index * 4 + 1],
+                chunk[index * 4 + 2],
+                chunk[index * 4 + 3],
+            ]);
+        }
+        for index in 16..64 {
+            let s0 = w[index - 15].rotate_right(7)
+                ^ w[index - 15].rotate_right(18)
+                ^ (w[index - 15] >> 3);
+            let s1 = w[index - 2].rotate_right(17)
+                ^ w[index - 2].rotate_right(19)
+                ^ (w[index - 2] >> 10);
+            w[index] = w[index - 16]
+                .wrapping_add(s0)
+                .wrapping_add(w[index - 7])
+                .wrapping_add(s1);
+        }
+
+        let mut a = h[0];
+        let mut b = h[1];
+        let mut c = h[2];
+        let mut d = h[3];
+        let mut e = h[4];
+        let mut f = h[5];
+        let mut g = h[6];
+        let mut current_h = h[7];
+
+        for index in 0..64 {
+            let s1 = e.rotate_right(6) ^ e.rotate_right(11) ^ e.rotate_right(25);
+            let ch = (e & f) ^ ((!e) & g);
+            let temp1 = current_h
+                .wrapping_add(s1)
+                .wrapping_add(ch)
+                .wrapping_add(K[index])
+                .wrapping_add(w[index]);
+            let s0 = a.rotate_right(2) ^ a.rotate_right(13) ^ a.rotate_right(22);
+            let maj = (a & b) ^ (a & c) ^ (b & c);
+            let temp2 = s0.wrapping_add(maj);
+
+            current_h = g;
+            g = f;
+            f = e;
+            e = d.wrapping_add(temp1);
+            d = c;
+            c = b;
+            b = a;
+            a = temp1.wrapping_add(temp2);
+        }
+
+        h[0] = h[0].wrapping_add(a);
+        h[1] = h[1].wrapping_add(b);
+        h[2] = h[2].wrapping_add(c);
+        h[3] = h[3].wrapping_add(d);
+        h[4] = h[4].wrapping_add(e);
+        h[5] = h[5].wrapping_add(f);
+        h[6] = h[6].wrapping_add(g);
+        h[7] = h[7].wrapping_add(current_h);
+    }
+
+    let mut hex = String::from("sha256:");
+    for value in h {
+        hex.push_str(&format!("{value:08x}"));
+    }
+    hex
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
-        DatabaseSchema, DatabaseTable, MortarCompilerError, SqlSnapshot, SqlSnapshotFile,
-        SqlSnapshotMetadata, SqlSnapshotParameter, detect_schema_drift, inspect_sql,
-        parse_mortar_metadata_file, parse_sql_snapshot_file, postgres_explain_sql,
-        redact_connection_string, redact_parameter_value, render_sql_snapshot_file,
-        sql_snapshot_format,
+        DatabaseSchema, DatabaseTable, MortarCompilerError, MortarQueryParameterMetadata,
+        MortarSourceAnchor, MortarSourceMapFile, MortarSourceMapFreshness,
+        MortarSourceMapMetadataLink, MortarSourceMapQuery, SqlSnapshot, SqlSnapshotFile,
+        SqlSnapshotMetadata, SqlSnapshotParameter, detect_schema_drift,
+        detect_source_map_freshness, inspect_sql, metadata_fingerprint,
+        metadata_query_fingerprints, parse_mortar_metadata_file, parse_mortar_source_map_file,
+        parse_sql_snapshot_file, postgres_explain_sql, redact_connection_string,
+        redact_parameter_value, render_sql_snapshot_file, sql_snapshot_format,
     };
 
     #[test]
@@ -657,6 +969,251 @@ mod tests {
         assert_eq!(query.id, "example.Client.findById");
         assert_eq!(query.generated_source.java_type, "example.QClient");
         assert_eq!(query.parameters[0].name, "id");
+    }
+
+    #[test]
+    fn parses_mortar_source_map_file() {
+        let source_map = parse_mortar_source_map_file(
+            r#"{
+  "format": "mortar-source-map-v1",
+  "metadata": {
+    "format": "mortar-metadata-v1",
+    "path": "META-INF/mortar/entities.json",
+    "fingerprint": "sha256:metadata"
+  },
+  "queries": [
+    {
+      "id": "example.Client.findById",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findById",
+      "query_name": "findById",
+      "snapshot": "example.Client.findById",
+      "row_type": "example.QClient.FindByIdRow",
+      "parameters": [
+        {
+          "name": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findById"
+      },
+      "freshness": {
+        "fingerprint": "sha256:query"
+      }
+    }
+  ]
+}"#,
+        )
+        .expect("source map should parse");
+
+        assert_eq!(source_map.format, "mortar-source-map-v1");
+        assert_eq!(source_map.metadata.path, "META-INF/mortar/entities.json");
+        assert_eq!(source_map.queries[0].generated_member, "read.findById");
+        assert_eq!(
+            source_map.queries[0].source_anchor.java_type,
+            "example.Client"
+        );
+        assert_eq!(source_map.queries[0].parameters[0].name, "id");
+    }
+
+    #[test]
+    fn detects_stale_source_map_freshness() {
+        let metadata = parse_mortar_metadata_file(
+            r#"{
+  "format": "mortar-metadata-v1",
+  "entities": [
+    {
+      "java_type": "example.Client",
+      "table": "clients",
+      "alias": "c",
+      "columns": [
+        {
+          "property": "id",
+          "column": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "relations": [],
+      "queries": [
+        {
+          "id": "example.Client.findById",
+          "name": "findById",
+          "shape": "findById",
+          "generated_source": {
+            "java_type": "example.QClient",
+            "member": "read.findById",
+            "generated_type": "example.QClient.Read"
+          },
+          "parameters": [
+            {
+              "name": "id",
+              "java_type": "java.lang.Long"
+            }
+          ],
+          "row_type": "example.QClient.FindByIdRow",
+          "snapshot": "example.Client.findById"
+        }
+      ]
+    }
+  ]
+}"#,
+        )
+        .expect("metadata should parse");
+        let source_map = parse_mortar_source_map_file(
+            r#"{
+  "format": "mortar-source-map-v1",
+  "metadata": {
+    "format": "mortar-metadata-v1",
+    "path": "META-INF/mortar/entities.json",
+    "fingerprint": "sha256:stale"
+  },
+  "queries": [
+    {
+      "id": "example.Client.findById",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findById",
+      "query_name": "findById",
+      "snapshot": "example.Client.findById",
+      "row_type": "example.QClient.FindByIdRow",
+      "parameters": [
+        {
+          "name": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findById"
+      },
+      "freshness": {
+        "fingerprint": "sha256:stale"
+      }
+    },
+    {
+      "id": "example.Client.findAll",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findAll",
+      "query_name": "findAll",
+      "snapshot": "example.Client.findAll",
+      "row_type": "example.QClient.FindAllRow",
+      "parameters": [],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findAll"
+      },
+      "freshness": {
+        "fingerprint": "sha256:extra"
+      }
+    }
+  ]
+}"#,
+        )
+        .expect("source map should parse");
+
+        let issues = detect_source_map_freshness(&metadata, &source_map);
+        let messages = issues
+            .iter()
+            .map(|issue| issue.message.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(messages.contains(&"Source map metadata fingerprint is stale"));
+        assert!(messages.contains(&"Stale source map entry: example.Client.findById"));
+        assert!(
+            messages
+                .contains(&"Source map query is not present in metadata: example.Client.findAll")
+        );
+    }
+
+    #[test]
+    fn accepts_fresh_source_map_fingerprints() {
+        let metadata = parse_mortar_metadata_file(
+            r#"{
+  "format": "mortar-metadata-v1",
+  "entities": [
+    {
+      "java_type": "example.Client",
+      "table": "clients",
+      "alias": "c",
+      "columns": [
+        {
+          "property": "id",
+          "column": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "relations": [],
+      "queries": [
+        {
+          "id": "example.Client.findById",
+          "name": "findById",
+          "shape": "findById",
+          "generated_source": {
+            "java_type": "example.QClient",
+            "member": "read.findById",
+            "generated_type": "example.QClient.Read"
+          },
+          "parameters": [
+            {
+              "name": "id",
+              "java_type": "java.lang.Long"
+            }
+          ],
+          "row_type": "example.QClient.FindByIdRow",
+          "snapshot": "example.Client.findById"
+        }
+      ]
+    }
+  ]
+}"#,
+        )
+        .expect("metadata should parse");
+        let fingerprints = metadata_query_fingerprints(&metadata);
+        let query_fingerprint = fingerprints
+            .get("example.Client.findById")
+            .expect("query fingerprint should exist");
+        let source_map = MortarSourceMapFile {
+            format: "mortar-source-map-v1".to_string(),
+            metadata: MortarSourceMapMetadataLink {
+                format: "mortar-metadata-v1".to_string(),
+                path: "META-INF/mortar/entities.json".to_string(),
+                fingerprint: metadata_fingerprint(fingerprints.values()),
+            },
+            queries: vec![MortarSourceMapQuery {
+                id: "example.Client.findById".to_string(),
+                entity_type: "example.Client".to_string(),
+                generated_entity_type: "example.QClient".to_string(),
+                generated_read_namespace: "example.QClient.Read".to_string(),
+                generated_member: "read.findById".to_string(),
+                query_name: "findById".to_string(),
+                snapshot: "example.Client.findById".to_string(),
+                row_type: "example.QClient.FindByIdRow".to_string(),
+                parameters: vec![MortarQueryParameterMetadata {
+                    name: "id".to_string(),
+                    java_type: "java.lang.Long".to_string(),
+                }],
+                source_anchor: MortarSourceAnchor {
+                    kind: "java-type".to_string(),
+                    java_type: "example.Client".to_string(),
+                    member: "findById".to_string(),
+                },
+                freshness: MortarSourceMapFreshness {
+                    fingerprint: query_fingerprint.clone(),
+                },
+            }],
+        };
+
+        assert!(detect_source_map_freshness(&metadata, &source_map).is_empty());
     }
 
     #[test]

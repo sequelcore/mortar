@@ -20,8 +20,13 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardLocation;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -30,19 +35,13 @@ import java.util.Set;
 /**
  * Javac annotation processor that emits Mortar {@code Q*} metamodels and metadata files.
  */
-@SupportedAnnotationTypes({
-    "dev.mortar.processor.MortarColumn",
-    "dev.mortar.processor.MortarEntity",
-    "dev.mortar.processor.MortarId",
-    "dev.mortar.processor.MortarRelation",
-    "jakarta.persistence.Column",
-    "jakarta.persistence.Entity",
-    "jakarta.persistence.Id",
-    "jakarta.persistence.JoinColumn",
-    "jakarta.persistence.Table"
-})
+@SupportedAnnotationTypes("*")
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public final class MortarProcessor extends AbstractProcessor {
+    private final List<EntityMetadata> sharedMetadata = new ArrayList<>();
+    private final List<Element> sharedOriginatingElements = new ArrayList<>();
+    private boolean wroteSharedArtifacts;
+
     /**
      * Creates the annotation processor instance used by javac.
      */
@@ -51,24 +50,39 @@ public final class MortarProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnvironment) {
-        if (roundEnvironment == null || annotations.isEmpty() || roundEnvironment.processingOver()) {
+        if (roundEnvironment == null) {
             return false;
         }
 
-        List<EntityMetadata> metadata = new ArrayList<>();
+        if (roundEnvironment.processingOver()) {
+            writeSharedArtifacts();
+            return false;
+        }
+
         for (Element element : roundEnvironment.getRootElements()) {
             if (element instanceof TypeElement typeElement) {
                 if (isMortarEntity(typeElement) || hasAnnotation(typeElement, "jakarta.persistence.Entity")) {
-                    generateMetamodel(typeElement).ifPresent(metadata::add);
+                    Optional<EntityMetadata> generated = generateMetamodel(typeElement);
+                    generated.ifPresent(entity -> {
+                        sharedMetadata.add(entity);
+                        sharedOriginatingElements.add(typeElement);
+                    });
                 }
             }
         }
 
-        if (!metadata.isEmpty()) {
-            writeMetadataFile(metadata);
-        }
+        return false;
+    }
 
-        return true;
+    private void writeSharedArtifacts() {
+        if (wroteSharedArtifacts) {
+            return;
+        }
+        List<EntityMetadata> metadata = new ArrayList<>(sharedMetadata);
+        metadata.sort(Comparator.comparing(EntityMetadata::javaType));
+        writeMetadataFile(metadata, sharedOriginatingElements);
+        writeSourceMapFile(metadata, sharedOriginatingElements);
+        wroteSharedArtifacts = true;
     }
 
     private Optional<EntityMetadata> generateMetamodel(TypeElement entity) {
@@ -107,10 +121,15 @@ public final class MortarProcessor extends AbstractProcessor {
         }
     }
 
-    private void writeMetadataFile(List<EntityMetadata> metadata) {
+    private void writeMetadataFile(List<EntityMetadata> metadata, List<Element> originatingElements) {
         try {
             FileObject metadataFile = processingEnv.getFiler()
-                .createResource(StandardLocation.CLASS_OUTPUT, "", "META-INF/mortar/entities.json");
+                .createResource(
+                    StandardLocation.CLASS_OUTPUT,
+                    "",
+                    "META-INF/mortar/entities.json",
+                    originatingElements.toArray(Element[]::new)
+                );
             try (Writer writer = metadataFile.openWriter()) {
                 writer.write(renderMetadata(metadata));
             }
@@ -118,6 +137,26 @@ public final class MortarProcessor extends AbstractProcessor {
             processingEnv.getMessager().printMessage(
                 Diagnostic.Kind.ERROR,
                 "Failed to generate Mortar metadata: " + exception.getMessage()
+            );
+        }
+    }
+
+    private void writeSourceMapFile(List<EntityMetadata> metadata, List<Element> originatingElements) {
+        try {
+            FileObject sourceMapFile = processingEnv.getFiler()
+                .createResource(
+                    StandardLocation.CLASS_OUTPUT,
+                    "",
+                    "META-INF/mortar/source-map.json",
+                    originatingElements.toArray(Element[]::new)
+                );
+            try (Writer writer = sourceMapFile.openWriter()) {
+                writer.write(renderSourceMap(metadata));
+            }
+        } catch (IOException exception) {
+            processingEnv.getMessager().printMessage(
+                Diagnostic.Kind.ERROR,
+                "Failed to generate Mortar source map: " + exception.getMessage()
             );
         }
     }
@@ -664,6 +703,11 @@ public final class MortarProcessor extends AbstractProcessor {
         StringBuilder json = new StringBuilder(512);
         json.append("{\n");
         json.append("  \"format\": \"mortar-metadata-v1\",\n");
+        if (metadata.isEmpty()) {
+            json.append("  \"entities\": []\n");
+            json.append("}\n");
+            return json.toString();
+        }
         json.append("  \"entities\": [\n");
         for (int entityIndex = 0; entityIndex < metadata.size(); entityIndex++) {
             EntityMetadata entity = metadata.get(entityIndex);
@@ -754,6 +798,141 @@ public final class MortarProcessor extends AbstractProcessor {
         json.append("  ]\n");
         json.append("}\n");
         return json.toString();
+    }
+
+    private String renderSourceMap(List<EntityMetadata> metadata) {
+        List<QuerySourceMapEntry> entries = sourceMapEntries(metadata);
+        StringBuilder json = new StringBuilder(512);
+        json.append("{\n");
+        json.append("  \"format\": \"mortar-source-map-v1\",\n");
+        json.append("  \"metadata\": {\n");
+        json.append("    \"format\": \"mortar-metadata-v1\",\n");
+        json.append("    \"path\": \"META-INF/mortar/entities.json\",\n");
+        json.append("    \"fingerprint\": \"").append(metadataFingerprint(entries)).append("\"\n");
+        json.append("  },\n");
+        if (entries.isEmpty()) {
+            json.append("  \"queries\": []\n");
+            json.append("}\n");
+            return json.toString();
+        }
+        json.append("  \"queries\": [\n");
+        for (int entryIndex = 0; entryIndex < entries.size(); entryIndex++) {
+            QuerySourceMapEntry entry = entries.get(entryIndex);
+            QueryModel query = entry.query();
+            json.append("    {\n");
+            json.append("      \"id\": \"").append(escapeJson(query.id())).append("\",\n");
+            json.append("      \"entity_type\": \"").append(escapeJson(entry.entity().javaType())).append("\",\n");
+            json.append("      \"generated_entity_type\": \"").append(escapeJson(query.sourceMap().javaType())).append("\",\n");
+            json.append("      \"generated_read_namespace\": \"").append(escapeJson(query.sourceMap().generatedType())).append("\",\n");
+            json.append("      \"generated_member\": \"").append(escapeJson(query.sourceMap().member())).append("\",\n");
+            json.append("      \"query_name\": \"").append(escapeJson(query.name())).append("\",\n");
+            json.append("      \"snapshot\": \"").append(escapeJson(query.snapshot())).append("\",\n");
+            json.append("      \"row_type\": \"").append(escapeJson(query.rowType())).append("\",\n");
+            if (query.parameters().isEmpty()) {
+                json.append("      \"parameters\": [],\n");
+            } else {
+                json.append("      \"parameters\": [\n");
+                for (int parameterIndex = 0; parameterIndex < query.parameters().size(); parameterIndex++) {
+                    QueryParameterModel parameter = query.parameters().get(parameterIndex);
+                    json.append("        {\n");
+                    json.append("          \"name\": \"").append(escapeJson(parameter.name())).append("\",\n");
+                    json.append("          \"java_type\": \"").append(escapeJson(parameter.javaType())).append("\"\n");
+                    json.append("        }");
+                    if (parameterIndex < query.parameters().size() - 1) {
+                        json.append(",");
+                    }
+                    json.append("\n");
+                }
+                json.append("      ],\n");
+            }
+            json.append("      \"source_anchor\": {\n");
+            json.append("        \"kind\": \"java-type\",\n");
+            json.append("        \"java_type\": \"").append(escapeJson(entry.entity().javaType())).append("\",\n");
+            json.append("        \"member\": \"").append(escapeJson(query.name())).append("\"\n");
+            json.append("      },\n");
+            json.append("      \"freshness\": {\n");
+            json.append("        \"fingerprint\": \"").append(entry.fingerprint()).append("\"\n");
+            json.append("      }\n");
+            json.append("    }");
+            if (entryIndex < entries.size() - 1) {
+                json.append(",");
+            }
+            json.append("\n");
+        }
+        json.append("  ]\n");
+        json.append("}\n");
+        return json.toString();
+    }
+
+    private List<QuerySourceMapEntry> sourceMapEntries(List<EntityMetadata> metadata) {
+        List<QuerySourceMapEntry> entries = new ArrayList<>();
+        for (EntityMetadata entity : metadata) {
+            for (QueryModel query : entity.queries()) {
+                entries.add(new QuerySourceMapEntry(entity, query, queryFingerprint(entity, query)));
+            }
+        }
+        return List.copyOf(entries);
+    }
+
+    private String metadataFingerprint(List<QuerySourceMapEntry> entries) {
+        StringBuilder input = new StringBuilder();
+        entries.stream()
+            .map(QuerySourceMapEntry::fingerprint)
+            .sorted()
+            .forEach(fingerprint -> input.append(fingerprint).append("\n"));
+        return sha256(input.toString());
+    }
+
+    private String queryFingerprint(EntityMetadata entity, QueryModel query) {
+        StringBuilder input = new StringBuilder();
+        input.append(query.id()).append("\n");
+        input.append(entity.javaType()).append("\n");
+        input.append(entity.tableName()).append("\n");
+        input.append(entity.alias()).append("\n");
+        input.append(query.sourceMap().javaType()).append("\n");
+        input.append(query.sourceMap().generatedType()).append("\n");
+        input.append(query.sourceMap().member()).append("\n");
+        input.append(query.name()).append("\n");
+        input.append(query.snapshot()).append("\n");
+        input.append(query.rowType()).append("\n");
+        for (ColumnModel column : entity.columns()) {
+            input.append("column:")
+                .append(column.propertyName()).append("|")
+                .append(column.columnName()).append("|")
+                .append(column.javaType()).append("|")
+                .append(queryParameterIsId(query, column)).append("\n");
+        }
+        for (RelationModel relation : entity.relations()) {
+            input.append("relation:")
+                .append(relation.propertyName()).append("|")
+                .append(relation.localColumn()).append("|")
+                .append(relation.targetTable()).append("|")
+                .append(relation.targetAlias()).append("|")
+                .append(relation.targetColumn()).append("|")
+                .append(relation.nullable()).append("\n");
+        }
+        for (QueryParameterModel parameter : query.parameters()) {
+            input.append("parameter:")
+                .append(parameter.name()).append("|")
+                .append(parameter.javaType()).append("\n");
+        }
+        return sha256(input.toString());
+    }
+
+    private boolean queryParameterIsId(QueryModel query, ColumnModel column) {
+        return "findById".equals(query.shape())
+            && !query.parameters().isEmpty()
+            && query.parameters().getFirst().name().equals(column.propertyName());
+    }
+
+    private String sha256(String input) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            return "sha256:" + HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is not available", exception);
+        }
     }
 
     private String escapeJson(String value) {
@@ -918,6 +1097,9 @@ public final class MortarProcessor extends AbstractProcessor {
     }
 
     private record QuerySourceMap(String javaType, String member, String generatedType) {
+    }
+
+    private record QuerySourceMapEntry(EntityMetadata entity, QueryModel query, String fingerprint) {
     }
 
     private record QueryParameterModel(String name, String javaType) {

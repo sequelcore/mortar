@@ -15,7 +15,7 @@ final class MortarProcessorGradleMetadataTest {
 
             assertThat(stream).isNotNull();
             String metadata = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            assertThat(metadata).contains("dev.mortar.processor.MortarProcessor,isolating");
+            assertThat(metadata).contains("dev.mortar.processor.MortarProcessor,aggregating");
         }
     }
 }

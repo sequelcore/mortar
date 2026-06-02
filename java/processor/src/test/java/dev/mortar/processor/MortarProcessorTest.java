@@ -12,17 +12,7 @@ final class MortarProcessorTest {
         MortarProcessor processor = new MortarProcessor();
 
         assertThat(processor.getSupportedAnnotationTypes())
-            .containsExactlyInAnyOrder(
-                "dev.mortar.processor.MortarColumn",
-                "dev.mortar.processor.MortarEntity",
-                "dev.mortar.processor.MortarId",
-                "dev.mortar.processor.MortarRelation",
-                "jakarta.persistence.Column",
-                "jakarta.persistence.Entity",
-                "jakarta.persistence.Id",
-                "jakarta.persistence.JoinColumn",
-                "jakarta.persistence.Table"
-            );
+            .containsExactly("*");
     }
 
     @Test

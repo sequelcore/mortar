@@ -1116,9 +1116,9 @@ R18 concrete guarantees:
 - stale metadata is detected before hover, navigation, or copy SQL presents old
   output as current;
 - generated Java source maps connect generated fixed-read facade symbols,
-  query IDs, snapshot keys, rendered SQL or snapshot evidence, row types,
-  parameters, and generated source locations, including the R17 repository
-  methods that wrap those generated calls;
+  query IDs, snapshot keys, row types, parameters, stable source anchors, and
+  freshness fingerprints. Rendered SQL evidence remains in SQL snapshots and
+  editor behavior remains later R18 scope;
 - VS Code hover/copy SQL uses source-map-backed data for real R17 fixture
   generated read calls;
 - domain and application fixture modules remain Mortar-free;
@@ -1130,8 +1130,8 @@ R18 slices:
 - R18.1: Refactor-safety fixture contract. Status: Done.
 - R18.2: R17 refactor failure matrix. Status: Done.
 - R18.3: Generated metadata and source-map contract hardening. Status:
-  Planned.
-- R18.4: Gradle incremental and multi-module verification. Status: Planned.
+  Done.
+- R18.4: Gradle incremental and multi-module verification. Status: Done.
 - R18.5: VS Code source-map hover and copy SQL hardening. Status: Planned.
 - R18.6: Schema drift, completion review, and R19 handoff. Status: Planned.
 
@@ -1214,11 +1214,36 @@ R18.1 and R18.2 completion record:
   structured diagnostics and asserts stale consumer source, stale symbol token,
   and independent regenerated `Q*` producer evidence instead of full messages,
   javac diagnostic codes, exact counts, ordering, or line/column numbers.
-- R18.3 was reviewed after the unresolved-symbol cleanup, but not completed:
-  the existing `mortar-metadata-v1` fixed-read query fields do not yet define
-  source locations or freshness diagnostics. R18.3 remains planned until that
-  contract is designed clearly, with an ADR if the metadata/source-map format
-  changes.
+- R18.3 added ADR-0007 for the source-map/freshness contract. The accepted
+  design keeps `META-INF/mortar/entities.json` as `mortar-metadata-v1` and adds
+  `META-INF/mortar/source-map.json` with format `mortar-source-map-v1`, stable
+  source anchors, generated fixed-read coordinates, ordered parameters, row
+  types, snapshot keys, and semantic freshness fingerprints. It deliberately
+  avoids absolute paths, timestamps, rendered SQL, line/column assertions, and
+  editor behavior.
+- R18.4 changed the processor incremental descriptor from `isolating` to
+  `aggregating` because the processor emits shared metadata/source-map
+  resources. It also uses non-claiming wildcard annotation support with a
+  final-round shared-artifact write so shared artifacts are refreshed to empty
+  inventories when annotated entities disappear, without starving unrelated
+  processors or missing Mortar entities generated in later rounds.
+- R18.4 added a temporary Gradle TestKit multi-module fixture proving
+  domain/application sources remain Mortar-free, infrastructure annotated
+  record changes regenerate `Q*`, `entities.json`, and `source-map.json`,
+  source-map fingerprints change semantically, clean and incremental source-map
+  inventories converge for the same source state, and deleted annotated
+  entities do not leave stale valid metadata/source-map entries.
+- R18.3/R18.4 focused verification passed on 2026-06-02:
+  `gradlew.bat :java:processor:test --no-daemon`; and from `rust`,
+  `cargo test -p mortar-compiler`.
+- R18.3/R18.4 final verification passed on 2026-06-02:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`;
+  `git diff --check`; broad private-residue scrub was reviewed and only
+  pre-existing legal/standards/test-data references appeared outside
+  build/cache outputs; diff-level private path/project scrub had zero matches.
 - Focused verification passed on 2026-06-02:
   `gradlew.bat :java:processor:test --tests
   dev.mortar.processor.MortarRefactorSafetyMatrixTest --no-daemon`;
@@ -1233,8 +1258,11 @@ R18.1 and R18.2 completion record:
   `cargo test`; from `editors/vscode`, `bun run typecheck`;
   `git diff --check`; and the private path/private project scrub excluding
   build outputs and caches.
-- Migration note: no public API, generated API, metadata format, source-map
-  format, or processor incremental classification changed; no ADR was required.
+- Migration note: no public Java API or generated Java API changed. A new
+  parser-level `mortar-source-map-v1` artifact was added by ADR-0007, and the
+  processor incremental classification changed from `isolating` to
+  `aggregating` to match shared output behavior. Existing `mortar-metadata-v1`
+  files remain compatible.
 - Release note: no release, tag, publication, merge, push, or private
   application migration is authorized by this slice.
 
