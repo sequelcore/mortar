@@ -1935,8 +1935,8 @@ Status: In Progress
 R19 is a design target for implementation slices, not an implementation record.
 It must not be marked `Done` until product code, tests, docs, verification
 evidence, and review evidence exist. This planning slice only records the
-canonical direction. R19.1 and R19.2 are implemented; R19.3 through R19.5
-remain planned.
+canonical direction. R19.1, R19.2, R19.2a, R19.3, and R19.4 are implemented;
+R19.5 remains planned.
 
 ### Problem Statement
 
@@ -2058,27 +2058,38 @@ Status: Done.
 
 R19.3: Canonical aliases, local variables, and static import resolution.
 
-Status: Planned.
+Status: Done.
 
-- Supports only same-method or same-block local aliases assigned once to a
-  generated metamodel constant or to a resolved `.read(renderer)` namespace.
+- Supports only same-file local aliases assigned once to a direct generated
+  metamodel constant or to a direct generated `.read(renderer)` namespace.
 - Keeps explicit static imports supported; wildcard static imports are not a
   success path.
-- Verification: positive alias tests plus negative tests for reassignment,
-  conditional assignment, shadowing, field aliases, helper-returned receivers,
-  and cross-file aliases.
+- Rejects type-only aliases, alias chains, helper-returned receivers,
+  parenthesized alias initializers, reassignment, ambiguous conditional
+  aliases, lambda/catch/switch alias scopes, field aliases, ambiguous explicit
+  import collisions, wildcard static imports, and aliases whose identity is not
+  proven locally from same-file syntax.
+- Verification: Rust LSP tests cover positive metamodel aliases, read
+  namespace aliases, hover/copy SQL/EXPLAIN/definition parity, explicit local
+  declaration requirements, reassignment, ambiguity, scope boundaries, and
+  stale or missing source-map fail-closed behavior.
 
 R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion.
 
-Status: Planned.
+Status: Done.
 
 - Ensures hover, copy SQL, EXPLAIN, definition, and diagnostics agree on the
   same resolver outcome.
-- Adds VS Code smoke fixtures for canonical success, local alias success,
-  stale or missing source-map diagnostics, unsupported generated-looking calls,
-  and snapshot definition routing.
-- Verification: `cd rust && cargo test -p mortar-lsp`; from
-  `editors/vscode`, `bun run typecheck` and `bun run test`.
+- Adds fail-closed reason codes for unsupported alias syntax, ambiguous alias,
+  reassigned alias, stale or missing source-map evidence, missing SQL snapshot,
+  and malformed Java buffer.
+- Expands VS Code smoke fixtures for canonical success, supported local alias
+  success, unsupported alias diagnostics, copy SQL, EXPLAIN, and snapshot
+  definition routing.
+- Focused verification passed on 2026-06-02: `cd rust && cargo test -p
+  mortar-lsp`; from `editors/vscode`, `bun run typecheck` and `bun run test`
+  with the PostgreSQL EXPLAIN datasource smoke pending because no
+  `MORTAR_VSCODE_EXPLAIN_CONNECTION` was configured.
 
 R19.5: Editor semantics review and R20 performance handoff.
 
@@ -2206,6 +2217,54 @@ Focused verification passed on 2026-06-02:
 ```bash
 cd rust
 cargo test -p mortar-lsp
+```
+
+### R19.3/R19.4 Completion Evidence
+
+The required xhigh architecture debate for R19.3/R19.4 concluded on
+2026-06-02 that the narrowest safe alias-success model is an identity-bearing
+local binding model, not a generated-looking heuristic:
+
+- keep direct canonical calls and explicit static-import constants supported;
+- support `var client = QClient.CLIENT; client.read(renderer).findById(id)`;
+- support `var read = QClient.CLIENT.read(renderer); read.findById(id)`;
+- reject full Java semantic/type/classpath resolution, helper-returned
+  receivers, wildcard static imports, alias chains, type-only aliases,
+  reassigned aliases, ambiguous aliases, ambiguous explicit import collisions,
+  and aliases whose identity cannot be proven from same-file syntax.
+
+R19.3 implements that bounded model in `rust/crates/mortar-lsp`. The local
+syntax resolver records exact local variable initializers for direct generated
+metamodel constants and direct generated read namespaces, then routes hover,
+copy SQL, PostgreSQL EXPLAIN, and definition through the existing
+source-map-backed snapshot path. Fresh `mortar-metadata-v1` plus
+`mortar-source-map-v1` remains authoritative, and marker snapshots are not used
+as a fallback for valid generated alias syntax when source-map evidence is
+stale or missing.
+
+R19.4 adds reason-specific fail-closed diagnostics and smoke fixtures:
+
+- `mortar-alias-unsupported`;
+- `mortar-alias-ambiguous`;
+- `mortar-alias-reassigned`;
+- `mortar-source-map-stale`;
+- `mortar-snapshot-missing`;
+- `mortar-java-buffer-malformed`.
+
+Changed files are limited to Rust LSP behavior/tests, VS Code smoke
+fixtures/tests, and public R19 documentation. No Java runtime API, generated
+Java API, VS Code business logic, helper-returned receiver support, wildcard
+static import success, Java type binding, classpath-aware semantics,
+performance work, release work, migration work, or R20 behavior changed.
+
+Focused verification passed on 2026-06-02:
+
+```bash
+cd rust
+cargo test -p mortar-lsp
+cd ../editors/vscode
+bun run typecheck
+bun run test
 ```
 
 ## Future Maturity Gates

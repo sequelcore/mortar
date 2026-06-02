@@ -1343,9 +1343,9 @@ R19 slices:
   Status: Done.
 - R19.2a: Residual fail-closed hardening before alias success. Status: Done.
 - R19.3: Canonical aliases, local variables, and explicit static import
-  resolution. Status: Planned.
+  resolution. Status: Done.
 - R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion. Status:
-  Planned.
+  Done.
 - R19.5: Editor semantics review and R20 performance handoff. Status: Planned.
 
 Non-goals:
@@ -1459,6 +1459,43 @@ R19.2a residual hardening completion record:
   and private-path hygiene found no remaining blockers after documentation
   wording was narrowed to distinguish client code from client-visible
   diagnostics and full-document change recovery from incremental text sync.
+
+R19.3/R19.4 completion record:
+
+- The required xhigh architecture debate concluded on 2026-06-02 that R19.3
+  should support only direct identity-bearing local bindings:
+  `var client = QClient.CLIENT; client.read(renderer).findById(id)` and
+  `var read = QClient.CLIENT.read(renderer); read.findById(id)`. Existing
+  direct canonical calls and explicit static-import constants remain supported.
+- `rust/crates/mortar-lsp` now resolves those two local alias shapes through
+  the same source-map-backed path used by hover, copy SQL, PostgreSQL EXPLAIN,
+  and snapshot-entry definition. Fresh `mortar-metadata-v1` plus
+  `mortar-source-map-v1` remains authoritative, and valid alias syntax with
+  stale or missing source-map evidence fails closed without marker fallback.
+- Unsupported alias shapes remain unsupported: alias chains, type-only aliases,
+  helper-returned receivers, parenthesized alias initializers, reassigned
+  aliases, ambiguous conditional aliases, lambda/catch/switch alias scopes,
+  field aliases, ambiguous explicit import collisions, wildcard static imports,
+  cross-method or cross-file aliases, and aliases whose identity cannot be
+  proven locally from same-file syntax.
+- R19.4 added reason-specific fail-closed diagnostic codes:
+  `mortar-alias-unsupported`, `mortar-alias-ambiguous`,
+  `mortar-alias-reassigned`, `mortar-source-map-stale`,
+  `mortar-snapshot-missing`, and `mortar-java-buffer-malformed`.
+- VS Code smoke fixtures now cover canonical generated reads, supported local
+  metamodel aliases, supported read-namespace aliases, unsupported alias
+  diagnostics, copy SQL, EXPLAIN, and snapshot definition routing. The VS Code
+  client remains thin; no client-side SQL routing or Java semantics were added.
+- Changed modules/docs: `rust/crates/mortar-lsp`, `editors/vscode` smoke tests,
+  `examples/editor-smoke/vscode`, `docs/lsp.md`, `docs/plan.md`, and this
+  roadmap.
+- Migration note: no Java runtime API, generated Java API, metadata format,
+  source-map format, VS Code command contract, performance behavior, release,
+  publication, migration, or R20 behavior changed.
+- Focused verification passed on 2026-06-02: from `rust`,
+  `cargo test -p mortar-lsp`; from `editors/vscode`, `bun run typecheck` and
+  `bun run test`, with the PostgreSQL EXPLAIN datasource smoke pending because
+  no `MORTAR_VSCODE_EXPLAIN_CONNECTION` was configured.
 
 R20 handoff:
 
