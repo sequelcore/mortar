@@ -394,9 +394,12 @@ impl LspState {
                             },
                             |exists| {
                                 (!exists).then(|| {
-                                    marker.diagnostic(format!(
-                                        "Mortar SQL snapshot was not found: {snapshot_name}"
-                                    ))
+                                    marker.diagnostic_with_code(
+                                        "mortar-snapshot-missing",
+                                        format!(
+                                            "Mortar SQL snapshot was not found: {snapshot_name}"
+                                        ),
+                                    )
                                 })
                             },
                         )
@@ -723,18 +726,20 @@ enum GeneratedCallDetection {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum GeneratedCallFailClosedReason {
     SourceMapEvidence,
-    UnsupportedGeneratedSyntax,
-    IncompleteJavaSyntax,
+    UnsupportedAliasShape,
+    AmbiguousAlias,
+    ReassignedAlias,
+    MalformedJavaBuffer,
 }
 
 impl GeneratedCallFailClosedReason {
     fn diagnostic_code(self) -> &'static str {
         match self {
             GeneratedCallFailClosedReason::SourceMapEvidence => "mortar-source-map-stale",
-            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax => {
-                "mortar-generated-call-unsupported"
-            }
-            GeneratedCallFailClosedReason::IncompleteJavaSyntax => "mortar-java-syntax-incomplete",
+            GeneratedCallFailClosedReason::UnsupportedAliasShape => "mortar-alias-unsupported",
+            GeneratedCallFailClosedReason::AmbiguousAlias => "mortar-alias-ambiguous",
+            GeneratedCallFailClosedReason::ReassignedAlias => "mortar-alias-reassigned",
+            GeneratedCallFailClosedReason::MalformedJavaBuffer => "mortar-java-buffer-malformed",
         }
     }
 
@@ -743,11 +748,15 @@ impl GeneratedCallFailClosedReason {
             GeneratedCallFailClosedReason::SourceMapEvidence => {
                 "Mortar source-map metadata is stale or missing"
             }
-            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax => {
-                "Mortar generated call uses unsupported Java syntax"
+            GeneratedCallFailClosedReason::UnsupportedAliasShape => {
+                "Mortar generated call uses unsupported alias syntax"
             }
-            GeneratedCallFailClosedReason::IncompleteJavaSyntax => {
-                "Mortar generated call is inside incomplete Java syntax"
+            GeneratedCallFailClosedReason::AmbiguousAlias => "Mortar generated alias is ambiguous",
+            GeneratedCallFailClosedReason::ReassignedAlias => {
+                "Mortar generated alias is reassigned"
+            }
+            GeneratedCallFailClosedReason::MalformedJavaBuffer => {
+                "Mortar generated call is inside a malformed Java buffer"
             }
         }
     }
@@ -893,9 +902,7 @@ impl<'a> JavaSyntaxResolution<'a> {
             calls = calls
                 .into_iter()
                 .map(|call| {
-                    call.fail_closed_with_reason(
-                        GeneratedCallFailClosedReason::IncompleteJavaSyntax,
-                    )
+                    call.fail_closed_with_reason(GeneratedCallFailClosedReason::MalformedJavaBuffer)
                 })
                 .collect();
         }
@@ -951,7 +958,17 @@ fn syntax_generated_call_for_method_invocation(
     let method_start = method_name.start_byte();
 
     if object.kind() != "method_invocation" {
-        return generated_looking_syntax_fail_closed(document, object, node, method_start, member);
+        return generated_call_from_read_namespace_alias(
+            document,
+            object,
+            node,
+            imports,
+            method_start,
+            member.clone(),
+        )
+        .or_else(|| {
+            generated_looking_syntax_fail_closed(document, object, node, method_start, member)
+        });
     }
 
     let Some(read_name) = object.child_by_field_name("name") else {
@@ -960,7 +977,7 @@ fn syntax_generated_call_for_method_invocation(
             node.end_byte(),
             method_start,
             member,
-            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
+            GeneratedCallFailClosedReason::UnsupportedAliasShape,
         ));
     };
     if node_text(document, read_name) != "read" {
@@ -973,7 +990,7 @@ fn syntax_generated_call_for_method_invocation(
             node.end_byte(),
             method_start,
             member,
-            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
+            GeneratedCallFailClosedReason::UnsupportedAliasShape,
         ));
     };
     let receiver_node = unwrapped_expression_node(receiver_node);
@@ -986,7 +1003,7 @@ fn syntax_generated_call_for_method_invocation(
         node.end_byte(),
         method_start,
         member.clone(),
-        GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
+        GeneratedCallFailClosedReason::UnsupportedAliasShape,
     );
     let Some(receiver) = receiver else {
         return Some(fail_closed);
@@ -995,15 +1012,28 @@ fn syntax_generated_call_for_method_invocation(
         return Some(fail_closed);
     }
 
-    let Some(generated_entity_type) = generated_entity_type_for_receiver(&receiver.parts, imports)
-    else {
-        return if receiver_is_generated_like(&receiver.parts)
-            || receiver_is_generated_like_local_alias(document, node, &receiver.parts)
-        {
-            Some(fail_closed)
-        } else {
-            None
-        };
+    let generated_entity_type = match generated_entity_type_for_receiver(&receiver.parts, imports)
+        .into_option()
+        .or_else(|| {
+            generated_entity_type_for_local_metamodel_alias(
+                document,
+                node,
+                &receiver.parts,
+                imports,
+            )
+        }) {
+        Some(generated_entity_type) => generated_entity_type,
+        None => {
+            return match local_alias_fail_closed_reason(document, node, &receiver.parts, imports) {
+                Some(reason) => Some(fail_closed_with_reason(fail_closed, reason)),
+                None if receiver_is_generated_like(&receiver.parts)
+                    || receiver_is_generated_like_local_alias(document, node, &receiver.parts) =>
+                {
+                    Some(fail_closed)
+                }
+                None => None,
+            };
+        }
     };
     let generated_read_namespace = format!("{generated_entity_type}.Read");
 
@@ -1017,6 +1047,59 @@ fn syntax_generated_call_for_method_invocation(
         },
         method_start,
     })
+}
+
+fn generated_call_from_read_namespace_alias(
+    document: &str,
+    object: Node<'_>,
+    node: Node<'_>,
+    imports: &JavaImports,
+    method_start: usize,
+    member: String,
+) -> Option<SyntaxGeneratedCall> {
+    let object = unwrapped_expression_node(object);
+    if object.kind() != "identifier" {
+        return None;
+    }
+
+    let alias_name = node_text(document, object);
+    let fail_closed = syntax_fail_closed(
+        object.start_byte(),
+        node.end_byte(),
+        method_start,
+        member.clone(),
+        GeneratedCallFailClosedReason::UnsupportedAliasShape,
+    );
+    match local_generated_binding_before_call(document, node, alias_name, imports) {
+        LocalGeneratedBindingResolution::Resolved(LocalGeneratedBinding::ReadNamespace {
+            generated_entity_type,
+        }) => {
+            let generated_read_namespace = format!("{generated_entity_type}.Read");
+            Some(SyntaxGeneratedCall::Call {
+                call: GeneratedCall {
+                    generated_entity_type,
+                    generated_read_namespace,
+                    generated_member: member,
+                    start: object.start_byte(),
+                    end: node.end_byte(),
+                },
+                method_start,
+            })
+        }
+        LocalGeneratedBindingResolution::Resolved(LocalGeneratedBinding::Metamodel { .. }) => {
+            Some(fail_closed)
+        }
+        LocalGeneratedBindingResolution::Unsupported => Some(fail_closed),
+        LocalGeneratedBindingResolution::Ambiguous => Some(fail_closed_with_reason(
+            fail_closed,
+            GeneratedCallFailClosedReason::AmbiguousAlias,
+        )),
+        LocalGeneratedBindingResolution::Reassigned => Some(fail_closed_with_reason(
+            fail_closed,
+            GeneratedCallFailClosedReason::ReassignedAlias,
+        )),
+        LocalGeneratedBindingResolution::Unresolved => None,
+    }
 }
 
 fn generated_looking_syntax_fail_closed(
@@ -1035,7 +1118,7 @@ fn generated_looking_syntax_fail_closed(
             node.end_byte(),
             method_start,
             member,
-            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
+            GeneratedCallFailClosedReason::UnsupportedAliasShape,
         )
     })
 }
@@ -1054,6 +1137,323 @@ fn syntax_fail_closed(
         member,
         reason,
     }
+}
+
+fn fail_closed_with_reason(
+    call: SyntaxGeneratedCall,
+    reason: GeneratedCallFailClosedReason,
+) -> SyntaxGeneratedCall {
+    call.fail_closed_with_reason(reason)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LocalGeneratedBinding {
+    Metamodel { generated_entity_type: String },
+    ReadNamespace { generated_entity_type: String },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum LocalGeneratedBindingResolution {
+    Unresolved,
+    Resolved(LocalGeneratedBinding),
+    Unsupported,
+    Ambiguous,
+    Reassigned,
+}
+
+#[derive(Debug, Default)]
+struct LocalGeneratedBindingState {
+    binding: Option<LocalGeneratedBinding>,
+    shadowed: bool,
+    unsupported: bool,
+    ambiguous: bool,
+    reassigned: bool,
+}
+
+fn generated_entity_type_for_local_metamodel_alias(
+    document: &str,
+    call_node: Node<'_>,
+    receiver: &[String],
+    imports: &JavaImports,
+) -> Option<String> {
+    let [name] = receiver else {
+        return None;
+    };
+    match local_generated_binding_before_call(document, call_node, name, imports) {
+        LocalGeneratedBindingResolution::Resolved(LocalGeneratedBinding::Metamodel {
+            generated_entity_type,
+        }) => Some(generated_entity_type),
+        _ => None,
+    }
+}
+
+fn local_alias_fail_closed_reason(
+    document: &str,
+    call_node: Node<'_>,
+    receiver: &[String],
+    imports: &JavaImports,
+) -> Option<GeneratedCallFailClosedReason> {
+    let [name] = receiver else {
+        return None;
+    };
+    match local_generated_binding_before_call(document, call_node, name, imports) {
+        LocalGeneratedBindingResolution::Unsupported => {
+            Some(GeneratedCallFailClosedReason::UnsupportedAliasShape)
+        }
+        LocalGeneratedBindingResolution::Ambiguous => {
+            Some(GeneratedCallFailClosedReason::AmbiguousAlias)
+        }
+        LocalGeneratedBindingResolution::Reassigned => {
+            Some(GeneratedCallFailClosedReason::ReassignedAlias)
+        }
+        LocalGeneratedBindingResolution::Resolved(LocalGeneratedBinding::ReadNamespace {
+            ..
+        }) => Some(GeneratedCallFailClosedReason::UnsupportedAliasShape),
+        LocalGeneratedBindingResolution::Resolved(LocalGeneratedBinding::Metamodel { .. })
+        | LocalGeneratedBindingResolution::Unresolved => None,
+    }
+}
+
+fn local_generated_binding_before_call(
+    document: &str,
+    call_node: Node<'_>,
+    name: &str,
+    imports: &JavaImports,
+) -> LocalGeneratedBindingResolution {
+    if local_alias_success_is_disallowed(call_node) {
+        return if local_name_is_generated_like_before_call(document, call_node, name) {
+            LocalGeneratedBindingResolution::Unsupported
+        } else {
+            LocalGeneratedBindingResolution::Unresolved
+        };
+    }
+    let Some(scope) = nearest_local_resolution_scope(call_node) else {
+        return LocalGeneratedBindingResolution::Unresolved;
+    };
+    let mut state = LocalGeneratedBindingState::default();
+    collect_local_generated_binding_before_call(
+        document,
+        scope,
+        call_node.start_byte(),
+        name,
+        imports,
+        &mut state,
+    );
+    if state.reassigned {
+        LocalGeneratedBindingResolution::Reassigned
+    } else if state.ambiguous {
+        LocalGeneratedBindingResolution::Ambiguous
+    } else if state.unsupported {
+        LocalGeneratedBindingResolution::Unsupported
+    } else if state.shadowed {
+        LocalGeneratedBindingResolution::Unresolved
+    } else if let Some(binding) = state.binding {
+        LocalGeneratedBindingResolution::Resolved(binding)
+    } else {
+        LocalGeneratedBindingResolution::Unresolved
+    }
+}
+
+fn collect_local_generated_binding_before_call(
+    document: &str,
+    node: Node<'_>,
+    call_start: usize,
+    target_name: &str,
+    imports: &JavaImports,
+    state: &mut LocalGeneratedBindingState,
+) {
+    if node.start_byte() >= call_start {
+        return;
+    }
+
+    match node.kind() {
+        "variable_declarator" => {
+            let Some(name) = node.child_by_field_name("name") else {
+                return;
+            };
+            if node_text(document, name) == target_name {
+                let Some(value) = node.child_by_field_name("value") else {
+                    state.unsupported = true;
+                    return;
+                };
+                match local_generated_binding_from_initializer(document, value, imports) {
+                    LocalGeneratedBindingResolution::Resolved(binding) => {
+                        if state.binding.is_some() {
+                            state.ambiguous = true;
+                        } else {
+                            state.binding = Some(binding);
+                        }
+                    }
+                    LocalGeneratedBindingResolution::Ambiguous => state.ambiguous = true,
+                    LocalGeneratedBindingResolution::Unsupported => state.unsupported = true,
+                    LocalGeneratedBindingResolution::Unresolved => {
+                        state.binding = None;
+                        state.shadowed = true;
+                    }
+                    LocalGeneratedBindingResolution::Reassigned => {}
+                }
+            }
+        }
+        "assignment_expression" => {
+            if assignment_targets_name(document, node, target_name) {
+                state.reassigned = true;
+            }
+        }
+        _ => {}
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if is_local_resolution_boundary(child) && !node_contains_offset(child, call_start) {
+            continue;
+        }
+        collect_local_generated_binding_before_call(
+            document,
+            child,
+            call_start,
+            target_name,
+            imports,
+            state,
+        );
+    }
+}
+
+fn local_generated_binding_from_initializer(
+    document: &str,
+    value: Node<'_>,
+    imports: &JavaImports,
+) -> LocalGeneratedBindingResolution {
+    match value.kind() {
+        "field_access" => receiver_chain_from_syntax(document, value)
+            .map(
+                |receiver| match generated_entity_type_for_receiver(&receiver.parts, imports) {
+                    GeneratedEntityTypeResolution::Resolved(generated_entity_type) => {
+                        LocalGeneratedBindingResolution::Resolved(
+                            LocalGeneratedBinding::Metamodel {
+                                generated_entity_type,
+                            },
+                        )
+                    }
+                    GeneratedEntityTypeResolution::Ambiguous => {
+                        LocalGeneratedBindingResolution::Ambiguous
+                    }
+                    GeneratedEntityTypeResolution::Unresolved => {
+                        LocalGeneratedBindingResolution::Unresolved
+                    }
+                },
+            )
+            .unwrap_or(LocalGeneratedBindingResolution::Unresolved),
+        "method_invocation" => {
+            local_generated_binding_from_method_initializer(document, value, imports)
+        }
+        "ternary_expression" => {
+            if initializer_contains_direct_generated_binding(document, value, imports) {
+                LocalGeneratedBindingResolution::Ambiguous
+            } else {
+                LocalGeneratedBindingResolution::Unresolved
+            }
+        }
+        _ => {
+            if expression_is_generated_like(document, value) {
+                LocalGeneratedBindingResolution::Unsupported
+            } else {
+                LocalGeneratedBindingResolution::Unresolved
+            }
+        }
+    }
+}
+
+fn local_generated_read_binding_from_initializer(
+    document: &str,
+    value: Node<'_>,
+    imports: &JavaImports,
+) -> LocalGeneratedBindingResolution {
+    let Some(name) = value.child_by_field_name("name") else {
+        return LocalGeneratedBindingResolution::Unresolved;
+    };
+    if node_text(document, name) != "read" {
+        return LocalGeneratedBindingResolution::Unresolved;
+    }
+    let Some(object) = value.child_by_field_name("object") else {
+        return LocalGeneratedBindingResolution::Unsupported;
+    };
+    let Some(receiver) = receiver_chain_from_syntax(document, object) else {
+        return LocalGeneratedBindingResolution::Unsupported;
+    };
+    match generated_entity_type_for_receiver(&receiver.parts, imports) {
+        GeneratedEntityTypeResolution::Resolved(generated_entity_type) => {
+            LocalGeneratedBindingResolution::Resolved(LocalGeneratedBinding::ReadNamespace {
+                generated_entity_type,
+            })
+        }
+        GeneratedEntityTypeResolution::Ambiguous => LocalGeneratedBindingResolution::Ambiguous,
+        GeneratedEntityTypeResolution::Unresolved => LocalGeneratedBindingResolution::Unsupported,
+    }
+}
+
+fn local_generated_binding_from_method_initializer(
+    document: &str,
+    value: Node<'_>,
+    imports: &JavaImports,
+) -> LocalGeneratedBindingResolution {
+    let Some(name) = value.child_by_field_name("name") else {
+        return LocalGeneratedBindingResolution::Unsupported;
+    };
+    if node_text(document, name) == "read" {
+        local_generated_read_binding_from_initializer(document, value, imports)
+    } else {
+        LocalGeneratedBindingResolution::Unsupported
+    }
+}
+
+fn initializer_contains_direct_generated_binding(
+    document: &str,
+    node: Node<'_>,
+    imports: &JavaImports,
+) -> bool {
+    match node.kind() {
+        "field_access" => receiver_chain_from_syntax(document, node).is_some_and(|receiver| {
+            matches!(
+                generated_entity_type_for_receiver(&receiver.parts, imports),
+                GeneratedEntityTypeResolution::Resolved(_)
+            )
+        }),
+        "method_invocation" => matches!(
+            local_generated_read_binding_from_initializer(document, node, imports),
+            LocalGeneratedBindingResolution::Resolved(_)
+        ),
+        _ => {
+            let mut cursor = node.walk();
+            node.children(&mut cursor).any(|child| {
+                initializer_contains_direct_generated_binding(document, child, imports)
+            })
+        }
+    }
+}
+
+fn assignment_targets_name(document: &str, node: Node<'_>, target_name: &str) -> bool {
+    node.child_by_field_name("left")
+        .is_some_and(|left| left.kind() == "identifier" && node_text(document, left) == target_name)
+}
+
+fn local_alias_success_is_disallowed(node: Node<'_>) -> bool {
+    let mut current = node;
+    while let Some(parent) = current.parent() {
+        if matches!(
+            parent.kind(),
+            "lambda_expression" | "catch_clause" | "switch_expression" | "switch_statement"
+        ) {
+            return true;
+        }
+        if matches!(
+            parent.kind(),
+            "method_declaration" | "constructor_declaration" | "compact_constructor_declaration"
+        ) {
+            return false;
+        }
+        current = parent;
+    }
+    false
 }
 
 fn receiver_chain_from_syntax(document: &str, node: Node<'_>) -> Option<ReceiverChain> {
@@ -1377,20 +1777,50 @@ struct ReceiverChain {
     start: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum GeneratedEntityTypeResolution {
+    Unresolved,
+    Resolved(String),
+    Ambiguous,
+}
+
+impl GeneratedEntityTypeResolution {
+    fn into_option(self) -> Option<String> {
+        match self {
+            GeneratedEntityTypeResolution::Resolved(value) => Some(value),
+            GeneratedEntityTypeResolution::Unresolved
+            | GeneratedEntityTypeResolution::Ambiguous => None,
+        }
+    }
+}
+
 fn generated_entity_type_for_receiver(
     receiver: &[String],
     imports: &JavaImports,
-) -> Option<String> {
+) -> GeneratedEntityTypeResolution {
     match receiver {
-        [metamodel, _constant] if metamodel.starts_with('Q') => Some(
-            imports
-                .type_imports
-                .get(metamodel)
-                .cloned()
-                .unwrap_or_else(|| metamodel.clone()),
-        ),
-        [constant] => imports.static_field_imports.get(constant).cloned(),
-        _ => None,
+        [metamodel, _constant] if metamodel.starts_with('Q') => imports
+            .type_imports
+            .get(metamodel)
+            .cloned()
+            .map(GeneratedEntityTypeResolution::from_import_binding)
+            .unwrap_or_else(|| GeneratedEntityTypeResolution::Resolved(metamodel.clone())),
+        [constant] => imports
+            .static_field_imports
+            .get(constant)
+            .cloned()
+            .map(GeneratedEntityTypeResolution::from_import_binding)
+            .unwrap_or(GeneratedEntityTypeResolution::Unresolved),
+        _ => GeneratedEntityTypeResolution::Unresolved,
+    }
+}
+
+impl GeneratedEntityTypeResolution {
+    fn from_import_binding(binding: ImportBinding) -> Self {
+        match binding {
+            ImportBinding::Resolved(value) => GeneratedEntityTypeResolution::Resolved(value),
+            ImportBinding::Ambiguous => GeneratedEntityTypeResolution::Ambiguous,
+        }
     }
 }
 
@@ -1415,10 +1845,16 @@ fn simple_java_name(java_type: &str) -> &str {
     java_type.rsplit('.').next().unwrap_or(java_type)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ImportBinding {
+    Resolved(String),
+    Ambiguous,
+}
+
 #[derive(Debug, Default)]
 struct JavaImports {
-    type_imports: BTreeMap<String, String>,
-    static_field_imports: BTreeMap<String, String>,
+    type_imports: BTreeMap<String, ImportBinding>,
+    static_field_imports: BTreeMap<String, ImportBinding>,
 }
 
 impl JavaImports {
@@ -1440,8 +1876,7 @@ impl JavaImports {
             let Some((owner, field)) = imported.rsplit_once('.') else {
                 return;
             };
-            self.static_field_imports
-                .insert(field.to_string(), owner.to_string());
+            add_import_binding(&mut self.static_field_imports, field, owner);
         } else if let Some(imported) = trimmed
             .strip_prefix("import ")
             .and_then(|value| value.strip_suffix(';'))
@@ -1450,7 +1885,22 @@ impl JavaImports {
                 return;
             }
             let simple = simple_java_name(imported).to_string();
-            self.type_imports.insert(simple, imported.to_string());
+            add_import_binding(&mut self.type_imports, &simple, imported);
+        }
+    }
+}
+
+fn add_import_binding(imports: &mut BTreeMap<String, ImportBinding>, name: &str, target: &str) {
+    match imports.get(name) {
+        None => {
+            imports.insert(
+                name.to_string(),
+                ImportBinding::Resolved(target.to_string()),
+            );
+        }
+        Some(ImportBinding::Resolved(existing)) if existing == target => {}
+        Some(_) => {
+            imports.insert(name.to_string(), ImportBinding::Ambiguous);
         }
     }
 }
@@ -2160,6 +2610,96 @@ public final class ClientUsage {
     }
 
     #[test]
+    fn ambiguous_type_import_for_generated_receiver_fails_closed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+import other.QClient;
+import example.QClient;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        QClient.CLIENT.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("ambiguous type import hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("ambiguous type import code actions should fail closed")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("ambiguous type import definition should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    #[test]
+    fn ambiguous_static_import_for_generated_constant_fails_closed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+import static other.QClient.CLIENT;
+import static example.QClient.CLIENT;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        CLIENT.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("ambiguous static import hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("ambiguous static import code actions should fail closed")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("ambiguous static import definition should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    #[test]
     fn parenthesized_canonical_receiver_still_resolves() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
@@ -2247,12 +2787,12 @@ public final class ClientUsage {
         assert_eq!(params.diagnostics.len(), 1);
         assert_eq!(
             params.diagnostics[0].message,
-            "Mortar generated call is inside incomplete Java syntax"
+            "Mortar generated call is inside a malformed Java buffer"
         );
         assert!(matches!(
             params.diagnostics[0].code,
             Some(lsp_types::NumberOrString::String(ref code))
-                if code == "mortar-java-syntax-incomplete"
+                if code == "mortar-java-buffer-malformed"
         ));
         let malformed_position = position_of(malformed, "findById");
         assert!(
@@ -2492,6 +3032,11 @@ public final class ClientUsage {
             diagnostics[0].message,
             "Mortar SQL snapshot was not found: example.Client.findById"
         );
+        assert!(matches!(
+            diagnostics[0].code,
+            Some(lsp_types::NumberOrString::String(ref code))
+                if code == "mortar-snapshot-missing"
+        ));
     }
 
     #[test]
@@ -2870,10 +3415,10 @@ public final class ClientUsage {
     }
 
     #[test]
-    fn local_alias_syntax_is_not_a_r19_2_success_path() {
+    fn local_metamodel_alias_resolves_source_map_backed_editor_features() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
-        let mut state = LspState::new(workspace);
+        let mut state = LspState::new(workspace.clone());
         let document = r#"package example;
 
 public final class ClientUsage {
@@ -2884,28 +3429,15 @@ public final class ClientUsage {
 }
 "#;
         state.open_document(&uri, document.to_string());
-        let position = position_of(document, "findById");
 
-        assert!(
-            state
-                .hover(&uri, position)
-                .expect("hover should not resolve local aliases before R19.3")
-                .is_none()
-        );
-        assert!(
-            state
-                .code_actions(&uri, position)
-                .expect("code actions should not resolve local aliases before R19.3")
-                .is_empty()
-        );
-        assert_unsupported_generated_call_diagnostic(&state, &uri);
+        assert_client_find_by_id_editor_features(&state, &uri, &workspace, document);
     }
 
     #[test]
-    fn local_read_namespace_alias_syntax_is_not_a_r19_2_success_path() {
+    fn local_read_namespace_alias_resolves_source_map_backed_editor_features() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
-        let mut state = LspState::new(workspace);
+        let mut state = LspState::new(workspace.clone());
         let document = r#"package example;
 
 public final class ClientUsage {
@@ -2916,21 +3448,197 @@ public final class ClientUsage {
 }
 "#;
         state.open_document(&uri, document.to_string());
+
+        assert_client_find_by_id_editor_features(&state, &uri, &workspace, document);
+    }
+
+    #[test]
+    fn local_alias_requires_explicit_local_declaration() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(QClient client, Object renderer, Long id) {
+        client.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
         let position = position_of(document, "findById");
 
         assert!(
             state
                 .hover(&uri, position)
-                .expect("hover should not resolve read aliases before R19.3")
+                .expect("type-only alias hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("type-only alias code actions should fail closed")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("type-only alias definition should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    #[test]
+    fn local_alias_chain_fails_closed_with_unsupported_alias_diagnostic() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var client = QClient.CLIENT;
+        var read = client.read(renderer);
+        read.findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("alias-chain hover should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    #[test]
+    fn helper_returned_metamodel_alias_fails_closed_with_unsupported_alias_diagnostic() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var client = client();
+        client.read(renderer).findById(id);
+    }
+
+    QClient client() {
+        return QClient.CLIENT;
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("helper-returned metamodel alias hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("helper-returned metamodel alias code actions should fail closed")
+                .is_empty()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    #[test]
+    fn helper_returned_read_namespace_alias_fails_closed_with_unsupported_alias_diagnostic() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var read = client().read(renderer);
+        read.findById(id);
+    }
+
+    QClient client() {
+        return QClient.CLIENT;
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("helper-returned read alias hover should fail closed")
                 .is_none()
         );
         assert!(
             state
                 .definition(&uri, position)
-                .expect("definition should not resolve read aliases before R19.3")
+                .expect("helper-returned read alias definition should fail closed")
                 .is_none()
         );
-        assert_unsupported_generated_call_diagnostic(&state, &uri);
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    #[test]
+    fn conditional_local_alias_fails_closed_as_ambiguous() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id, boolean account) {
+        var reader = account
+            ? QAccount.ACCOUNT.read(renderer)
+            : QClient.CLIENT.read(renderer);
+        reader.findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("conditional alias hover should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-ambiguous",
+            "Mortar generated alias is ambiguous",
+        );
     }
 
     #[test]
@@ -2986,6 +3694,47 @@ public final class ClientUsage {
             state
                 .hover(&uri, position)
                 .expect("ordinary receiver should not be poisoned by an inner block")
+                .is_none()
+        );
+        assert!(state.document_diagnostics(&uri).is_empty());
+    }
+
+    #[test]
+    fn inner_ordinary_local_declaration_shadows_generated_alias_without_leaking() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(ExternalReader external, Object renderer) {
+        var client = QClient.CLIENT;
+        {
+            var client = external;
+            client.read(renderer).findById(7L);
+        }
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("shadowed ordinary receiver should not resolve outer alias")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("shadowed ordinary receiver should not offer SQL actions")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("shadowed ordinary receiver should not navigate")
                 .is_none()
         );
         assert!(state.document_diagnostics(&uri).is_empty());
@@ -3117,14 +3866,19 @@ public final class ClientUsage {
         assert!(
             state
                 .hover(&uri, position)
-                .expect("hover should not resolve parenthesized aliases before R19.3")
+                .expect("hover should not resolve parenthesized aliases")
                 .is_none()
         );
-        assert_unsupported_generated_call_diagnostic(&state, &uri);
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
     }
 
     #[test]
-    fn reassigned_local_alias_syntax_is_not_overclaimed() {
+    fn reassigned_local_alias_syntax_fails_closed_with_reassigned_diagnostic() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
         let mut state = LspState::new(workspace);
@@ -3153,7 +3907,91 @@ public final class ClientUsage {
                 .expect("code actions should not resolve reassigned aliases")
                 .is_empty()
         );
-        assert_unsupported_generated_call_diagnostic(&state, &uri);
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-alias-reassigned",
+            "Mortar generated alias is reassigned",
+        );
+    }
+
+    #[test]
+    fn local_alias_with_stale_source_map_fails_closed_without_marker_fallback() {
+        let workspace = create_stale_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    // mortar:snapshot=example.Client.findById
+    void read(Object renderer, Long id) {
+        var client = QClient.CLIENT;
+        client.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "client.read");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("stale source-map alias hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("stale source-map alias code actions should fail closed")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("stale source-map alias definition should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-source-map-stale",
+            "Mortar source-map metadata is stale or missing",
+        );
+    }
+
+    #[test]
+    fn local_alias_with_missing_source_map_fails_closed_without_marker_fallback() {
+        let workspace = create_snapshot_workspace_with(
+            "example.Client.findById",
+            "select c.id from clients c where c.id = ?",
+        );
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    // mortar:snapshot=example.Client.findById
+    void read(Object renderer, Long id) {
+        var client = QClient.CLIENT;
+        client.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "client.read");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("missing source-map alias hover should fail closed")
+                .is_none()
+        );
+        assert_fail_closed_diagnostic(
+            &state,
+            &uri,
+            "mortar-source-map-stale",
+            "Mortar source-map metadata is stale or missing",
+        );
     }
 
     #[test]
@@ -3508,18 +4346,77 @@ public final class SecondRepository {
             .expect("snapshot name should exist")
     }
 
+    fn assert_client_find_by_id_editor_features(
+        state: &LspState,
+        uri: &Uri,
+        workspace: &Path,
+        document: &str,
+    ) {
+        let position = position_of(document, "findById");
+        let hover = state
+            .hover(uri, position)
+            .expect("hover should resolve")
+            .expect("generated alias hover should resolve");
+        assert!(matches!(
+            hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id from clients c where c.id = ?")
+        ));
+
+        let actions = state
+            .code_actions(uri, position)
+            .expect("code actions should resolve");
+        let titles = actions
+            .iter()
+            .map(|action| match action {
+                CodeActionOrCommand::CodeAction(action) => action.title.as_str(),
+                CodeActionOrCommand::Command(command) => command.title.as_str(),
+            })
+            .collect::<Vec<_>>();
+        assert!(titles.contains(&"Copy generated SQL"));
+        assert!(titles.contains(&"Run PostgreSQL EXPLAIN"));
+
+        let definition = state
+            .definition(uri, position)
+            .expect("definition should resolve")
+            .expect("definition should navigate to snapshot");
+        let GotoDefinitionResponse::Scalar(location) = definition else {
+            panic!("expected one snapshot location");
+        };
+        assert_eq!(
+            location.uri,
+            file_uri_for_path(&workspace.join("mortar.sql.snap.json"))
+        );
+        assert_eq!(
+            location.range.start.line,
+            snapshot_line(workspace, "example.Client.findById")
+        );
+        assert!(state.document_diagnostics(uri).is_empty());
+    }
+
     fn assert_unsupported_generated_call_diagnostic(state: &LspState, uri: &Uri) {
+        assert_fail_closed_diagnostic(
+            state,
+            uri,
+            "mortar-alias-unsupported",
+            "Mortar generated call uses unsupported alias syntax",
+        );
+    }
+
+    fn assert_fail_closed_diagnostic(
+        state: &LspState,
+        uri: &Uri,
+        expected_code: &str,
+        expected_message: &str,
+    ) {
         let diagnostics = state.document_diagnostics(uri);
         assert_eq!(diagnostics.len(), 1);
-        assert_eq!(
-            diagnostics[0].message,
-            "Mortar generated call uses unsupported Java syntax"
-        );
+        assert_eq!(diagnostics[0].message, expected_message);
         assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
         assert!(matches!(
             diagnostics[0].code,
             Some(lsp_types::NumberOrString::String(ref code))
-                if code == "mortar-generated-call-unsupported"
+                if code == expected_code
         ));
     }
 

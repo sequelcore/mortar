@@ -46,7 +46,60 @@ suite("Mortar VS Code extension smoke", () => {
     await vscode.window.showTextDocument(document);
     await delay(500);
 
-    const position = new vscode.Position(6, 40);
+    await assertGeneratedReadEditorFeatures(
+      uri,
+      document,
+      "readCanonical",
+      "QClient.CLIENT.read",
+    );
+    await assertGeneratedReadEditorFeatures(
+      uri,
+      document,
+      "readMetamodelAlias",
+      "client.read",
+    );
+    await assertGeneratedReadEditorFeatures(
+      uri,
+      document,
+      "readNamespaceAlias",
+      "read.findById",
+    );
+  });
+
+  test("publishes diagnostics for unsupported generated alias shapes", async () => {
+    const workspace = smokeWorkspace();
+    const unsupportedFile = path.join(
+      workspace,
+      "src",
+      "main",
+      "java",
+      "example",
+      "UnsupportedAliasRepository.java",
+    );
+    const uri = vscode.Uri.file(unsupportedFile);
+    const document = await vscode.workspace.openTextDocument(uri);
+    await vscode.window.showTextDocument(document);
+
+    const diagnostics = await waitFor(
+      () => vscode.languages.getDiagnostics(uri),
+      (diagnostics) => diagnostics.length > 0,
+    );
+
+    assert.equal(diagnostics[0].source, "mortar");
+    assert.equal(diagnostics[0].code, "mortar-alias-unsupported");
+    assert.match(
+      diagnostics[0].message,
+      /Mortar generated call uses unsupported alias syntax/,
+    );
+  });
+
+  async function assertGeneratedReadEditorFeatures(
+    uri: vscode.Uri,
+    document: vscode.TextDocument,
+    methodName: string,
+    needle: string,
+  ): Promise<void> {
+    const position = positionOfAfter(document, methodName, needle);
     const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
       "vscode.executeHoverProvider",
       uri,
@@ -84,7 +137,7 @@ suite("Mortar VS Code extension smoke", () => {
       }),
       "Definition should navigate to the matching SQL snapshot entry",
     );
-  });
+  }
 
   test("publishes diagnostics for missing snapshot markers", async () => {
     const workspace = smokeWorkspace();
@@ -167,6 +220,19 @@ function contentValue(content: vscode.MarkdownString | vscode.MarkedString): str
     return candidate.value;
   }
   return JSON.stringify(content);
+}
+
+function positionOfAfter(
+  document: vscode.TextDocument,
+  anchor: string,
+  needle: string,
+): vscode.Position {
+  const text = document.getText();
+  const anchorOffset = text.indexOf(anchor);
+  assert.notEqual(anchorOffset, -1, `${anchor} should exist in fixture`);
+  const offset = text.indexOf(needle, anchorOffset);
+  assert.notEqual(offset, -1, `${needle} should exist after ${anchor}`);
+  return document.positionAt(offset);
 }
 
 async function waitFor<T>(

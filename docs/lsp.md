@@ -45,9 +45,21 @@ metadata and does not navigate to generated Java line/column locations.
 Definition requests navigate to the matching snapshot entry.
 
 R19.2 recovers generated fixed-read calls with local Java syntax parsing in the
-Rust LSP. The syntax parser is used only for bounded same-document facts:
-import declarations, target method invocations, immediate `.read(renderer)`
-receiver chains, and source ranges. Fresh `mortar-source-map-v1` plus
+Rust LSP. R19.3 adds an identity-bearing local binding model for two finite
+alias shapes:
+
+```java
+var client = QClient.CLIENT;
+client.read(renderer).findById(id);
+
+var read = QClient.CLIENT.read(renderer);
+read.findById(id);
+```
+
+The syntax parser is used only for bounded same-document facts: import
+declarations, target method invocations, immediate `.read(renderer)` receiver
+chains, source ranges, and direct local variable initializers that prove one of
+the supported alias identities. Fresh `mortar-source-map-v1` plus
 `mortar-metadata-v1` remains authoritative for query identity and snapshot
 routing, and SQL still comes only from `mortar.sql.snap.json`.
 
@@ -64,12 +76,16 @@ stale source-map evidence.
 When a generated fixed-read call is present but its metamodel context cannot be
 recovered by local syntax, or metadata/source-map inputs are missing, stale,
 mismatched, or ambiguous, the LSP fails closed: hover and code actions return no
-SQL, definition returns no target, and diagnostics warn that source-map
-metadata is stale or missing.
+SQL, definition returns no target, and diagnostics report a bounded reason code.
+R19.4 uses reason codes for unsupported alias syntax, ambiguous aliases,
+reassigned aliases, stale or missing source-map evidence, missing SQL snapshots,
+and malformed Java buffers.
 
-R19 does not yet add Java type binding, classpath-aware semantics,
-helper-returned receiver support, local alias success, wildcard static import
-success, arbitrary DSL call-site analysis, or editor-side SQL rendering.
+R19 does not add Java type binding, classpath-aware semantics, helper-returned
+receiver support, alias chaining, aliases proven only by type annotations,
+field aliases, cross-method or cross-file aliases, wildcard static import
+success, ambiguous explicit import collision success, arbitrary DSL call-site
+analysis, or editor-side SQL rendering.
 
 Explicit markers remain a legacy/manual path:
 
