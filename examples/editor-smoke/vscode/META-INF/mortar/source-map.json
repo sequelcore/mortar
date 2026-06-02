@@ -1,0 +1,34 @@
+{
+  "format": "mortar-source-map-v1",
+  "metadata": {
+    "format": "mortar-metadata-v1",
+    "path": "META-INF/mortar/entities.json",
+    "fingerprint": "sha256:058f816b7c5941538862fdc34d3ffc59dd54229aa7d2f2b4ae5caa27568f42f0"
+  },
+  "queries": [
+    {
+      "id": "example.Client.findById",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findById",
+      "query_name": "findById",
+      "snapshot": "example.Client.findById",
+      "row_type": "example.QClient.FindByIdRow",
+      "parameters": [
+        {
+          "name": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findById"
+      },
+      "freshness": {
+        "fingerprint": "sha256:7196ccb7d298233e37f9f987263049279439572923730d97ba4315b24df36b84"
+      }
+    }
+  ]
+}

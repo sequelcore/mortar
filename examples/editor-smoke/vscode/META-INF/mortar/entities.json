@@ -1,0 +1,52 @@
+{
+  "format": "mortar-metadata-v1",
+  "entities": [
+    {
+      "java_type": "example.Client",
+      "table": "clients",
+      "alias": "c",
+      "columns": [
+        {
+          "property": "id",
+          "column": "id",
+          "java_type": "java.lang.Long"
+        },
+        {
+          "property": "name",
+          "column": "name",
+          "java_type": "java.lang.String"
+        }
+      ],
+      "relations": [
+        {
+          "property": "account",
+          "local_column": "account_id",
+          "target_table": "accounts",
+          "target_alias": "a",
+          "target_column": "id",
+          "nullable": false
+        }
+      ],
+      "queries": [
+        {
+          "id": "example.Client.findById",
+          "name": "findById",
+          "shape": "findById",
+          "generated_source": {
+            "java_type": "example.QClient",
+            "member": "read.findById",
+            "generated_type": "example.QClient.Read"
+          },
+          "parameters": [
+            {
+              "name": "id",
+              "java_type": "java.lang.Long"
+            }
+          ],
+          "row_type": "example.QClient.FindByIdRow",
+          "snapshot": "example.Client.findById"
+        }
+      ]
+    }
+  ]
+}

@@ -153,7 +153,10 @@ R18 follows current toolchain guidance:
 - Generated metadata freshness requires explicit stale-data contracts. R18.3
   adds `mortar-source-map-v1` with stable source anchors and semantic
   fingerprints; R18.4 verifies stale shared output is refreshed or fails closed.
-  Editor hover/copy SQL behavior still belongs to later R18 slices.
+  R18.5 makes VS Code/LSP hover, copy SQL, EXPLAIN code actions, and
+  snapshot-entry navigation consume fresh source-map-backed generated fixed-read
+  data, while stale or missing source-map evidence fails closed with no SQL
+  output and a diagnostic.
 
 References:
 

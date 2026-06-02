@@ -1730,6 +1730,54 @@ contract.
 Non-goals: no broad editor UX, no completion, no IntelliJ parity program, no
 marker-only success path for stale metadata.
 
+Implementation plan:
+
+1. Add source-map-backed Rust LSP lookup for generated fixed-read calls only.
+   The LSP loads `META-INF/mortar/entities.json`,
+   `META-INF/mortar/source-map.json`, and `mortar.sql.snap.json` from the
+   active workspace root, validates `mortar-source-map-v1` freshness against
+   `mortar-metadata-v1`, resolves canonical generated read-facade calls such as
+   `QClient.CLIENT.read(renderer).findById(id)` and
+   `QClient.CLIENT.read(renderer).findAll()` by metamodel context plus
+   `read.findById` / `read.findAll`, and then uses the snapshot key for SQL.
+2. Keep explicit `mortar:snapshot` marker routing as a manual legacy path only.
+   If the caret is on a generated fixed-read call and metadata/source-map data
+   is missing or stale, hover, copy SQL, and navigation must return no editor
+   output instead of falling back to the marker path.
+3. Add minimal LSP definition support that navigates to the matching snapshot
+   entry in `mortar.sql.snap.json`. R18.5 does not navigate to arbitrary Java
+   DSL locations or generated-source line/column positions because ADR-0007
+   intentionally records stable anchors instead of compiler line locations.
+4. Update the VS Code smoke fixture and tests to prove hover, copy SQL, and
+   definition use source-map-backed generated fixed-read calls.
+
+Verification plan:
+
+- Rust LSP unit tests cover fresh source-map hover/actions/definition, stale
+  source-map fail-closed behavior, and the legacy marker path.
+- VS Code smoke tests exercise `vscode.executeHoverProvider`,
+  `vscode.executeCodeActionProvider`, and `vscode.executeDefinitionProvider`
+  against the source-map-backed fixture.
+- Full R18 closure runs the required Java, Rust, VS Code, publish dry-run,
+  whitespace, and private-path scrub gates.
+
+Completed R18.5 evidence:
+
+- The xhigh debate selected a strict layered hybrid: source-map plus fresh
+  metadata is authoritative for generated fixed-read editor routing; snapshots
+  remain SQL evidence; explicit markers remain only as a legacy/manual path and
+  never mask stale source-map data.
+- `rust/crates/mortar-lsp/src/lib.rs` now consumes `mortar-source-map-v1` and
+  `mortar-metadata-v1` for canonical generated read-facade calls, matches
+  source-map entries by generated metamodel/read namespace context plus
+  generated member instead of `generated_member` alone, fails closed on
+  stale/missing/ambiguous/unparseable source-map evidence, publishes stale
+  source-map diagnostics, and navigates definitions to the matching snapshot
+  entry.
+- `editors/vscode` remains a thin language-client adapter. Its test workspace
+  now carries source-map and metadata artifacts, and smoke tests cover hover,
+  copy/EXPLAIN code actions, and definition through VS Code provider commands.
+
 #### R18.6: Schema Drift, Completion Review, And R19 Handoff
 
 Objective: package the final R18 hardening evidence and decide what remains
@@ -1740,6 +1788,20 @@ against R16/R17 constraints, updated roadmap evidence, and a handoff that keeps
 R19 as a go/no-go pre-release-candidate hardening gate rather than a release.
 
 Non-goals: no release, publish, tag, private migration, or performance claim.
+
+Completed R18.6 evidence:
+
+- Documentation closure updated `docs/lsp.md`, `docs/metadata.md`,
+  `docs/refactor-safety.md`, `docs/roadmap.md`, and this plan to describe the
+  source-map-backed editor contract, fail-closed behavior, and legacy marker
+  limits.
+- R19 handoff remains pre-release candidate hardening only. Performance work
+  should gather repeated clean-commit JMH/PostgreSQL artifacts, Windows/Linux CI
+  confidence, release dry-run evidence, upgrade notes, and a go/no-go checklist
+  before any public claim or beta/release-candidate decision.
+- R18.6 does not implement R19, does not add Java public API, and does not
+  authorize release, push, tag, publication, private migration, or broad editor
+  UX work.
 
 ### R18 Exit Criteria
 

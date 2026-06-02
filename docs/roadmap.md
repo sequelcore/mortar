@@ -1071,7 +1071,7 @@ R17 completion record:
 
 ### R18: Stability, Refactor Safety And Tooling Hardening
 
-Status: In Progress
+Status: Done
 
 Goal: harden the R16/R17 surface and the R17 fixture corpus against stale
 generated code, stale metadata, refactor failures, snapshot drift, editor
@@ -1117,10 +1117,10 @@ R18 concrete guarantees:
   output as current;
 - generated Java source maps connect generated fixed-read facade symbols,
   query IDs, snapshot keys, row types, parameters, stable source anchors, and
-  freshness fingerprints. Rendered SQL evidence remains in SQL snapshots and
-  editor behavior remains later R18 scope;
-- VS Code hover/copy SQL uses source-map-backed data for real R17 fixture
-  generated read calls;
+  freshness fingerprints. Rendered SQL evidence remains in SQL snapshots;
+- VS Code hover/copy SQL, EXPLAIN code actions, snapshot-entry definition
+  navigation, and stale-source-map diagnostics use source-map-backed data for
+  generated fixed-read calls;
 - domain and application fixture modules remain Mortar-free;
 - multi-module Gradle behavior remains correct for clean and incremental
   builds.
@@ -1132,8 +1132,8 @@ R18 slices:
 - R18.3: Generated metadata and source-map contract hardening. Status:
   Done.
 - R18.4: Gradle incremental and multi-module verification. Status: Done.
-- R18.5: VS Code source-map hover and copy SQL hardening. Status: Planned.
-- R18.6: Schema drift, completion review, and R19 handoff. Status: Planned.
+- R18.5: VS Code source-map hover and copy SQL hardening. Status: Done.
+- R18.6: Schema drift, completion review, and R19 handoff. Status: Done.
 
 Non-goals:
 
@@ -1241,6 +1241,36 @@ R18.1 and R18.2 completion record:
   processor output; Rust compiler tests consume the same bytes and require
   source-map freshness validation to pass. This is contract evidence only, not
   VS Code/LSP editor UX.
+- R18.5 implemented the strict layered hybrid approved by the xhigh debate:
+  `mortar-source-map-v1` plus fresh `mortar-metadata-v1` is authoritative for
+  generated fixed-read routing, while `mortar.sql.snap.json` remains the SQL
+  evidence source. Explicit `mortar:snapshot` markers remain a legacy/manual
+  path only and are not used as fallback when a generated fixed-read call has
+  stale, missing, or ambiguous source-map data.
+- R18.5 added Rust LSP definition support and source-map-backed hover, copy SQL,
+  PostgreSQL EXPLAIN code actions, snapshot-entry navigation, and stale
+  source-map diagnostics for canonical generated read-facade calls such as
+  `QClient.CLIENT.read(renderer).findById(id)` and
+  `QClient.CLIENT.read(renderer).findAll()`. The resolver selects entries by
+  generated metamodel/read namespace context plus member, not by
+  `generated_member` alone. The implementation does not add Java public API,
+  does not render SQL in editor metadata, and does not navigate to generated
+  Java line/column positions.
+- R18.5 updated the VS Code smoke fixture to include
+  `META-INF/mortar/entities.json`, `META-INF/mortar/source-map.json`, and a
+  matching `mortar.sql.snap.json`, plus smoke assertions for hover, code
+  actions, and definition through the shared LSP.
+- R18.6 closed the remaining documentation gaps in `docs/lsp.md`,
+  `docs/metadata.md`, `docs/refactor-safety.md`, and `docs/plan.md`. The R19
+  handoff keeps performance work as evidence-gated pre-release hardening:
+  repeated clean-commit JMH/PostgreSQL artifacts, Windows/Linux CI confidence,
+  release dry-run, upgrade notes, and go/no-go review only. R19 does not start
+  in this slice.
+- R18.5 focused verification passed on 2026-06-02:
+  `cd rust && cargo test -p mortar-lsp`; from `editors/vscode`,
+  `bun run typecheck` and `bun run test` with five VS Code smoke tests passing
+  and the PostgreSQL EXPLAIN smoke skipped because no connection string was
+  configured.
 - R18.3/R18.4 focused verification passed on 2026-06-02:
   `gradlew.bat :java:processor:test --no-daemon`; and from `rust`,
   `cargo test -p mortar-compiler`.
@@ -1260,17 +1290,20 @@ R18.1 and R18.2 completion record:
   and
   `cd rust && cargo test
   detects_r17_schema_drift_cases_from_ticket_fixture_metadata`.
-- Final verification passed on 2026-06-02: `gradlew.bat check --no-daemon`;
-  from `rust`, `cargo fmt --all --check`,
-  `cargo clippy --all-targets --all-features -- -D warnings`, and
-  `cargo test`; from `editors/vscode`, `bun run typecheck`;
-  `git diff --check`; and the private path/private project scrub excluding
-  build outputs and caches.
+- Final R18 verification passed on 2026-06-02:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test`,
+  and `cargo publish --dry-run -p mortar-compiler`; from `editors/vscode`,
+  `bun run typecheck` and `bun run test`; `git diff --check`; and diff-level
+  plus broad private path/private project scrub excluding build outputs, caches,
+  dependency folders, and VS Code test downloads.
 - Migration note: no public Java API or generated Java API changed. A new
   parser-level `mortar-source-map-v1` artifact was added by ADR-0007, and the
   processor incremental classification changed from `isolating` to
-  `aggregating` to match shared output behavior. Existing `mortar-metadata-v1`
-  files remain compatible.
+  `aggregating` to match shared output behavior. R18.5 adds Rust LSP/VS Code
+  consumption of the existing source-map contract without changing Java public
+  API. Existing `mortar-metadata-v1` files remain compatible.
 - Release note: no release, tag, publication, merge, push, or private
   application migration is authorized by this slice.
 
@@ -1321,6 +1354,14 @@ If implementation discovers that a slice is wrong, do not silently drift. Update
 - IntelliJ Platform Gradle Plugin 2.x is the official JetBrains build tooling for IntelliJ plugins, and its dependency DSL documents `intellijIdea("2026.1.2")`, `bundledPlugin("com.intellij.java")`, and `testFramework(TestFrameworkType.Platform)` for Java plugin development: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin.html and https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-dependencies-extension.html
 - IntelliJ Platform Gradle Plugin publishing tasks publish the `buildPlugin` or signed archive to JetBrains Marketplace and accept token/channel settings through the `intellijPlatform.publishing` DSL, supporting Mortar's token-gated Marketplace packaging: https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-extension.html and https://plugins.jetbrains.com/docs/intellij/tools-intellij-platform-gradle-plugin-tasks.html
 - LSP supports hover responses with markdown/code blocks, validating an editor-neutral future: https://ntaylormullen.github.io/language-server-protocol/specifications/specification-3-17/
+- Official LSP 3.17 documents hover, code action, and go-to-definition as
+  position/range-based language-feature requests that may return no result when
+  a server cannot resolve valid data:
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
+- VS Code extension APIs document command registration/execution, which Mortar
+  uses for smoke tests and the `mortar.copySql` / `mortar.explainSql` command
+  bridge:
+  https://code.visualstudio.com/api/references/vscode-api
 - JMH is the standard Java harness for JVM microbenchmarks and should be used for performance claims: https://github.com/openjdk/jmh
 - PgJDBC server-prepared statements can reduce repeated SQL text, enable binary transfer, reuse execution plans, and reuse result metadata; `prepareThreshold`, `preparedStatementCacheQueries`, and `binaryTransfer` are relevant Mortar benchmark variables: https://pgjdbc.github.io/pgjdbc/documentation/server-prepare/ and https://jdbc.postgresql.org/documentation/use/?lang=en
 - PostgreSQL's extended query protocol separates Parse, Bind, and Execute, and prepared statement/portal state can be reused across executions: https://www.postgresql.org/docs/17/protocol-flow.html
