@@ -33,7 +33,11 @@ position mapping currently uses an explicit source marker:
 The marker is a transitional explicit contract until Mortar's Java processor emits
 proper source maps.
 
-Pending R11 work must replace manual markers with generated source mappings.
+R16.1 defines the first minimal query-id/generated-source metadata hook in
+`META-INF/mortar/entities.json`. The metadata records stable query IDs and
+generated Java symbols only; it does not define editor protocol behavior or
+query semantics. R16.1 does not implement source-map-backed hover/navigation.
+R18 owns hardening editor behavior against real generated facade contracts.
 
 ## Run
 

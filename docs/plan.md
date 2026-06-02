@@ -129,7 +129,7 @@ Public documentation scrub:
 
 ## R16 Canonical Design: Java-First Ergonomics And Query Authoring
 
-Status: Planned
+Status: In Progress
 
 R16 is a design target for implementation slices, not an implementation record.
 It must not be marked `In Progress` until product code exists, and it must not
@@ -573,6 +573,43 @@ Acceptance criteria: one minimal facade shape can expose rendered SQL and
 metadata without the processor rendering SQL or the runtime owning query
 semantics.
 
+Status: Done on 2026-06-01.
+
+Completed scope:
+
+- Added ADR-0005 for the R16 bound read-query contract and API budget.
+- Added `MortarBoundQuery<T>` in `java/core` as a framework-free named
+  rendered read-query inspection contract.
+- Added `MortarJdbcBoundQuery<T>` in `java/runtime-jdbc` as a JDBC row-mapping
+  wrapper with no execution methods.
+- Extended processor metadata with minimal query-id/generated-source entries for the
+  existing generated `findAll` and `findById` executor shapes.
+- Extended Rust metadata parsing for optional query metadata entries.
+- Added a processor guard test proving the R16.2 `Read` facade namespace is not
+  generated in R16.1.
+- Extended the testkit to assert SQL from `MortarBoundQuery<?>`.
+
+R16.1 architecture debate outcome:
+
+- The xhigh architecture challenge found the original slice could become too
+  broad if one public type mixed core inspection, JDBC binding, row mapping,
+  metadata, and editor behavior.
+- The accepted design splits core inspection from JDBC row mapping.
+- Query IDs are justified now; full source-map-backed hover/navigation remains
+  R18 scope.
+- Generated API budget is documented now and enforced by a negative processor
+  test in R16.1; complete generated API-budget enforcement belongs to R16.2
+  golden tests when the new facade namespace exists.
+
+Verification evidence:
+
+- `gradlew.bat check --no-daemon` passed on 2026-06-01.
+- From `rust`, `cargo fmt --all --check` passed on 2026-06-01.
+- From `rust`, `cargo clippy --all-targets --all-features -- -D warnings`
+  passed on 2026-06-01.
+- From `rust`, `cargo test` passed on 2026-06-01.
+- From `editors/vscode`, `bun run typecheck` passed on 2026-06-01.
+
 #### R16.2: Fixed Single-Table Read Facades
 
 Objective: replace manual generated parameter-record usage for `findById` and
@@ -660,9 +697,9 @@ domain-facing ports stay Mortar-free.
 - Generated API explosion: the biggest R16 risk is producing a public generated
   surface larger than users can understand. Favor one small generated facade and
   typed builders over method combinations.
-- Editor overreach: VS Code should consume metadata and source maps. It should
-  not become a second query compiler or promise completion that normal generated
-  Java code cannot provide.
+- Editor overreach: editors may use generated-source metadata as tooling input.
+  They must not become a second query compiler or promise completion that
+  normal generated Java code cannot provide.
 
 ### Sequel Standards Preserved
 

@@ -18,6 +18,8 @@ Package: `dev.mortar.core`
 - `QueryBuilder<T>`: fluent select query builder.
 - `QuerySpec`: immutable query model.
 - `RenderedQuery`: SQL, parameters, and metadata.
+- `MortarBoundQuery<T>`: framework-free named rendered read-query inspection
+  contract for SQL, parameters, parameter types, metadata, and row type.
 - `QueryRenderer`: renderer boundary for dialects.
 
 ## Processor
@@ -47,6 +49,10 @@ Current generated read executors:
 - `findById(renderer)`: selects all mapped columns by identifier with
   `FindByIdParameters`.
 
+R16.1 does not generate the new R16 fixed read facade namespace yet. The
+processor only emits the metadata hooks and keeps the current generated
+executor shape until R16.2.
+
 Processor diagnostics fail compilation for invalid entity metadata before a
 bad generated query can reach runtime. The stable processor diagnostic codes are
 listed in [`diagnostics.md`](diagnostics.md).
@@ -71,6 +77,8 @@ Package: `dev.mortar.jdbc`
   caller-owned prepared query reuse through `prepare(...)`.
 - `MortarGeneratedQuery<P, T>`: generated query contract with SQL, parameter
   types, metadata, direct JDBC binding, and direct row mapping.
+- `MortarJdbcBoundQuery<T>`: JDBC row-mapping adapter for a core
+  `MortarBoundQuery<T>`. It does not execute itself.
 - `MortarNoParameters`: singleton marker for generated queries that do not need
   caller-supplied parameters.
 - `MortarPreparedQuery<P, T>`: reusable prepared generated query for
@@ -92,4 +100,5 @@ Package: `dev.mortar.spring`
 Package: `dev.mortar.testkit`
 
 - `MortarSqlAssertions`: SQL, parameter, and metadata assertions.
+  Accepts `RenderedQuery` and `MortarBoundQuery<?>`.
 - `MortarExplainPlanAssertions`: PostgreSQL EXPLAIN text assertions.

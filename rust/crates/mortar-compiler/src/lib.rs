@@ -52,6 +52,8 @@ pub struct MortarEntityMetadata {
     pub alias: String,
     pub columns: Vec<MortarColumnMetadata>,
     pub relations: Vec<MortarRelationMetadata>,
+    #[serde(default)]
+    pub queries: Vec<MortarQueryMetadata>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -70,6 +72,30 @@ pub struct MortarRelationMetadata {
     pub target_column: String,
     #[serde(default)]
     pub nullable: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarQueryMetadata {
+    pub id: String,
+    pub name: String,
+    pub shape: String,
+    pub generated_source: MortarQuerySourceMetadata,
+    pub parameters: Vec<MortarQueryParameterMetadata>,
+    pub row_type: String,
+    pub snapshot: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarQuerySourceMetadata {
+    pub java_type: String,
+    pub member: String,
+    pub generated_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MortarQueryParameterMetadata {
+    pub name: String,
+    pub java_type: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -542,6 +568,57 @@ mod tests {
 
         assert_eq!(metadata.entities[0].java_type, "example.Client");
         assert_eq!(metadata.entities[0].columns[0].column, "id");
+        assert!(metadata.entities[0].queries.is_empty());
+    }
+
+    #[test]
+    fn parses_query_generated_source_metadata() {
+        let metadata = super::parse_mortar_metadata_file(
+            r#"{
+  "format": "mortar-metadata-v1",
+  "entities": [
+    {
+      "java_type": "example.Client",
+      "table": "clients",
+      "alias": "c",
+      "columns": [
+        {
+          "property": "id",
+          "column": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "relations": [],
+      "queries": [
+        {
+          "id": "example.Client.findById",
+          "name": "findById",
+          "shape": "findById",
+          "generated_source": {
+            "java_type": "example.QClient",
+            "member": "findById",
+            "generated_type": "example.QClient.FindByIdQuery"
+          },
+          "parameters": [
+            {
+              "name": "id",
+              "java_type": "java.lang.Long"
+            }
+          ],
+          "row_type": "example.QClient.FindByIdRow",
+          "snapshot": "example.Client.findById"
+        }
+      ]
+    }
+  ]
+}"#,
+        )
+        .expect("query metadata should parse");
+
+        let query = &metadata.entities[0].queries[0];
+        assert_eq!(query.id, "example.Client.findById");
+        assert_eq!(query.generated_source.java_type, "example.QClient");
+        assert_eq!(query.parameters[0].name, "id");
     }
 
     #[test]

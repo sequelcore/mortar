@@ -765,7 +765,7 @@ Current evidence:
 
 ### R16: Java-First Ergonomics And Query Authoring
 
-Status: Planned
+Status: In Progress
 
 Goal: let a Java user write bounded fixed-shape read queries with less friction
 than handwritten SQL plus JDBC binding and row mapping, while preserving strong
@@ -785,7 +785,7 @@ Scope:
 
 R16 slices:
 
-- R16.1: Contract, ADR, and API budget. Status: Planned.
+- R16.1: Contract, ADR, and API budget. Status: Done.
 - R16.2: Fixed single-table read facades. Status: Planned.
 - R16.3: Bound parameters, visible SQL, and testkit contract. Status: Planned.
 - R16.4: Examples and usage guidance. Status: Planned.
@@ -828,6 +828,32 @@ Exit criteria:
   not render SQL itself;
 - `MortarJdbcClient` remains the execution boundary;
 - no ORM-like behavior is introduced.
+
+Current evidence:
+
+- R16.1 added ADR-0005, `MortarBoundQuery<T>` in `java/core`,
+  `MortarJdbcBoundQuery<T>` in `java/runtime-jdbc`, optional query metadata
+  parsing in `rust/crates/mortar-compiler`, processor query-id/generated-source
+  metadata for existing generated `findAll` and `findById` executor shapes,
+  and testkit SQL assertions for `MortarBoundQuery<?>`.
+- R16.1 deliberately did not generate the R16.2 `Read` facade namespace. The
+  processor guard test
+  `MortarProcessorGenerationTest.doesNotGenerateR16ReadFacadeNamespaceYet`
+  proves the new facade shape is still absent.
+- `gradlew.bat check --no-daemon` passed on 2026-06-01.
+- From `rust`, `cargo fmt --all --check`, `cargo clippy --all-targets
+  --all-features -- -D warnings`, and `cargo test` passed on 2026-06-01.
+- From `editors/vscode`, `bun run typecheck` passed on 2026-06-01.
+- Changed modules/docs: `java/core`, `java/runtime-jdbc`, `java/processor`,
+  `java/testkit`, `rust/crates/mortar-compiler`, `docs/adr`,
+  `docs/api-reference.md`, `docs/metadata.md`, `docs/lsp.md`,
+  `docs/testkit.md`, `docs/spec/architecture.md`, `docs/plan.md`, and
+  `docs/roadmap.md`.
+- Architecture note: core owns rendered query inspection, runtime-jdbc owns JDBC
+  row mapping/execution, the processor still does not render SQL, and generated
+  query objects still do not execute themselves.
+- Release note: no release, tag, publication, merge, push, or application
+  migration is authorized by this slice.
 
 ### R17: Real-Query Coverage Gate
 

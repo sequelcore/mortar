@@ -9,7 +9,7 @@ SQL snapshot file format and CLI update behavior are documented in
 ## SQL Assertions
 
 Use `MortarSqlAssertions.assertThatSql` with a `RenderedQuery` from any dialect
-renderer.
+renderer or a framework-free `MortarBoundQuery<?>`.
 
 ```java
 import static dev.mortar.testkit.MortarSqlAssertions.assertThatSql;
@@ -17,6 +17,10 @@ import static dev.mortar.testkit.MortarSqlAssertions.assertThatSql;
 assertThatSql(renderedQuery)
     .hasSql("select c.id from clients c where c.id = ?");
 ```
+
+R16.1 `MortarBoundQuery<?>` assertions unwrap the canonical `RenderedQuery`.
+The testkit still depends only on `java/core`; JDBC row mapping remains outside
+the testkit contract.
 
 `renders(...)` is kept as a readable alias for `hasSql(...)`.
 

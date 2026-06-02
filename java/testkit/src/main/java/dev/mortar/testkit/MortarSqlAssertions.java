@@ -2,6 +2,7 @@ package dev.mortar.testkit;
 
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.Join;
+import dev.mortar.core.MortarBoundQuery;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.RenderedQuery;
 import dev.mortar.core.TableRef;
@@ -22,6 +23,11 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
 
     public static MortarSqlAssertions assertThatSql(RenderedQuery renderedQuery) {
         return new MortarSqlAssertions(renderedQuery);
+    }
+
+    public static MortarSqlAssertions assertThatSql(MortarBoundQuery<?> query) {
+        Objects.requireNonNull(query, "query cannot be null");
+        return new MortarSqlAssertions(query.rendered());
     }
 
     public MortarSqlAssertions hasSql(String expectedSql) {

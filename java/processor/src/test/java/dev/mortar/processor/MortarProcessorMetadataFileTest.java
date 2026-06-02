@@ -91,7 +91,40 @@ final class MortarProcessorMetadataFileTest {
                           "java_type": "java.lang.String"
                         }
                       ],
-                      "relations": []
+                      "relations": [],
+                      "queries": [
+                        {
+                          "id": "example.Client.findAll",
+                          "name": "findAll",
+                          "shape": "findAll",
+                          "generated_source": {
+                            "java_type": "example.QClient",
+                            "member": "findAll",
+                            "generated_type": "example.QClient.FindAllQuery"
+                          },
+                          "parameters": [],
+                          "row_type": "example.QClient.FindAllRow",
+                          "snapshot": "example.Client.findAll"
+                        },
+                        {
+                          "id": "example.Client.findById",
+                          "name": "findById",
+                          "shape": "findById",
+                          "generated_source": {
+                            "java_type": "example.QClient",
+                            "member": "findById",
+                            "generated_type": "example.QClient.FindByIdQuery"
+                          },
+                          "parameters": [
+                            {
+                              "name": "id",
+                              "java_type": "java.lang.Long"
+                            }
+                          ],
+                          "row_type": "example.QClient.FindByIdRow",
+                          "snapshot": "example.Client.findById"
+                        }
+                      ]
                     }
                   ]
                 }

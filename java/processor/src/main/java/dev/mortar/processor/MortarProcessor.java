@@ -91,6 +91,7 @@ public final class MortarProcessor extends AbstractProcessor {
             }
             return Optional.of(new EntityMetadata(
                 packageName + "." + entityName,
+                packageName + "." + generatedClassName,
                 tableName,
                 alias,
                 columns,
@@ -644,7 +645,7 @@ public final class MortarProcessor extends AbstractProcessor {
             }
             json.append("      ],\n");
             if (entity.relations().isEmpty()) {
-                json.append("      \"relations\": []\n");
+                json.append("      \"relations\": [],\n");
             } else {
                 json.append("      \"relations\": [\n");
                 for (int relationIndex = 0; relationIndex < entity.relations().size(); relationIndex++) {
@@ -662,8 +663,47 @@ public final class MortarProcessor extends AbstractProcessor {
                     }
                     json.append("\n");
                 }
-                json.append("      ]\n");
+                json.append("      ],\n");
             }
+            json.append("      \"queries\": [\n");
+            List<QueryModel> queries = entity.queries();
+            for (int queryIndex = 0; queryIndex < queries.size(); queryIndex++) {
+                QueryModel query = queries.get(queryIndex);
+                json.append("        {\n");
+                json.append("          \"id\": \"").append(escapeJson(query.id())).append("\",\n");
+                json.append("          \"name\": \"").append(escapeJson(query.name())).append("\",\n");
+                json.append("          \"shape\": \"").append(escapeJson(query.shape())).append("\",\n");
+                json.append("          \"generated_source\": {\n");
+                json.append("            \"java_type\": \"").append(escapeJson(query.sourceMap().javaType())).append("\",\n");
+                json.append("            \"member\": \"").append(escapeJson(query.sourceMap().member())).append("\",\n");
+                json.append("            \"generated_type\": \"").append(escapeJson(query.sourceMap().generatedType())).append("\"\n");
+                json.append("          },\n");
+                if (query.parameters().isEmpty()) {
+                    json.append("          \"parameters\": [],\n");
+                } else {
+                    json.append("          \"parameters\": [\n");
+                    for (int parameterIndex = 0; parameterIndex < query.parameters().size(); parameterIndex++) {
+                        QueryParameterModel parameter = query.parameters().get(parameterIndex);
+                        json.append("            {\n");
+                        json.append("              \"name\": \"").append(escapeJson(parameter.name())).append("\",\n");
+                        json.append("              \"java_type\": \"").append(escapeJson(parameter.javaType())).append("\"\n");
+                        json.append("            }");
+                        if (parameterIndex < query.parameters().size() - 1) {
+                            json.append(",");
+                        }
+                        json.append("\n");
+                    }
+                    json.append("          ],\n");
+                }
+                json.append("          \"row_type\": \"").append(escapeJson(query.rowType())).append("\",\n");
+                json.append("          \"snapshot\": \"").append(escapeJson(query.snapshot())).append("\"\n");
+                json.append("        }");
+                if (queryIndex < queries.size() - 1) {
+                    json.append(",");
+                }
+                json.append("\n");
+            }
+            json.append("      ]\n");
             json.append("    }");
             if (entityIndex < metadata.size() - 1) {
                 json.append(",");
@@ -792,10 +832,53 @@ public final class MortarProcessor extends AbstractProcessor {
 
     private record EntityMetadata(
         String javaType,
+        String generatedType,
         String tableName,
         String alias,
         List<ColumnModel> columns,
         List<RelationModel> relations
     ) {
+        private List<QueryModel> queries() {
+            List<QueryModel> queries = new ArrayList<>();
+            queries.add(new QueryModel(
+                javaType + ".findAll",
+                "findAll",
+                "findAll",
+                new QuerySourceMap(generatedType, "findAll", generatedType + ".FindAllQuery"),
+                List.of(),
+                generatedType + ".FindAllRow",
+                javaType + ".findAll"
+            ));
+            columns.stream()
+                .filter(ColumnModel::id)
+                .findFirst()
+                .ifPresent(id -> queries.add(new QueryModel(
+                    javaType + ".findById",
+                    "findById",
+                    "findById",
+                    new QuerySourceMap(generatedType, "findById", generatedType + ".FindByIdQuery"),
+                    List.of(new QueryParameterModel(id.propertyName(), id.javaType())),
+                    generatedType + ".FindByIdRow",
+                    javaType + ".findById"
+                )));
+            return List.copyOf(queries);
+        }
+    }
+
+    private record QueryModel(
+        String id,
+        String name,
+        String shape,
+        QuerySourceMap sourceMap,
+        List<QueryParameterModel> parameters,
+        String rowType,
+        String snapshot
+    ) {
+    }
+
+    private record QuerySourceMap(String javaType, String member, String generatedType) {
+    }
+
+    private record QueryParameterModel(String name, String javaType) {
     }
 }
