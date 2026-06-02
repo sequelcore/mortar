@@ -1550,7 +1550,7 @@ R19.5 completion record:
 
 ### R20: Performance And Runtime Efficiency
 
-Status: Planned
+Status: In Progress
 
 Goal: produce evidence-backed performance and runtime-efficiency work after the
 R19 editor semantics risk is closed.
@@ -1568,6 +1568,50 @@ Scope:
   claims;
 - no public release, release candidate, tag, publication, migration, or public
   performance claim without a separate go/no-go review.
+
+Slices:
+
+- R20.1: Benchmark readiness audit and source-backed research. Status: Done.
+- R20.2: Canonical performance plan and public-claim policy. Status: Done.
+- R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
+  Status: Planned.
+- R20.4: Generated fixed-read overhead and allocation profiling. Status:
+  Planned.
+- R20.5: DSL query render/execute overhead profiling for broader read and write
+  shapes. Status: Planned.
+- R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
+  Status: Planned.
+- R20.7: Optimization candidates ranked only by retained evidence. Status:
+  Planned.
+- R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
+
+R20.1/R20.2 completion record:
+
+- The benchmark readiness audit is recorded in
+  `docs/benchmarks/r20-benchmark-readiness.md`.
+- Current benchmark inventory was classified as internal-only, harness-trustworthy,
+  or not public-ready. Existing local JSON/build-output reports remain
+  engineering evidence only, not public performance proof.
+- Comparison rules now require exact baseline naming for ordinary JDBC, tuned
+  PgJDBC, reusable prepared JDBC, maximum handwritten JDBC, jOOQ, and QueryDSL
+  SQL. Controlled JDBC-double benchmarks are explicitly blocked from supporting
+  real database claims.
+- Required environment metadata, repeatability rules, retained artifact policy,
+  and public claim policy are documented before any R20 optimization work.
+- The xhigh performance debate concluded that Mortar should target near-zero
+  overhead relative to tuned/reusable JDBC, not an unqualified "faster than
+  JDBC" claim. Rust remains tooling/LSP infrastructure and is not part of the
+  Java per-query runtime path.
+- R20.1/R20.2 changed docs only: `docs/benchmarks/r20-benchmark-readiness.md`,
+  `docs/benchmarks/README.md`, `docs/performance.md`, `docs/plan.md`, and this
+  roadmap.
+- Migration note: no Java public API, runtime behavior, generated Java API,
+  Rust LSP semantics, metadata format, source-map format, benchmark harness
+  code, release, publication, migration, or public performance claim changed.
+- Research references added for JMH, JVM profiling, PgJDBC server prepare,
+  PostgreSQL prepared-plan behavior, HikariCP statement-cache guidance,
+  jOOQ/QueryDSL comparison risks, Criterion, tree-sitter, rust-analyzer
+  performance practice, and public benchmark reporting discipline.
 
 ## Canonical Update Protocol
 
@@ -1634,10 +1678,43 @@ If implementation discovers that a slice is wrong, do not silently drift. Update
   but R19 defers that Java dependency and classpath complexity:
   https://github.com/javaparser/javaparser
 - JMH is the standard Java harness for JVM microbenchmarks and should be used for performance claims: https://github.com/openjdk/jmh
+- JMH samples document dead-code, blackhole, loop, fork, per-invocation setup,
+  and profiler pitfalls that R20 benchmark plans must account for:
+  https://github.com/openjdk/jmh/tree/master/jmh-samples/src/main/java/org/openjdk/jmh/samples
 - PgJDBC server-prepared statements can reduce repeated SQL text, enable binary transfer, reuse execution plans, and reuse result metadata; `prepareThreshold`, `preparedStatementCacheQueries`, and `binaryTransfer` are relevant Mortar benchmark variables: https://pgjdbc.github.io/pgjdbc/documentation/server-prepare/ and https://jdbc.postgresql.org/documentation/use/?lang=en
 - PostgreSQL's extended query protocol separates Parse, Bind, and Execute, and prepared statement/portal state can be reused across executions: https://www.postgresql.org/docs/17/protocol-flow.html
 - PostgreSQL `plan_cache_mode` documents the custom-plan versus generic-plan tradeoff for prepared statements: https://www.postgresql.org/docs/17/runtime-config-query.html
 - HikariCP documents pool-level statement caching as an anti-pattern and recommends relying on driver-level caches: https://sources.debian.org/src/hikaricp/2.7.1-2/README.md
+- jOOQ documents statement type, statement reuse, and performance considerations
+  that make reference-library comparisons sensitive to statement lifecycle and
+  fetch behavior:
+  https://www.jooq.org/doc/latest/manual/sql-building/dsl-context/custom-settings/settings-statement-type/,
+  https://www.jooq.org/doc/latest/manual/sql-execution/reusing-statements/,
+  and https://www.jooq.org/doc/latest/manual/sql-execution/performance-considerations/
+- QueryDSL SQL documents SQL query execution APIs and rendered SQL/bindings,
+  supporting R20's requirement to normalize SQL shape, binding behavior, and row
+  materialization before comparison:
+  https://querydsl.com/static/querydsl/latest/reference/html_single/ and
+  https://querydsl.com/static/querydsl/5.0.0/apidocs/com/querydsl/sql/SQLQuery.html
+- Criterion documents warmup, statistical analysis, profiling mode, custom
+  measurements, and CI noise caveats for future Rust tooling benchmarks:
+  https://bheisler.github.io/criterion.rs/book/index.html
+- Tree-sitter parser docs and Rust APIs document incremental parsing,
+  old-tree reuse, parse options, and query cursors for future LSP parser/resolver
+  benchmarks:
+  https://tree-sitter.github.io/tree-sitter/using-parsers/3-advanced-parsing.html,
+  https://docs.rs/tree-sitter/latest/tree_sitter/struct.Parser.html,
+  https://docs.rs/tree-sitter/latest/tree_sitter/struct.ParseOptions.html,
+  and https://docs.rs/tree-sitter/latest/tree_sitter/struct.QueryCursor.html
+- rust-analyzer documents batch and incremental analysis performance tooling,
+  supporting R20's split between LSP batch/corpus and incremental-edit
+  benchmark shapes:
+  https://rust-analyzer.github.io/book/contributing/ and
+  https://rust-analyzer.github.io/book/contributing/guide.html
+- ACM artifact badging and SPEC run rules support R20's retained artifact,
+  configuration disclosure, and independent reproducibility requirements:
+  https://www.acm.org/publications/policies/artifact-review-and-badging-current
+  and https://www.spec.org/cpu2026/docs/runrules.html
 - Recent JVM benchmarking research warns that even JMH microbenchmarks can be misleading when JVM profile context is unrealistic, supporting Mortar's real-PostgreSQL benchmark matrix requirement: https://arxiv.org/abs/2605.23570
 - Testcontainers for Java supports PostgreSQL integration tests with throwaway real database instances: https://java.testcontainers.org/modules/databases/postgres/
 - PostgreSQL 16 array operators document array containment `@>` and overlap `&&`, supporting Mortar's array predicate rendering: https://www.postgresql.org/docs/16/functions-array.html

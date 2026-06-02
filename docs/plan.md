@@ -2329,6 +2329,116 @@ R20 performance handoff:
 - make no public performance claims without retained evidence and reviewer
   sign-off.
 
+## R20 Canonical Plan: Performance And Runtime Efficiency
+
+Status: In Progress.
+
+R20 is measurement and planning first. R20.1 and R20.2 complete the readiness
+audit and canonical plan only; they do not authorize optimization, runtime API
+changes, editor semantic changes, publication, migration, or public performance
+claims.
+
+### R20.1 Benchmark Readiness Audit And Research
+
+Status: Done.
+
+Output:
+
+- `docs/benchmarks/r20-benchmark-readiness.md` records source-backed benchmark
+  findings, the xhigh debate outcome, current benchmark inventory, trust
+  classification, environment metadata requirements, repeatability rules,
+  comparison rules, retained artifact policy, and public claim policy.
+- Existing benchmark reports remain internal engineering baselines. Local build
+  outputs and controlled JDBC-double results are not public-ready evidence.
+
+Acceptance criteria:
+
+- controlled JDBC doubles are blocked from supporting database claims;
+- SQL rendering, fake JDBC adapter overhead, live PostgreSQL execution, and
+  Rust LSP/tooling performance are separate categories;
+- ordinary JDBC, tuned PgJDBC, reusable prepared JDBC, maximum handwritten JDBC,
+  jOOQ, and QueryDSL SQL comparisons are explicitly named and constrained;
+- no public claim is allowed without retained raw artifacts and review.
+
+### R20.2 Canonical Benchmark Plan
+
+Status: Done.
+
+Output:
+
+- `docs/roadmap.md`, this plan, `docs/performance.md`, and
+  `docs/benchmarks/README.md` now point to the R20 benchmark-readiness audit.
+- R20 is split into evidence-gated slices before optimization candidates are
+  ranked.
+
+Canonical slices:
+
+- R20.1: Benchmark readiness audit and source-backed research. Status: Done.
+- R20.2: Canonical performance plan and public-claim policy. Status: Done.
+- R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
+  Status: Planned.
+- R20.4: Generated fixed-read overhead and allocation profiling. Status:
+  Planned.
+- R20.5: DSL query render/execute overhead profiling for broader read and write
+  shapes. Status: Planned.
+- R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
+  Status: Planned.
+- R20.7: Optimization candidates ranked only by retained evidence. Status:
+  Planned.
+- R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
+
+### R20.3 Java Runtime Baseline Matrix
+
+Status: Planned.
+
+Measure the existing PostgreSQL matrix on a clean commit with retained
+throughput, allocation, and sample-time latency artifacts. Keep ordinary JDBC,
+tuned PgJDBC, reusable prepared JDBC, Mortar render-per-call, Mortar
+pre-rendered, processor-generated Mortar, and prepared processor-generated
+Mortar separate.
+
+### R20.4 Generated Fixed-Read Profiling
+
+Status: Planned.
+
+Profile generated `findById` fixed-read overhead and allocation against the
+named JDBC baselines. Do not optimize binder, mapper, renderer, or prepared
+query code until retained artifacts identify the dominant cost.
+
+### R20.5 DSL Render/Execute Profiling
+
+Status: Planned.
+
+Measure dynamic DSL render and execute paths for broader read and write shapes,
+including join/page and update-batch scenarios, before generalizing any
+fixed-read conclusion.
+
+### R20.6 Rust LSP Resolver Benchmarking
+
+Status: Planned.
+
+Design Rust tooling benchmarks for parser/resolver/diagnostic latency,
+allocation, large-document behavior, source-map lookup, and incremental edit
+behavior. Criterion is the preferred candidate, but R20.6 must choose the
+lowest-maintenance harness that produces retained, comparable artifacts.
+
+### R20.7 Evidence-Ranked Optimizations
+
+Status: Planned.
+
+Rank optimization candidates only after R20.3-R20.6 evidence exists. Candidate
+areas may include generated binders/mappers, renderer reuse, prepared-query
+lifecycle, LSP parser caching, and incremental parse strategy, but no candidate
+is approved before evidence exists.
+
+### R20.8 Public Performance Report Gate
+
+Status: Planned.
+
+Public reporting remains blocked until retained raw artifacts, environment
+metadata, derived summaries, limitations, and benchmark-readiness review are
+complete. Any public claim must name the exact baseline and workload.
+
 ## Future Maturity Gates
 
 R17 is planned as the real-query coverage gate above. It uses a public

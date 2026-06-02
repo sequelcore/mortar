@@ -84,6 +84,10 @@ Public-ready benchmark review needs retained raw JSON, not only copied terminal
 output. Use the manual `Benchmarks` GitHub Actions workflow for repeated real
 PostgreSQL runs with downloadable artifacts.
 
+R20.1 adds the canonical benchmark-readiness audit in
+[`r20-benchmark-readiness.md`](r20-benchmark-readiness.md). When this README and
+the R20 audit disagree, the R20 audit is the stricter rule for public claims.
+
 Workflow inputs:
 
 - `jmhIncludes`: JMH include regex. Default:
@@ -162,13 +166,18 @@ Public performance claims require:
 - `jmhBaselineAllocation` output for allocation claims;
 - `jmhPostgresExecution` output for real database execution claims;
 - `jmhPostgresExecutionLatency` output for p50/p95/p99 latency claims;
+- exact baseline naming: ordinary JDBC, tuned PgJDBC, reusable prepared JDBC,
+  maximum handwritten JDBC, jOOQ, or QueryDSL SQL;
 - JDK, OS, CPU, commit, command, fork/warmup/measurement counts, and benchmark
   source links in a report;
 - retained raw JMH JSON artifacts from the manual `Benchmarks` workflow for
   any public throughput, allocation, or latency claim;
 - separate interpretation for rendering microbenchmarks and JDBC adapter
   overhead;
-- no claims about real database throughput from controlled JDBC-double benchmarks.
+- no claims about real database throughput from controlled JDBC-double
+  benchmarks;
+- no public claim until a benchmark-readiness review signs off against retained
+  artifacts.
 
 Follow `docs/performance-report-template.md` for public reports.
 
