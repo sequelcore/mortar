@@ -1930,12 +1930,13 @@ only for deterministic clean compile and semantic SQL/schema cases.
 
 ## R19 Canonical Design: Java Call Resolution And Editor Semantics Hardening
 
-Status: Planned
+Status: In Progress
 
 R19 is a design target for implementation slices, not an implementation record.
 It must not be marked `Done` until product code, tests, docs, verification
 evidence, and review evidence exist. This planning slice only records the
-canonical direction.
+canonical direction. R19.1 and R19.2 are implemented; R19.3 through R19.5
+remain planned.
 
 ### Problem Statement
 
@@ -1982,6 +1983,8 @@ binding, or helper-returned receiver support.
 
 R19.1: Call-resolution contract and ADR/update.
 
+Status: Done.
+
 - Owns ADR-0008, this plan, and roadmap sequencing.
 - Defines supported and unsupported call-resolution patterns before
   implementation.
@@ -1989,6 +1992,8 @@ R19.1: Call-resolution contract and ADR/update.
   no implementation claims, and no fake parser promises.
 
 R19.2: Local Java syntax resolution foundation.
+
+Status: Done.
 
 - Owns Rust LSP resolver structure only.
 - Preserves R18 canonical direct-call behavior before adding aliases.
@@ -1998,6 +2003,8 @@ R19.2: Local Java syntax resolution foundation.
   entries.
 
 R19.3: Canonical aliases, local variables, and static import resolution.
+
+Status: Planned.
 
 - Supports only same-method or same-block local aliases assigned once to a
   generated metamodel constant or to a resolved `.read(renderer)` namespace.
@@ -2009,6 +2016,8 @@ R19.3: Canonical aliases, local variables, and static import resolution.
 
 R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion.
 
+Status: Planned.
+
 - Ensures hover, copy SQL, EXPLAIN, definition, and diagnostics agree on the
   same resolver outcome.
 - Adds VS Code smoke fixtures for canonical success, local alias success,
@@ -2018,6 +2027,8 @@ R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion.
   `editors/vscode`, `bun run typecheck` and `bun run test`.
 
 R19.5: Editor semantics review and R20 performance handoff.
+
+Status: Planned.
 
 - Reviews editor behavior against LSP semantics and public docs.
 - Updates `docs/lsp.md`, `docs/metadata.md`, `docs/vscode.md`, and the roadmap
@@ -2093,6 +2104,55 @@ R19 can be marked `Done` only when:
 - no public docs claim full Java parser support, full Java semantics, runtime
   API changes, performance implementation, release, or migration;
 - full verification and review evidence is recorded in the roadmap.
+
+### R19.1/R19.2 Completion Evidence
+
+R19.1 added executable Rust LSP tests for the call-resolution boundary before
+the parser refactor:
+
+- R18 direct generated calls still resolve.
+- R18 explicit static imports still resolve.
+- `findAll` still resolves.
+- multiple source-map entries with the same read member still disambiguate by
+  generated metamodel context;
+- stale, missing, duplicate, or invalid source-map/snapshot evidence still
+  fails closed;
+- generated-looking helper-returned receivers fail closed;
+- wildcard static imports are not a success path;
+- local metamodel aliases, local read-namespace aliases, parenthesized aliases,
+  reassigned aliases, and same-name aliases in unrelated methods are not
+  overclaimed before R19.3;
+- same-name generated-looking aliases in unrelated lexical scopes do not poison
+  ordinary receivers;
+- ordinary non-Mortar `read*` APIs are not treated as generated-looking calls;
+- ambiguous bare receivers are not inferred;
+- harmless parentheses around canonical receivers/read namespaces still resolve;
+- generated-looking text inside Java strings and comments is ignored;
+- UTF-16 LSP positions remain correct.
+
+R19.2 added a local Java syntax-resolution foundation in
+`rust/crates/mortar-lsp` using `tree-sitter-java`. The resolver now parses the
+active Java document, extracts import declarations, target method invocations,
+the immediate `.read(renderer)` receiver chain, and byte ranges, then maps the
+syntax result back into the existing resolver outcome:
+
+- `Call` for supported canonical generated fixed-read calls;
+- `FailClosed` for generated-looking unsupported or untrusted calls;
+- `NotGeneratedCall` for ordinary Java code.
+
+The implementation keeps fresh `mortar-metadata-v1` plus
+`mortar-source-map-v1` authoritative and keeps `mortar.sql.snap.json` as the
+only SQL evidence source. It does not add Java type binding, classpath-aware
+semantics, alias success, helper-returned receiver support, wildcard static
+import success, Java public API changes, generated Java API changes, VS Code
+client changes, performance work, release work, or R20 behavior.
+
+Focused verification passed on 2026-06-02:
+
+```bash
+cd rust
+cargo test -p mortar-lsp
+```
 
 ## Future Maturity Gates
 

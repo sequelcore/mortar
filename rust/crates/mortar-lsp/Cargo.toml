@@ -20,3 +20,5 @@ mortar-compiler = { version = "0.1.0", path = "../mortar-compiler" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tree-sitter.workspace = true
+tree-sitter-java.workspace = true
