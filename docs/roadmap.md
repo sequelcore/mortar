@@ -763,6 +763,84 @@ Current evidence:
   `java/testkit`, `docs/api-reference.md`, and `docs/roadmap.md`.
 - Release note: no Maven Central or GitHub release is authorized by this slice.
 
+### R16: Java-First Ergonomics And Query Authoring
+
+Status: Planned
+
+Goal: let a Java user write the majority of real application queries with less
+friction than raw SQL, strong autocomplete, early errors, and visible SQL.
+
+Scope:
+
+- shorter API for common queries;
+- generated query facades;
+- less repository ceremony;
+- better VS Code autocomplete and SQL hover;
+- clear diagnostics when fields, classes, or columns change;
+- repository and service examples;
+- no hidden ORM behavior;
+- no loss of SQL transparency.
+
+### R17: Real-Query Coverage Gate
+
+Status: Planned
+
+Goal: prove R16 ergonomics against realistic public query fixtures before any
+existing application migration.
+
+Scope:
+
+- public non-application-specific fixture app and query corpus;
+- optional filters;
+- joins;
+- stable pagination;
+- count and exists queries;
+- DTO projections;
+- search-style queries;
+- simple writes;
+- batches;
+- compile-time and refactor failure cases for renamed or deleted fields.
+
+Constraint:
+
+- if a capability is not needed by the realistic query corpus, it should not
+  enter R17.
+
+### R18: Stability, Refactor Safety And Tooling Hardening
+
+Status: Planned
+
+Goal: harden the R16/R17 surface before real projects depend on it.
+
+Scope:
+
+- generator golden tests;
+- source and binary compatibility checks for public APIs;
+- Gradle incremental compilation cases;
+- multi-module cases;
+- clearer diagnostics for entity, field, and column metadata changes;
+- VS Code and IntelliJ behavior against real generated contracts, not fragile
+  transitional paths;
+- schema drift workflow;
+- SQL snapshots as a normal developer workflow.
+
+### R19: Pre-Release Candidate Hardening
+
+Status: Planned
+
+Goal: decide whether Mortar is ready for a serious public beta or release
+candidate gate, not automatically release.
+
+Scope:
+
+- CI confidence on Windows and Linux;
+- release dry-run;
+- benchmark artifacts from clean commits before claims;
+- upgrade and migration notes for pre-1.0 changes;
+- security, release, and support policy review;
+- complete CI-running examples;
+- go/no-go checklist for a future beta or later controlled migration pilot.
+
 ## Canonical Update Protocol
 
 Every completed slice must update this roadmap in the same change.
