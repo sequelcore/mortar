@@ -1308,7 +1308,7 @@ R18.1 and R18.2 completion record:
 
 ### R19: Java Call Resolution And Editor Semantics Hardening
 
-Status: Planned
+Status: In Progress
 
 Goal: harden Mortar's Java call-site recovery for source-map-backed editor
 features before R20 performance work or public demo claims.
@@ -1338,9 +1338,9 @@ Scope:
 R19 slices:
 
 - R19.1: Call-resolution contract, ADR-0008, and public planning docs. Status:
-  Planned.
+  Done.
 - R19.2: Local Java syntax resolution foundation with R18 canonical parity.
-  Status: Planned.
+  Status: Done.
 - R19.3: Canonical aliases, local variables, and explicit static import
   resolution. Status: Planned.
 - R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion. Status:
@@ -1393,6 +1393,36 @@ Exit criteria:
   semantics;
 - no Java runtime API, generated Java API, performance, release, or migration
   claim is added.
+
+R19.1/R19.2 completion record:
+
+- R19.1 added executable Rust LSP contract coverage for the R19 boundary:
+  R18 canonical direct calls, explicit static imports, `findAll`,
+  metamodel-context disambiguation, stale/missing/duplicate source-map
+  fail-closed behavior, UTF-16 LSP positions, helper-returned receivers,
+  wildcard static imports, local metamodel aliases, local read-namespace
+  aliases, parenthesized aliases, reassigned aliases, same-name aliases in
+  unrelated methods and lexical scopes, ordinary non-Mortar `read*` APIs,
+  ambiguous bare receivers, harmless parentheses around canonical
+  receivers/read namespaces, and generated-looking text in strings/comments.
+- R19.2 added `tree-sitter-java` and `tree-sitter` to the Rust LSP tooling
+  path and replaced token-only generated-call detection with local Java syntax
+  parsing over the active document. The syntax resolver extracts import
+  declarations, method invocations, immediate `.read(renderer)` receiver
+  chains, and byte ranges, then returns the same `Call`, `FailClosed`, or
+  `NotGeneratedCall` outcome used by hover, copy SQL, EXPLAIN, definition, and
+  diagnostics.
+- Source-map freshness remains authoritative: the syntax resolver only recovers
+  generated metamodel/read-member context. Fresh `mortar-metadata-v1` plus
+  `mortar-source-map-v1` still selects the snapshot key, and
+  `mortar.sql.snap.json` remains the SQL evidence source.
+- R19.2 deliberately did not add alias/local-variable success, helper-returned
+  receiver support, wildcard static import support, Java type binding,
+  classpath-aware semantics, Java public API changes, generated Java API
+  changes, VS Code client expansion, performance work, release work, or R20
+  behavior.
+- Focused verification passed on 2026-06-02:
+  `cd rust && cargo test -p mortar-lsp`.
 
 R20 handoff:
 

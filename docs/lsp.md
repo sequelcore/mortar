@@ -44,11 +44,22 @@ The source map provides the snapshot key, and the LSP reads SQL from
 metadata and does not navigate to generated Java line/column locations.
 Definition requests navigate to the matching snapshot entry.
 
+R19.2 recovers generated fixed-read calls with local Java syntax parsing in the
+Rust LSP. The syntax parser is used only for bounded same-document facts:
+import declarations, target method invocations, immediate `.read(renderer)`
+receiver chains, and source ranges. Fresh `mortar-source-map-v1` plus
+`mortar-metadata-v1` remains authoritative for query identity and snapshot
+routing, and SQL still comes only from `mortar.sql.snap.json`.
+
 When a generated fixed-read call is present but its metamodel context cannot be
-recovered by the lightweight Java call scanner, or metadata/source-map inputs
-are missing, stale, mismatched, or ambiguous, the LSP fails closed: hover and
-code actions return no SQL, definition returns no target, and diagnostics warn
-that source-map metadata is stale or missing.
+recovered by local syntax, or metadata/source-map inputs are missing, stale,
+mismatched, or ambiguous, the LSP fails closed: hover and code actions return no
+SQL, definition returns no target, and diagnostics warn that source-map
+metadata is stale or missing.
+
+R19.2 does not add Java type binding, classpath-aware semantics,
+helper-returned receiver support, local alias success, wildcard static import
+success, arbitrary DSL call-site analysis, or editor-side SQL rendering.
 
 Explicit markers remain a legacy/manual path:
 
@@ -66,7 +77,8 @@ query semantics. R16.1 does not implement source-map-backed hover/navigation.
 R18.3 adds parser-ready `META-INF/mortar/source-map.json` data with format
 `mortar-source-map-v1`, stable generated fixed-read anchors, and freshness
 fingerprints. R18.5 makes the Rust LSP consume that artifact for VS Code hover,
-copy SQL, PostgreSQL EXPLAIN code actions, and snapshot-entry navigation.
+copy SQL, PostgreSQL EXPLAIN code actions, and snapshot-entry navigation. R19.2
+keeps that source-map contract and hardens the Java call-site recovery layer.
 
 ## Run
 

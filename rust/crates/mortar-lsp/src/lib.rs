@@ -20,6 +20,7 @@ use mortar_compiler::{
 };
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use tree_sitter::{Node, Parser};
 
 pub type LspResult<T> = Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
@@ -723,154 +724,479 @@ fn generated_call_at(document: &str, position: Position) -> GeneratedCallDetecti
         return GeneratedCallDetection::NotGeneratedCall;
     };
 
-    for method in ["findById", "findAll"] {
-        for (method_start, method_end) in token_ranges(document, method) {
-            if offset >= method_start && offset <= method_end {
-                return generated_call_before_method(document, method_start, method);
-            }
-            match generated_call_before_method(document, method_start, method) {
-                GeneratedCallDetection::Call(call)
-                    if offset >= call.start && offset <= call.end =>
-                {
-                    return GeneratedCallDetection::Call(call);
-                }
-                GeneratedCallDetection::FailClosed { start, end }
-                    if offset >= start && offset <= end =>
-                {
-                    return GeneratedCallDetection::FailClosed { start, end };
-                }
-                _ => {}
+    let Some(syntax) = JavaSyntaxResolution::parse(document) else {
+        return GeneratedCallDetection::NotGeneratedCall;
+    };
+    syntax.generated_call_at(offset)
+}
+
+fn generated_call_markers(document: &str) -> Vec<GeneratedCallMarker> {
+    JavaSyntaxResolution::parse(document)
+        .map(|syntax| syntax.generated_call_markers())
+        .unwrap_or_default()
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum SyntaxGeneratedCall {
+    Call {
+        call: GeneratedCall,
+        method_start: usize,
+    },
+    FailClosed {
+        start: usize,
+        end: usize,
+        method_start: usize,
+        member: String,
+    },
+}
+
+impl SyntaxGeneratedCall {
+    fn contains(&self, offset: usize) -> bool {
+        match self {
+            SyntaxGeneratedCall::Call { call, .. } => offset >= call.start && offset <= call.end,
+            SyntaxGeneratedCall::FailClosed { start, end, .. } => {
+                offset >= *start && offset <= *end
             }
         }
     }
 
-    GeneratedCallDetection::NotGeneratedCall
+    fn detection(&self) -> GeneratedCallDetection {
+        match self {
+            SyntaxGeneratedCall::Call { call, .. } => GeneratedCallDetection::Call(call.clone()),
+            SyntaxGeneratedCall::FailClosed { start, end, .. } => {
+                GeneratedCallDetection::FailClosed {
+                    start: *start,
+                    end: *end,
+                }
+            }
+        }
+    }
+
+    fn marker(&self, document: &str) -> Option<GeneratedCallMarker> {
+        let (method_start, member) = match self {
+            SyntaxGeneratedCall::Call { call, method_start } => {
+                (*method_start, call.generated_member.clone())
+            }
+            SyntaxGeneratedCall::FailClosed {
+                method_start,
+                member,
+                ..
+            } => (*method_start, member.clone()),
+        };
+        position_for_offset(document, method_start).map(|position| GeneratedCallMarker {
+            line: position.line,
+            character: position.character,
+            member,
+        })
+    }
 }
 
-fn generated_call_before_method(
-    document: &str,
-    method_start: usize,
-    method: &str,
-) -> GeneratedCallDetection {
-    let Some(method_dot) = previous_non_whitespace(document, method_start) else {
-        return GeneratedCallDetection::NotGeneratedCall;
-    };
-    if document.as_bytes()[method_dot] != b'.' {
-        return GeneratedCallDetection::NotGeneratedCall;
-    }
-    let Some(read_call_end) = previous_non_whitespace(document, method_dot) else {
-        return GeneratedCallDetection::NotGeneratedCall;
-    };
-    if document.as_bytes()[read_call_end] != b')' {
-        return generated_looking_fail_closed(document, method_start);
-    }
-    let Some(read_call_start) = matching_open_paren(document, read_call_end) else {
-        return GeneratedCallDetection::FailClosed {
-            start: read_call_end,
-            end: method_start + method.len(),
-        };
-    };
-    let Some(read_name_start) = previous_identifier_start(document, read_call_start) else {
-        return GeneratedCallDetection::FailClosed {
-            start: read_call_start,
-            end: method_start + method.len(),
-        };
-    };
-    if &document[read_name_start..read_call_start] != "read" {
-        return generated_looking_fail_closed(document, method_start);
-    }
-    let Some(read_dot) = previous_non_whitespace(document, read_name_start) else {
-        return GeneratedCallDetection::FailClosed {
-            start: read_name_start,
-            end: method_start + method.len(),
-        };
-    };
-    if document.as_bytes()[read_dot] != b'.' {
-        return GeneratedCallDetection::FailClosed {
-            start: read_name_start,
-            end: method_start + method.len(),
-        };
-    }
-    let receiver = receiver_chain_before(document, read_dot);
-    let Some(receiver) = receiver else {
-        return GeneratedCallDetection::FailClosed {
-            start: read_name_start,
-            end: method_start + method.len(),
-        };
-    };
-    let call_end = method_call_end(document, method_start + method.len())
-        .unwrap_or(method_start + method.len());
-    let fail_closed = GeneratedCallDetection::FailClosed {
-        start: receiver.start,
-        end: call_end,
-    };
-    if receiver.parts.is_empty() {
-        return fail_closed;
+#[derive(Debug, Clone)]
+struct JavaSyntaxResolution<'a> {
+    document: &'a str,
+    calls: Vec<SyntaxGeneratedCall>,
+}
+
+impl<'a> JavaSyntaxResolution<'a> {
+    fn parse(document: &'a str) -> Option<Self> {
+        let mut parser = Parser::new();
+        let language = tree_sitter_java::LANGUAGE;
+        parser.set_language(&language.into()).ok()?;
+        let tree = parser.parse(document, None)?;
+        let root = tree.root_node();
+        let imports = JavaImports::parse_syntax(document, root);
+        let mut calls = Vec::new();
+        collect_generated_method_invocations(document, root, &imports, &mut calls);
+        Some(Self { document, calls })
     }
 
-    let imports = JavaImports::parse(document);
-    let Some(generated_entity_type) = generated_entity_type_for_receiver(&receiver.parts, &imports)
+    fn generated_call_at(&self, offset: usize) -> GeneratedCallDetection {
+        self.calls
+            .iter()
+            .find(|call| call.contains(offset))
+            .map(SyntaxGeneratedCall::detection)
+            .unwrap_or(GeneratedCallDetection::NotGeneratedCall)
+    }
+
+    fn generated_call_markers(&self) -> Vec<GeneratedCallMarker> {
+        self.calls
+            .iter()
+            .filter_map(|call| call.marker(self.document))
+            .collect()
+    }
+}
+
+fn collect_generated_method_invocations(
+    document: &str,
+    node: Node<'_>,
+    imports: &JavaImports,
+    calls: &mut Vec<SyntaxGeneratedCall>,
+) {
+    if node.kind() == "method_invocation"
+        && let Some(call) = syntax_generated_call_for_method_invocation(document, node, imports)
+    {
+        calls.push(call);
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_generated_method_invocations(document, child, imports, calls);
+    }
+}
+
+fn syntax_generated_call_for_method_invocation(
+    document: &str,
+    node: Node<'_>,
+    imports: &JavaImports,
+) -> Option<SyntaxGeneratedCall> {
+    let method_name = node.child_by_field_name("name")?;
+    let method = node_text(document, method_name);
+    if !matches!(method, "findById" | "findAll") {
+        return None;
+    }
+    let member = format!("read.{method}");
+    let object = unwrapped_expression_node(node.child_by_field_name("object")?);
+    let method_start = method_name.start_byte();
+
+    if object.kind() != "method_invocation" {
+        return generated_looking_syntax_fail_closed(document, object, node, method_start, member);
+    }
+
+    let Some(read_name) = object.child_by_field_name("name") else {
+        return Some(syntax_fail_closed(
+            object.start_byte(),
+            node.end_byte(),
+            method_start,
+            member,
+        ));
+    };
+    if node_text(document, read_name) != "read" {
+        return generated_looking_syntax_fail_closed(document, object, node, method_start, member);
+    }
+
+    let Some(receiver_node) = object.child_by_field_name("object") else {
+        return Some(syntax_fail_closed(
+            object.start_byte(),
+            node.end_byte(),
+            method_start,
+            member,
+        ));
+    };
+    let receiver_node = unwrapped_expression_node(receiver_node);
+    let receiver = receiver_chain_from_syntax(document, receiver_node);
+    let fail_closed = syntax_fail_closed(
+        receiver
+            .as_ref()
+            .map(|receiver| receiver.start)
+            .unwrap_or_else(|| receiver_node.start_byte()),
+        node.end_byte(),
+        method_start,
+        member.clone(),
+    );
+    let Some(receiver) = receiver else {
+        return Some(fail_closed);
+    };
+    if receiver.parts.is_empty() {
+        return Some(fail_closed);
+    }
+
+    let Some(generated_entity_type) = generated_entity_type_for_receiver(&receiver.parts, imports)
     else {
-        return if receiver_is_generated_like(&receiver.parts) {
-            fail_closed
+        return if receiver_is_generated_like(&receiver.parts)
+            || receiver_is_generated_like_local_alias(document, node, &receiver.parts)
+        {
+            Some(fail_closed)
         } else {
-            GeneratedCallDetection::NotGeneratedCall
+            None
         };
     };
     let generated_read_namespace = format!("{generated_entity_type}.Read");
 
-    GeneratedCallDetection::Call(GeneratedCall {
-        generated_entity_type,
-        generated_read_namespace,
-        generated_member: format!("read.{method}"),
-        start: receiver.start,
-        end: call_end,
+    Some(SyntaxGeneratedCall::Call {
+        call: GeneratedCall {
+            generated_entity_type,
+            generated_read_namespace,
+            generated_member: member,
+            start: receiver.start,
+            end: node.end_byte(),
+        },
+        method_start,
     })
 }
 
-fn generated_looking_fail_closed(document: &str, method_start: usize) -> GeneratedCallDetection {
-    let prefix = document[..method_start]
-        .chars()
-        .rev()
-        .take(80)
-        .collect::<Vec<_>>()
-        .into_iter()
-        .rev()
-        .collect::<String>();
-    if prefix.contains(".read") || prefix.contains("read.") {
-        GeneratedCallDetection::FailClosed {
-            start: method_start.saturating_sub(prefix.len()),
-            end: method_start,
-        }
-    } else {
-        GeneratedCallDetection::NotGeneratedCall
+fn generated_looking_syntax_fail_closed(
+    document: &str,
+    object: Node<'_>,
+    node: Node<'_>,
+    method_start: usize,
+    member: String,
+) -> Option<SyntaxGeneratedCall> {
+    let object = unwrapped_expression_node(object);
+    (object_is_generated_like_local_alias(document, node, object)
+        || object_is_generated_read_field(document, node, object))
+    .then(|| syntax_fail_closed(object.start_byte(), node.end_byte(), method_start, member))
+}
+
+fn syntax_fail_closed(
+    start: usize,
+    end: usize,
+    method_start: usize,
+    member: String,
+) -> SyntaxGeneratedCall {
+    SyntaxGeneratedCall::FailClosed {
+        start,
+        end,
+        method_start,
+        member,
     }
 }
 
-fn generated_call_markers(document: &str) -> Vec<GeneratedCallMarker> {
-    ["findById", "findAll"]
-        .into_iter()
-        .flat_map(|method| {
-            token_ranges(document, method)
-                .into_iter()
-                .filter_map(move |(start, _)| {
-                    let member = format!("read.{method}");
-                    match generated_call_before_method(document, start, method) {
-                        GeneratedCallDetection::Call(_)
-                        | GeneratedCallDetection::FailClosed { .. } => {
-                            position_for_offset(document, start).map(|position| {
-                                GeneratedCallMarker {
-                                    line: position.line,
-                                    character: position.character,
-                                    member: member.clone(),
-                                }
-                            })
-                        }
-                        GeneratedCallDetection::NotGeneratedCall => None,
-                    }
-                })
+fn receiver_chain_from_syntax(document: &str, node: Node<'_>) -> Option<ReceiverChain> {
+    match node.kind() {
+        "identifier" => Some(ReceiverChain {
+            parts: vec![node_text(document, node).to_string()],
+            start: node.start_byte(),
+        }),
+        "field_access" => {
+            let object = node.child_by_field_name("object")?;
+            let field = node.child_by_field_name("field")?;
+            let mut receiver = receiver_chain_from_syntax(document, object)?;
+            receiver.parts.push(node_text(document, field).to_string());
+            Some(receiver)
+        }
+        _ => None,
+    }
+}
+
+fn node_text<'a>(document: &'a str, node: Node<'_>) -> &'a str {
+    &document[node.start_byte()..node.end_byte()]
+}
+
+fn expression_is_generated_like(document: &str, node: Node<'_>) -> bool {
+    let node = unwrapped_expression_node(node);
+    match node.kind() {
+        "field_access" => receiver_chain_from_syntax(document, node)
+            .is_some_and(|receiver| receiver_is_generated_like(&receiver.parts)),
+        "method_invocation" => {
+            node.child_by_field_name("name")
+                .is_some_and(|name| node_text(document, name) == "read")
+                && node
+                    .child_by_field_name("object")
+                    .and_then(|object| {
+                        receiver_chain_from_syntax(document, unwrapped_expression_node(object))
+                    })
+                    .is_some_and(|receiver| receiver_is_generated_like(&receiver.parts))
+        }
+        _ => false,
+    }
+}
+
+fn unwrapped_expression_node(node: Node<'_>) -> Node<'_> {
+    match node.kind() {
+        "parenthesized_expression" => first_named_child(node).unwrap_or(node),
+        "cast_expression" => node.child_by_field_name("value").unwrap_or(node),
+        _ => node,
+    }
+}
+
+fn first_named_child(node: Node<'_>) -> Option<Node<'_>> {
+    let mut cursor = node.walk();
+    node.named_children(&mut cursor).next()
+}
+
+fn receiver_is_generated_like_local_alias(
+    document: &str,
+    call_node: Node<'_>,
+    receiver: &[String],
+) -> bool {
+    matches!(
+        receiver,
+        [name] if local_name_is_generated_like_before_call(document, call_node, name)
+    )
+}
+
+fn object_is_generated_like_local_alias(
+    document: &str,
+    call_node: Node<'_>,
+    object: Node<'_>,
+) -> bool {
+    object.kind() == "identifier"
+        && local_name_is_generated_like_before_call(
+            document,
+            call_node,
+            node_text(document, object),
+        )
+}
+
+fn object_is_generated_read_field(document: &str, call_node: Node<'_>, object: Node<'_>) -> bool {
+    if object.kind() != "field_access" {
+        return false;
+    }
+    let Some(field) = object.child_by_field_name("field") else {
+        return false;
+    };
+    if node_text(document, field) != "read" {
+        return false;
+    }
+    let Some(receiver_node) = object.child_by_field_name("object") else {
+        return false;
+    };
+    receiver_chain_from_syntax(document, unwrapped_expression_node(receiver_node)).is_some_and(
+        |receiver| {
+            receiver_is_generated_like(&receiver.parts)
+                || receiver_is_generated_like_local_alias(document, call_node, &receiver.parts)
+        },
+    )
+}
+
+fn local_name_is_generated_like_before_call(
+    document: &str,
+    call_node: Node<'_>,
+    name: &str,
+) -> bool {
+    let Some(scope) = nearest_local_resolution_scope(call_node) else {
+        return false;
+    };
+    let mut status = LocalGeneratedLikeStatus::Unknown;
+    collect_local_name_status_before_call(
+        document,
+        scope,
+        call_node.start_byte(),
+        name,
+        &mut status,
+    );
+    status == LocalGeneratedLikeStatus::GeneratedLike
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LocalGeneratedLikeStatus {
+    Unknown,
+    Ordinary,
+    GeneratedLike,
+}
+
+fn collect_local_name_status_before_call(
+    document: &str,
+    node: Node<'_>,
+    call_start: usize,
+    target_name: &str,
+    status: &mut LocalGeneratedLikeStatus,
+) {
+    if node.start_byte() >= call_start {
+        return;
+    }
+
+    match node.kind() {
+        "formal_parameter" => {
+            let Some(name) = node.child_by_field_name("name") else {
+                return;
+            };
+            if node_text(document, name) == target_name
+                && declaration_type_is_generated_like(document, node)
+            {
+                *status = LocalGeneratedLikeStatus::GeneratedLike;
+            }
+        }
+        "variable_declarator" => {
+            let Some(name) = node.child_by_field_name("name") else {
+                return;
+            };
+            let Some(value) = node.child_by_field_name("value") else {
+                return;
+            };
+            if node_text(document, name) == target_name {
+                *status = if expression_is_generated_like(document, value)
+                    || declaration_type_is_generated_like(document, node)
+                {
+                    LocalGeneratedLikeStatus::GeneratedLike
+                } else {
+                    LocalGeneratedLikeStatus::Ordinary
+                };
+            }
+        }
+        "assignment_expression" => {
+            let Some(left) = node.child_by_field_name("left") else {
+                return;
+            };
+            let Some(right) = node.child_by_field_name("right") else {
+                return;
+            };
+            if left.kind() == "identifier" && node_text(document, left) == target_name {
+                *status = if expression_is_generated_like(document, right) {
+                    LocalGeneratedLikeStatus::GeneratedLike
+                } else {
+                    LocalGeneratedLikeStatus::Ordinary
+                };
+            }
+        }
+        _ => {}
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if is_local_resolution_boundary(child) && !node_contains_offset(child, call_start) {
+            continue;
+        }
+        collect_local_name_status_before_call(document, child, call_start, target_name, status);
+    }
+}
+
+fn is_local_resolution_boundary(node: Node<'_>) -> bool {
+    matches!(
+        node.kind(),
+        "block"
+            | "lambda_expression"
+            | "if_statement"
+            | "while_statement"
+            | "do_statement"
+            | "for_statement"
+            | "enhanced_for_statement"
+            | "switch_expression"
+            | "switch_statement"
+            | "try_statement"
+            | "catch_clause"
+            | "synchronized_statement"
+    )
+}
+
+fn node_contains_offset(node: Node<'_>, offset: usize) -> bool {
+    node.start_byte() <= offset && offset < node.end_byte()
+}
+
+fn nearest_local_resolution_scope(node: Node<'_>) -> Option<Node<'_>> {
+    let mut current = node;
+    while let Some(parent) = current.parent() {
+        match parent.kind() {
+            "method_declaration"
+            | "constructor_declaration"
+            | "compact_constructor_declaration" => {
+                return Some(parent);
+            }
+            _ => current = parent,
+        }
+    }
+    None
+}
+
+fn declaration_type_is_generated_like(document: &str, node: Node<'_>) -> bool {
+    node.child_by_field_name("type")
+        .or_else(|| {
+            node.parent()
+                .and_then(|parent| parent.child_by_field_name("type"))
         })
-        .collect()
+        .is_some_and(|node| java_type_is_generated_like(node_text(document, node)))
+}
+
+fn java_type_is_generated_like(type_text: &str) -> bool {
+    let without_generics = type_text.split('<').next().unwrap_or(type_text);
+    let simple = simple_java_name(without_generics.trim())
+        .trim_end_matches("[]")
+        .trim();
+    simple.starts_with('Q')
+        && simple
+            .chars()
+            .nth(1)
+            .is_some_and(|character| character.is_ascii_uppercase())
 }
 
 fn document_offset(document: &str, position: Position) -> Option<usize> {
@@ -928,131 +1254,10 @@ fn utf16_len(value: &str) -> u32 {
     u32::try_from(value.encode_utf16().count()).unwrap_or(u32::MAX)
 }
 
-fn token_ranges(document: &str, token: &str) -> Vec<(usize, usize)> {
-    let mut ranges = Vec::new();
-    let mut offset = 0usize;
-    while let Some(index) = document[offset..].find(token) {
-        let start = offset + index;
-        let end = start + token.len();
-        if token_start_boundary(document, start) && token_end_boundary(document, end) {
-            ranges.push((start, end));
-        }
-        offset = end;
-    }
-    ranges
-}
-
-fn token_start_boundary(document: &str, index: usize) -> bool {
-    if index == 0 {
-        return true;
-    }
-    !document.as_bytes()[index - 1].is_ascii_alphanumeric()
-        && document.as_bytes()[index - 1] != b'_'
-        && document.as_bytes()[index - 1] != b'$'
-}
-
-fn token_end_boundary(document: &str, index: usize) -> bool {
-    if index >= document.len() {
-        return true;
-    }
-    !document.as_bytes()[index].is_ascii_alphanumeric()
-        && document.as_bytes()[index] != b'_'
-        && document.as_bytes()[index] != b'$'
-}
-
-fn previous_non_whitespace(document: &str, before: usize) -> Option<usize> {
-    document[..before]
-        .char_indices()
-        .rev()
-        .find_map(|(index, character)| (!character.is_whitespace()).then_some(index))
-}
-
-fn previous_identifier_start(document: &str, before: usize) -> Option<usize> {
-    let end = previous_non_whitespace(document, before)? + 1;
-    let mut start = end;
-    for (index, character) in document[..end].char_indices().rev() {
-        if is_java_identifier_part(character) {
-            start = index;
-        } else {
-            break;
-        }
-    }
-    (start < end).then_some(start)
-}
-
-fn matching_open_paren(document: &str, close_index: usize) -> Option<usize> {
-    let mut depth = 0usize;
-    for (index, character) in document[..=close_index].char_indices().rev() {
-        match character {
-            ')' => depth = depth.saturating_add(1),
-            '(' => {
-                depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    return Some(index);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ReceiverChain {
     parts: Vec<String>,
     start: usize,
-}
-
-fn receiver_chain_before(document: &str, before_dot: usize) -> Option<ReceiverChain> {
-    let prefix = document[..before_dot].trim_end();
-    let mut start = prefix.len();
-    for (index, character) in prefix.char_indices().rev() {
-        if is_java_identifier_part(character) || character == '.' {
-            start = index;
-        } else if character.is_whitespace() {
-            continue;
-        } else {
-            break;
-        }
-    }
-    let parts = prefix[start..]
-        .split('.')
-        .map(str::trim)
-        .filter(|part| !part.is_empty())
-        .map(str::to_string)
-        .collect::<Vec<_>>();
-    Some(ReceiverChain { parts, start })
-}
-
-fn method_call_end(document: &str, after_method: usize) -> Option<usize> {
-    let open_index = next_non_whitespace(document, after_method)?;
-    if document.as_bytes()[open_index] != b'(' {
-        return None;
-    }
-    matching_close_paren(document, open_index).map(|close| close + 1)
-}
-
-fn next_non_whitespace(document: &str, after: usize) -> Option<usize> {
-    document[after..]
-        .char_indices()
-        .find_map(|(index, character)| (!character.is_whitespace()).then_some(after + index))
-}
-
-fn matching_close_paren(document: &str, open_index: usize) -> Option<usize> {
-    let mut depth = 0usize;
-    for (index, character) in document[open_index..].char_indices() {
-        match character {
-            '(' => depth = depth.saturating_add(1),
-            ')' => {
-                depth = depth.saturating_sub(1);
-                if depth == 0 {
-                    return Some(open_index + index);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
 }
 
 fn generated_entity_type_for_receiver(
@@ -1093,10 +1298,6 @@ fn simple_java_name(java_type: &str) -> &str {
     java_type.rsplit('.').next().unwrap_or(java_type)
 }
 
-fn is_java_identifier_part(character: char) -> bool {
-    character == '_' || character == '$' || character.is_ascii_alphanumeric()
-}
-
 #[derive(Debug, Default)]
 struct JavaImports {
     type_imports: BTreeMap<String, String>,
@@ -1104,35 +1305,48 @@ struct JavaImports {
 }
 
 impl JavaImports {
-    fn parse(document: &str) -> Self {
+    fn parse_syntax(document: &str, root: Node<'_>) -> Self {
         let mut imports = JavaImports::default();
-        for line in document.lines() {
-            let trimmed = line.trim();
-            if let Some(imported) = trimmed
-                .strip_prefix("import static ")
-                .and_then(|value| value.strip_suffix(';'))
-            {
-                if imported.ends_with(".*") {
-                    continue;
-                }
-                let Some((owner, field)) = imported.rsplit_once('.') else {
-                    continue;
-                };
-                imports
-                    .static_field_imports
-                    .insert(field.to_string(), owner.to_string());
-            } else if let Some(imported) = trimmed
-                .strip_prefix("import ")
-                .and_then(|value| value.strip_suffix(';'))
-            {
-                if imported.ends_with(".*") {
-                    continue;
-                }
-                let simple = simple_java_name(imported).to_string();
-                imports.type_imports.insert(simple, imported.to_string());
-            }
-        }
+        collect_java_imports(document, root, &mut imports);
         imports
+    }
+
+    fn add_import_declaration(&mut self, declaration: &str) {
+        let trimmed = declaration.trim();
+        if let Some(imported) = trimmed
+            .strip_prefix("import static ")
+            .and_then(|value| value.strip_suffix(';'))
+        {
+            if imported.ends_with(".*") {
+                return;
+            }
+            let Some((owner, field)) = imported.rsplit_once('.') else {
+                return;
+            };
+            self.static_field_imports
+                .insert(field.to_string(), owner.to_string());
+        } else if let Some(imported) = trimmed
+            .strip_prefix("import ")
+            .and_then(|value| value.strip_suffix(';'))
+        {
+            if imported.ends_with(".*") {
+                return;
+            }
+            let simple = simple_java_name(imported).to_string();
+            self.type_imports.insert(simple, imported.to_string());
+        }
+    }
+}
+
+fn collect_java_imports(document: &str, node: Node<'_>, imports: &mut JavaImports) {
+    if node.kind() == "import_declaration" {
+        imports.add_import_declaration(node_text(document, node));
+        return;
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_java_imports(document, child, imports);
     }
 }
 
@@ -1820,6 +2034,43 @@ public final class ClientUsage {
     }
 
     #[test]
+    fn parenthesized_canonical_receiver_still_resolves() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        (QClient.CLIENT).read(renderer).findById(id);
+        (QClient.CLIENT.read(renderer)).findAll();
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+
+        let find_by_id_hover = state
+            .hover(&uri, position_of(document, "findById"))
+            .expect("hover should resolve")
+            .expect("parenthesized generated receiver should resolve");
+        let find_all_hover = state
+            .hover(&uri, position_of(document, "findAll"))
+            .expect("hover should resolve")
+            .expect("parenthesized generated read namespace should resolve");
+
+        assert!(matches!(
+            find_by_id_hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id from clients c where c.id = ?")
+        ));
+        assert!(matches!(
+            find_all_hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id, c.name from clients c")
+        ));
+    }
+
+    #[test]
     fn generated_call_disambiguates_shared_members_by_metamodel_context() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("AccountUsage.java"));
@@ -1986,6 +2237,56 @@ public final class ClientUsage {
     }
 
     #[test]
+    fn generated_looking_text_in_string_literal_is_not_resolved() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read() {
+        String query = "QClient.CLIENT.read(renderer).findById(id)";
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not resolve string literal text")
+                .is_none()
+        );
+        assert!(state.document_diagnostics(&uri).is_empty());
+    }
+
+    #[test]
+    fn generated_looking_text_in_comment_is_not_resolved() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read() {
+        // QClient.CLIENT.read(renderer).findById(id)
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not resolve comment text")
+                .is_none()
+        );
+        assert!(state.document_diagnostics(&uri).is_empty());
+    }
+
+    #[test]
     fn generated_call_prefers_build_metadata_over_root_fixture_metadata() {
         let workspace = create_stale_source_map_workspace();
         let build_metadata_dir = workspace
@@ -2083,6 +2384,29 @@ public final class ClientUsage {
     }
 
     #[test]
+    fn ordinary_read_prefix_method_is_not_fail_closed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(ExternalReader reader) {
+        reader.readable().findById(7L);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+
+        let hover = state
+            .hover(&uri, position_of(document, "findById"))
+            .expect("ordinary read-prefixed chain should not error");
+
+        assert!(hover.is_none());
+        assert!(state.document_diagnostics(&uri).is_empty());
+    }
+
+    #[test]
     fn generated_call_without_resolvable_metamodel_context_fails_closed() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
@@ -2134,6 +2458,297 @@ public final class ClientUsage {
                     },
                 )
                 .expect("definition should fail closed without an error")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn helper_returned_generated_receiver_fails_closed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        client().read(renderer).findById(id);
+    }
+
+    QClient client() {
+        return QClient.CLIENT;
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should fail closed without an error")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("code actions should fail closed without an error")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("definition should fail closed without an error")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn wildcard_static_import_is_not_a_success_path() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+import static example.QClient.*;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        CLIENT.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should fail closed without an error")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("code actions should fail closed without an error")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("definition should fail closed without an error")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn local_alias_syntax_is_not_a_r19_2_success_path() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var client = QClient.CLIENT;
+        client.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not resolve local aliases before R19.3")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("code actions should not resolve local aliases before R19.3")
+                .is_empty()
+        );
+        assert_source_map_fail_closed_diagnostic(&state, &uri);
+    }
+
+    #[test]
+    fn local_read_namespace_alias_syntax_is_not_a_r19_2_success_path() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var read = QClient.CLIENT.read(renderer);
+        read.findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not resolve read aliases before R19.3")
+                .is_none()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("definition should not resolve read aliases before R19.3")
+                .is_none()
+        );
+        assert_source_map_fail_closed_diagnostic(&state, &uri);
+    }
+
+    #[test]
+    fn local_alias_fail_closed_detection_is_not_file_wide() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void generatedAlias(Object renderer) {
+        var client = QClient.CLIENT;
+    }
+
+    void ordinaryReader(ExternalReader client, Object renderer) {
+        client.read(renderer).findById(7L);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("ordinary receiver should not be poisoned by another method")
+                .is_none()
+        );
+        assert!(state.document_diagnostics(&uri).is_empty());
+    }
+
+    #[test]
+    fn local_alias_fail_closed_detection_is_lexically_scoped() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void ordinaryReader(ExternalReader client, Object renderer) {
+        {
+            var client = QClient.CLIENT;
+            client.toString();
+        }
+        client.read(renderer).findById(7L);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("ordinary receiver should not be poisoned by an inner block")
+                .is_none()
+        );
+        assert!(state.document_diagnostics(&uri).is_empty());
+    }
+
+    #[test]
+    fn parenthesized_local_alias_syntax_fails_closed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var client = (QClient.CLIENT);
+        client.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not resolve parenthesized aliases before R19.3")
+                .is_none()
+        );
+        assert_source_map_fail_closed_diagnostic(&state, &uri);
+    }
+
+    #[test]
+    fn reassigned_local_alias_syntax_is_not_overclaimed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        var client = QClient.CLIENT;
+        client = QAccount.ACCOUNT;
+        client.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not resolve reassigned aliases")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("code actions should not resolve reassigned aliases")
+                .is_empty()
+        );
+        assert_source_map_fail_closed_diagnostic(&state, &uri);
+    }
+
+    #[test]
+    fn ambiguous_bare_receiver_is_not_overclaimed() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    static final Object CLIENT = QClient.CLIENT;
+
+    void read(Object renderer, Long id) {
+        CLIENT.read(renderer).findById(id);
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("hover should not infer ambiguous bare receivers")
+                .is_none()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("definition should not infer ambiguous bare receivers")
                 .is_none()
         );
     }
@@ -2456,6 +3071,16 @@ public final class SecondRepository {
             .position(|line| line.contains(&format!("\"name\": \"{snapshot_name}\"")))
             .and_then(|line| u32::try_from(line).ok())
             .expect("snapshot name should exist")
+    }
+
+    fn assert_source_map_fail_closed_diagnostic(state: &LspState, uri: &Uri) {
+        let diagnostics = state.document_diagnostics(uri);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(
+            diagnostics[0].message,
+            "Mortar source-map metadata is stale or missing"
+        );
+        assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
     }
 
     fn position_of(document: &str, needle: &str) -> Position {
