@@ -1308,7 +1308,7 @@ R18.1 and R18.2 completion record:
 
 ### R19: Java Call Resolution And Editor Semantics Hardening
 
-Status: In Progress
+Status: Done
 
 Goal: harden Mortar's Java call-site recovery for source-map-backed editor
 features before R20 performance work or public demo claims.
@@ -1346,7 +1346,7 @@ R19 slices:
   resolution. Status: Done.
 - R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion. Status:
   Done.
-- R19.5: Editor semantics review and R20 performance handoff. Status: Planned.
+- R19.5: Editor semantics review and R20 performance handoff. Status: Done.
 
 Non-goals:
 
@@ -1500,9 +1500,53 @@ R19.3/R19.4 completion record:
 R20 handoff:
 
 - R20 remains `Performance And Runtime Efficiency`.
-- R20 starts only after R19 proves editor call-resolution semantics are
-  trustworthy enough that performance artifacts are not paired with misleading
-  editor claims.
+- R20 starts after R19 because editor call-resolution semantics are now
+  trustworthy enough that performance artifacts will not be paired with
+  misleading editor claims.
+- Java/Rust measurement boundaries stay explicit: Java owns runtime query-path
+  benchmarking through JMH/PostgreSQL evidence, while Rust owns tooling and LSP
+  resolver performance measurement.
+- Benchmark reproducibility is the first R20 deliverable: retain repeated
+  clean-commit artifacts before any public performance claim.
+- Allocation and latency profiling must cover generated fixed reads, DSL reads,
+  JDBC execution paths, and generated query path overhead against ordinary and
+  tuned JDBC baselines.
+- LSP resolver performance work should measure parser/resolver latency,
+  allocation behavior, cache behavior, and large-document behavior without
+  changing R19 semantics.
+- No public performance claim is allowed without retained evidence and reviewer
+  sign-off.
+
+R19.5 completion record:
+
+- The required xhigh architecture review concluded on 2026-06-02 that hover,
+  copy SQL, PostgreSQL EXPLAIN, definition, and diagnostics share the same
+  source-map-backed resolver outcome for generated fixed-read calls.
+- Supported alias shapes remain exactly the two R19.3 same-file local binding
+  forms. Unsupported generated-looking alias shapes fail closed with
+  reason-specific diagnostics. Stale or missing generated source-map evidence
+  cannot fall back to legacy snapshot markers.
+- No resolver semantics gap was found, so no new semantic test was added.
+  Existing Rust LSP tests and VS Code smoke tests already cover canonical
+  success, supported alias parity across editor features, unsupported alias
+  diagnostics, stale or missing source-map fail-closed behavior, and marker
+  non-fallback for generated calls.
+- R19.5 fixed closure hygiene only: `docs/metadata.md` now describes
+  reason-specific fail-closed diagnostics, and the Rust LSP test fixture no
+  longer contains a username-bearing synthetic URI.
+- Changed modules/docs: `rust/crates/mortar-lsp`, `docs/lsp.md`,
+  `docs/metadata.md`, `docs/plan.md`, and this roadmap.
+- Migration note: no Java runtime API, generated Java API, metadata format,
+  source-map format, VS Code command contract, performance behavior, release,
+  publication, migration, or R20 implementation changed.
+- Verification passed on 2026-06-02: `gradlew.bat check --no-daemon`; from
+  `rust`, `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck` and `bun run test`;
+  `git diff --check`; and private path/project scrub excluding build, cache,
+  dependency, and generated outputs. `bun run test` passed with six VS Code
+  smoke tests and one pending datasource-backed EXPLAIN smoke because
+  `MORTAR_VSCODE_EXPLAIN_CONNECTION` was not configured.
 
 ### R20: Performance And Runtime Efficiency
 

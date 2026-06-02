@@ -45,8 +45,8 @@ metadata and does not navigate to generated Java line/column locations.
 Definition requests navigate to the matching snapshot entry.
 
 R19.2 recovers generated fixed-read calls with local Java syntax parsing in the
-Rust LSP. R19.3 adds an identity-bearing local binding model for two finite
-alias shapes:
+Rust LSP. R19.3 is the current alias-success boundary and adds an
+identity-bearing local binding model for two finite alias shapes:
 
 ```java
 var client = QClient.CLIENT;
@@ -63,15 +63,16 @@ the supported alias identities. Fresh `mortar-source-map-v1` plus
 `mortar-metadata-v1` remains authoritative for query identity and snapshot
 routing, and SQL still comes only from `mortar.sql.snap.json`.
 
-The R19 residual hardening slice after R19.2 keeps alias success deferred. It
-adds coverage for malformed full-document Java buffers, full-document
-open/change recovery, deeply parenthesized and cast-wrapped canonical
-receivers, and lambda/catch/switch alias-scope variants. If tree-sitter can see a
-generated-looking call in incomplete Java syntax, the LSP returns no hover, no
-copy SQL, no EXPLAIN action, and no definition target, then reports an
-incomplete-syntax diagnostic. Unsupported generated-looking alias syntax also
-fails closed with an unsupported-syntax diagnostic instead of being reported as
-stale source-map evidence.
+Historical note: R19.2a was the residual hardening slice before R19.3 alias
+success. It kept alias success deferred while adding coverage for malformed
+full-document Java buffers, full-document open/change recovery, deeply
+parenthesized and cast-wrapped canonical receivers, and lambda/catch/switch
+alias-scope variants. If tree-sitter can see a generated-looking call in
+incomplete Java syntax, the LSP returns no hover, no copy SQL, no EXPLAIN
+action, and no definition target, then reports an incomplete-syntax diagnostic.
+Unsupported generated-looking alias syntax also fails closed with an
+unsupported-syntax diagnostic instead of being reported as stale source-map
+evidence.
 
 When a generated fixed-read call is present but its metamodel context cannot be
 recovered by local syntax, or metadata/source-map inputs are missing, stale,
@@ -86,6 +87,17 @@ receiver support, alias chaining, aliases proven only by type annotations,
 field aliases, cross-method or cross-file aliases, wildcard static import
 success, ambiguous explicit import collision success, arbitrary DSL call-site
 analysis, or editor-side SQL rendering.
+
+R19.5 reviewed editor semantics on 2026-06-02 and found no resolver drift to
+fix. Hover, copy SQL, PostgreSQL EXPLAIN, definition, and generated-call
+diagnostics all route through the same source-map-backed resolver outcome.
+Supported alias shapes remain exactly the two R19.3 local binding forms above,
+and unsupported generated-looking aliases fail closed with reason-specific
+diagnostics. No new semantic tests were added for R19.5 because the existing
+Rust LSP tests and VS Code smoke tests already cover canonical success,
+supported alias parity across editor features, unsupported alias diagnostics,
+stale or missing source-map fail-closed behavior, and marker non-fallback for
+generated calls.
 
 Explicit markers remain a legacy/manual path:
 

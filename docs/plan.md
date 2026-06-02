@@ -1930,13 +1930,11 @@ only for deterministic clean compile and semantic SQL/schema cases.
 
 ## R19 Canonical Design: Java Call Resolution And Editor Semantics Hardening
 
-Status: In Progress
+Status: Done
 
-R19 is a design target for implementation slices, not an implementation record.
-It must not be marked `Done` until product code, tests, docs, verification
-evidence, and review evidence exist. This planning slice only records the
-canonical direction. R19.1, R19.2, R19.2a, R19.3, and R19.4 are implemented;
-R19.5 remains planned.
+R19 hardened Java call resolution and editor semantics for generated fixed-read
+calls. R19.1, R19.2, R19.2a, R19.3, R19.4, and R19.5 are implemented,
+documented, reviewed, and verified.
 
 ### Problem Statement
 
@@ -2093,14 +2091,15 @@ Status: Done.
 
 R19.5: Editor semantics review and R20 performance handoff.
 
-Status: Planned.
+Status: Done.
 
-- Reviews editor behavior against LSP semantics and public docs.
-- Updates `docs/lsp.md`, `docs/metadata.md`, `docs/vscode.md`, and the roadmap
-  only after implementation evidence exists.
+- Reviewed editor behavior against LSP semantics and public docs.
+- Aligned `docs/lsp.md`, `docs/metadata.md`, this plan, and the roadmap after
+  review evidence existed. `docs/vscode.md` was reviewed and did not need R19
+  wording changes.
 - Hands off to R20 with performance risks separated from editor correctness.
-- Verification: full Java, Rust, VS Code, diff, scrub, and review gates before
-  any R19 completion claim.
+- Verification: full Java, Rust, VS Code, diff, scrub, and review gates passed
+  on 2026-06-02 before the R19 completion claim.
 
 ### Non-Goals
 
@@ -2266,6 +2265,69 @@ cd ../editors/vscode
 bun run typecheck
 bun run test
 ```
+
+### R19.5 Completion Evidence
+
+The required xhigh architecture review for R19.5 concluded on 2026-06-02:
+
+- hover, copy SQL, PostgreSQL EXPLAIN, definition, and diagnostics share the
+  same source-map-backed resolver outcome for generated fixed-read calls;
+- supported alias shapes are documented exactly as the two R19.3 same-file local
+  binding forms and are not overclaimed;
+- unsupported alias shapes fail closed with reason-specific diagnostics;
+- marker fallback is impossible for stale or missing generated source-map
+  evidence because generated calls return `FailClosed` before the legacy marker
+  path can run;
+- the only closure blockers were stale `docs/metadata.md` wording and a
+  synthetic username-bearing URI in a Rust test; both were fixed in R19.5.
+
+No resolver code gap was found, and no new semantic test was added. Existing
+Rust LSP tests already assert supported alias parity across hover, copy SQL,
+EXPLAIN, definition, and diagnostics, plus stale and missing source-map
+fail-closed behavior without marker fallback. Existing VS Code smoke tests cover
+canonical generated reads, supported metamodel aliases, supported read-namespace
+aliases, unsupported alias diagnostics, copy SQL, EXPLAIN command contribution,
+and snapshot definition routing.
+
+Changed modules/docs: `rust/crates/mortar-lsp`, `docs/lsp.md`,
+`docs/metadata.md`, `docs/plan.md`, and `docs/roadmap.md`. No Java runtime API,
+generated Java API, metadata format, source-map format, VS Code command
+contract, performance behavior, release, publication, migration, or R20
+implementation changed.
+
+Verification passed on 2026-06-02:
+
+```bash
+gradlew.bat check --no-daemon
+cd rust && cargo fmt --all --check
+cd rust && cargo clippy --all-targets --all-features -- -D warnings
+cd rust && cargo test
+cd editors/vscode && bun run typecheck
+cd editors/vscode && bun run test
+git diff --check
+```
+
+`bun run test` passed with six VS Code smoke tests and one pending
+datasource-backed EXPLAIN smoke because `MORTAR_VSCODE_EXPLAIN_CONNECTION` was
+not configured. Private path/project scrub excluding build, cache, dependency,
+and generated outputs had zero matches after the synthetic test URI cleanup.
+
+R20 performance handoff:
+
+- keep Java/Rust performance measurement boundaries explicit: Java owns the
+  runtime query path and JMH/PostgreSQL execution evidence; Rust owns tooling
+  and LSP measurement only;
+- make benchmark reproducibility the first deliverable, with retained repeated
+  clean-commit artifacts before public claims;
+- profile allocation and latency for generated fixed reads, DSL reads, and JDBC
+  execution paths;
+- measure generated query path overhead separately from ordinary and tuned JDBC
+  baselines;
+- measure LSP resolver performance for parser/resolver latency, memory
+  allocation, cache behavior, and large-document behavior without changing R19
+  semantics;
+- make no public performance claims without retained evidence and reviewer
+  sign-off.
 
 ## Future Maturity Gates
 
