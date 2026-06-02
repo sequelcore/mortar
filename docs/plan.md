@@ -1606,6 +1606,14 @@ Completed R18.2 evidence:
   generated symbol names, stable `MORTAR_PROCESSOR_*` diagnostics, generated
   metadata inventory, and generated SQL inputs. It does not assert full
   compiler output or mutate checked-in R17 fixture sources.
+- The unresolved generated-symbol contract was hardened after xhigh
+  architecture/reviewer debate and primary-source review. The matrix now keeps
+  structured `Diagnostic` data and requires `Diagnostic.Kind.ERROR`, the stale
+  `TicketUsage.java` consumer source, the stale symbol token, and independent
+  regenerated `Q*` evidence that the producer-side member was renamed or
+  removed. It intentionally does not assert javac `Diagnostic.getCode()` values,
+  full localized messages, exact diagnostic counts, ordering, or line/column
+  numbers.
 - Extended Rust schema-drift coverage in
   `rust/crates/mortar-compiler/src/lib.rs` for the R17 handoff cases
   `tickets.customer_id`, `tickets.assigned_technician_id`,
@@ -1625,8 +1633,9 @@ Completed R18.2 evidence:
   `cd rust && cargo test
   detects_r17_schema_drift_cases_from_ticket_fixture_metadata`.
 - R18.2 intentionally does not claim Gradle incremental convergence,
-  source-map freshness, VS Code source-map behavior, or full schema-drift
-  workflow completion. Those remain R18.3, R18.4, R18.5, and R18.6 work.
+  source-map locations/freshness, VS Code source-map behavior, or full
+  schema-drift workflow completion. Those remain R18.3, R18.4, R18.5, and
+  R18.6 work.
 - Final R18.1/R18.2 verification passed on 2026-06-02:
   `gradlew.bat check --no-daemon`; from `rust`,
   `cargo fmt --all --check`,
@@ -1647,6 +1656,14 @@ format is required, add an ADR before implementation.
 
 Non-goals: no arbitrary DSL call-site source maps, no editor-side SQL
 rendering, no generated query API expansion.
+
+R18.3 was reviewed after the R18.2 unresolved-symbol cleanup. The existing
+`mortar-metadata-v1` query fields already link fixed reads to query IDs,
+generated source owner/member/type, parameter metadata, row types, and snapshot
+keys, but they do not yet define source locations or freshness diagnostics.
+Completing R18.3 therefore needs a clear source-location/freshness design, and
+possibly an ADR if the metadata/source-map format changes. This cleanup stops
+before R18.3 implementation to avoid an overbroad completion claim.
 
 #### R18.4: Gradle Incremental And Multi-Module Verification
 

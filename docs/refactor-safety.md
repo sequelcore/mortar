@@ -106,6 +106,26 @@ affected generated symbol names, named query SQL/parameter/table/column/join
 semantics, snapshot keys, metadata format/version fields, and schema-drift
 diagnostic messages.
 
+## Unresolved Generated Symbols
+
+R18 unresolved-generated-symbol assertions are intentionally a Mortar test-side
+semantic category, not a portable `javac` diagnostic category. The stable
+contract is:
+
+- the fail phase produces at least one `Diagnostic.Kind.ERROR`;
+- the diagnostic is associated with the stale consumer source file;
+- the diagnostic message mentions the stale generated symbol token;
+- regenerated `Q*` source proves the producer-side member was renamed or
+  removed;
+- recover compiles after the consumer is updated.
+
+Tests must not assert full compiler text, exact diagnostic counts, diagnostic
+ordering, line/column numbers, or `Diagnostic.getCode()` values for unresolved
+generated symbols. `getCode()` is useful debug data, but the Java API defines
+diagnostic codes as implementation-dependent and possibly `null`. Processor
+owned validation failures remain different: Mortar may and should assert its
+own stable `MORTAR_PROCESSOR_*` codes for those diagnostics.
+
 ## Research Basis
 
 R18.1/R18.2 follows current toolchain guidance:
@@ -123,6 +143,11 @@ R18.1/R18.2 follows current toolchain guidance:
 - Compile-test harnesses are appropriate for annotation processors, but Mortar
   uses its existing direct `JavaCompiler` test harness to avoid a new test-only
   dependency.
+- The Java `Diagnostic` API exposes stable diagnostic kind, source, and
+  position accessors for compiler-tool integrations. It also exposes localized
+  message rendering and implementation-dependent diagnostic codes, so R18 tests
+  use kind/source/symbol evidence and avoid compiler-code or full-message
+  snapshots for javac-owned unresolved symbols.
 - Generated metadata freshness requires explicit stale-data contracts. R18.2
   classifies it but does not fake it with filesystem hacks; source-map and
   incremental freshness belong to later R18 slices.
@@ -137,5 +162,9 @@ References:
   https://docs.oracle.com/en/java/javase/11/tools/javac.html#GUID-1B3E7E49-261C-4D7B-8C1A-6A474522B6BB
 - Java annotation processing package:
   https://docs.oracle.com/en/java/javase/15/docs/api/java.compiler/javax/annotation/processing/package-summary.html
+- Java `Diagnostic` API:
+  https://docs.oracle.com/en/java/javase/21/docs/api/java.compiler/javax/tools/Diagnostic.html
+- Java `JavaCompiler` API:
+  https://docs.oracle.com/en/java/javase/22/docs/api/java.compiler/javax/tools/JavaCompiler.html
 - Google compile-testing reference:
   https://github.com/google/compile-testing

@@ -60,6 +60,15 @@ final class MortarRefactorSafetyMatrixTest {
         assertUnresolvedGeneratedSymbol(fail, "summary");
         assertUnresolvedGeneratedSymbol(fail, "displayName");
         assertUnresolvedGeneratedSymbol(fail, "code");
+        assertThat(generatedSource(fail, "QTicketRecord"))
+            .contains("public final ColumnRef<java.lang.String> subject = table.column(\"subject\", \"summary\", java.lang.String.class);")
+            .doesNotContain("public final ColumnRef<java.lang.String> summary");
+        assertThat(generatedSource(fail, "QTechnicianRecord"))
+            .contains("public final ColumnRef<java.lang.String> fullName = table.column(\"fullName\", \"display_name\", java.lang.String.class);")
+            .doesNotContain("public final ColumnRef<java.lang.String> displayName");
+        assertThat(generatedSource(fail, "QTicketStatusRecord"))
+            .contains("public final ColumnRef<java.lang.String> statusCode = table.column(\"statusCode\", \"code\", java.lang.String.class);")
+            .doesNotContain("public final ColumnRef<java.lang.String> code");
 
         CompilationResult recover = compile(r17Sources(
             ticketRecordWithSummaryRenamed(),
@@ -87,6 +96,8 @@ final class MortarRefactorSafetyMatrixTest {
 
         assertThat(fail.compiled()).isFalse();
         assertUnresolvedGeneratedSymbol(fail, "summary");
+        assertThat(generatedSource(fail, "QTicketRecord"))
+            .doesNotContain("public final ColumnRef<java.lang.String> summary");
 
         CompilationResult recover = compile(r17Sources(
             ticketRecordWithoutSummary(),
@@ -115,6 +126,10 @@ final class MortarRefactorSafetyMatrixTest {
         assertUnresolvedGeneratedSymbol(fail, "customer");
         assertUnresolvedGeneratedSymbol(fail, "assignedTechnician");
         assertUnresolvedGeneratedSymbol(fail, "status");
+        assertThat(generatedSource(fail, "QTicketRecord"))
+            .doesNotContain("public final RelationRef customer")
+            .doesNotContain("public final RelationRef assignedTechnician")
+            .doesNotContain("public final RelationRef status");
 
         CompilationResult recover = compile(r17Sources(
             ticketRecordWithoutRelations(),
@@ -223,12 +238,21 @@ final class MortarRefactorSafetyMatrixTest {
                 fileManager.getJavaFileObjectsFromPaths(sourceFiles)
             ).call();
 
-            List<String> errors = diagnostics.getDiagnostics().stream()
-                .filter(diagnostic -> diagnostic.getKind() == Diagnostic.Kind.ERROR)
-                .map(diagnostic -> diagnostic.getMessage(Locale.ROOT))
+            List<DiagnosticInfo> diagnosticInfos = diagnostics.getDiagnostics().stream()
+                .map(MortarRefactorSafetyMatrixTest::diagnosticInfo)
                 .toList();
-            return new CompilationResult(compiled, errors, generatedDir, classDir);
+            return new CompilationResult(compiled, diagnosticInfos, generatedDir, classDir);
         }
+    }
+
+    private static DiagnosticInfo diagnosticInfo(Diagnostic<? extends JavaFileObject> diagnostic) {
+        JavaFileObject source = diagnostic.getSource();
+        String sourceName = source == null ? "" : source.getName().replace("\\", "/");
+        return new DiagnosticInfo(
+            diagnostic.getKind(),
+            diagnostic.getMessage(Locale.ROOT),
+            sourceName
+        );
     }
 
     private Path writeSource(Path sourceDir, String relativePath, String source) {
@@ -272,9 +296,13 @@ final class MortarRefactorSafetyMatrixTest {
     }
 
     private static void assertUnresolvedGeneratedSymbol(CompilationResult result, String symbol) {
-        assertThat(result.errors())
+        assertThat(result.diagnostics())
             .as("javac should report an unresolved generated symbol for " + symbol)
-            .anyMatch(message -> message.contains(symbol));
+            .anySatisfy(diagnostic -> {
+                assertThat(diagnostic.kind()).isEqualTo(Diagnostic.Kind.ERROR);
+                assertThat(diagnostic.sourceName()).endsWith("example/r17/TicketUsage.java");
+                assertThat(diagnostic.message()).contains(symbol);
+            });
     }
 
     private static String customerRecord() {
@@ -501,6 +529,19 @@ final class MortarRefactorSafetyMatrixTest {
         return usageWithoutDeletedRelations();
     }
 
-    private record CompilationResult(boolean compiled, List<String> errors, Path generatedDir, Path classDir) {
+    private record CompilationResult(boolean compiled, List<DiagnosticInfo> diagnostics, Path generatedDir, Path classDir) {
+        private List<String> errors() {
+            return diagnostics.stream()
+                .filter(diagnostic -> diagnostic.kind() == Diagnostic.Kind.ERROR)
+                .map(DiagnosticInfo::message)
+                .toList();
+        }
+    }
+
+    private record DiagnosticInfo(
+        Diagnostic.Kind kind,
+        String message,
+        String sourceName
+    ) {
     }
 }
