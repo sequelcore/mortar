@@ -38,6 +38,7 @@ Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`
 - `docs/benchmarks/postgres-execution-2026-06-01.md`
+- `docs/benchmarks/r20-benchmark-readiness.md`
 
 Current performance strategy research:
 
@@ -54,3 +55,5 @@ Current performance strategy research:
   otherwise on the same query shape and projection strategy.
 - Keep driver tuning in benchmark configuration or application configuration;
   Mortar does not change PgJDBC defaults.
+- Keep Java runtime and Rust tooling performance reports separate. Rust LSP
+  parser/resolver measurements do not support Java runtime claims.
