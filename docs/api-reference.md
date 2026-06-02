@@ -18,8 +18,9 @@ Package: `dev.mortar.core`
 - `QueryBuilder<T>`: fluent select query builder.
 - `QuerySpec`: immutable query model.
 - `RenderedQuery`: SQL, parameters, and metadata.
-- `MortarBoundQuery<T>`: framework-free named rendered read-query inspection
-  contract for SQL, parameters, parameter types, metadata, and row type.
+- `MortarBoundQuery<T>`: immutable, framework-free named rendered read-query
+  inspection contract for SQL, parameters, parameter types, metadata, and row
+  type.
 - `QueryRenderer`: renderer boundary for dialects.
 
 ## Processor
@@ -33,25 +34,28 @@ Package: `dev.mortar.processor`
 - `MortarProcessor`: javac annotation processor that generates `Q*`
   metamodels and common generated JDBC executors for annotated entities.
 
-Generated read executors:
+Generated fixed read facades:
 
-- expose nested parameter and row records on the generated `Q*` type;
+- expose nested row records on the generated `Q*` type;
 - accept a `QueryRenderer` so SQL is pre-rendered through the dialect boundary;
-- implement `MortarGeneratedQuery<P, T>` with direct JDBC bind and map methods;
-- map selected columns by projection index for the generated hot path.
+- expose `Q*.Read` through `QClient.CLIENT.read(renderer)`;
+- return immutable `MortarBoundQuery<FindByIdRow>` and
+  `MortarBoundQuery<FindAllRow>` values;
+- support copy-style `.named("...")` on the returned bound query;
 - include generated-source Javadocs for table metadata, selected columns, and
   generated executor SQL shape.
 
-Current generated read executors:
+Current generated fixed read facade methods:
 
-- `findAll(renderer)`: selects all mapped columns with explicit empty
-  `MortarNoParameters` binding and can be executed as `jdbcClient.fetch(query)`.
-- `findById(renderer)`: selects all mapped columns by identifier with
-  `FindByIdParameters`.
+- `read(renderer).findById(id)`: selects all mapped columns by identifier,
+  binds the supplied identifier into the rendered query, and can be executed as
+  `jdbcClient.fetchOptional(query)`.
+- `read(renderer).findAll()`: explicitly selects all mapped columns for
+  full-table reads and can be executed as `jdbcClient.fetch(query)`.
 
-R16.1 does not generate the new R16 fixed read facade namespace yet. The
-processor only emits the metadata hooks and keeps the current generated
-executor shape until R16.2.
+The older direct generated executor methods remain available for generated
+hot-path execution through `MortarGeneratedQuery`, but R16.2 usage guidance
+uses `read(renderer)` as the canonical shorter repository path.
 
 Processor diagnostics fail compilation for invalid entity metadata before a
 bad generated query can reach runtime. The stable processor diagnostic codes are
@@ -74,7 +78,9 @@ Package: `dev.mortar.jdbc`
   `QuerySpec` execution and pre-rendered `RenderedQuery` execution for hot
   paths. Supports `fetchOptional(...)` for at-most-one-row lookups. Supports
   generated-query execution through `MortarGeneratedQuery<P, T>` and explicit
-  caller-owned prepared query reuse through `prepare(...)`.
+  caller-owned prepared query reuse through `prepare(...)`. Supports explicit
+  execution of `MortarBoundQuery<T>` and `MortarJdbcBoundQuery<T>` without
+  adding execution methods to query objects.
 - `MortarGeneratedQuery<P, T>`: generated query contract with SQL, parameter
   types, metadata, direct JDBC binding, and direct row mapping.
 - `MortarJdbcBoundQuery<T>`: JDBC row-mapping adapter for a core

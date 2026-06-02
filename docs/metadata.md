@@ -31,8 +31,8 @@ The current format is `mortar-metadata-v1`.
           "shape": "findById",
           "generated_source": {
             "java_type": "example.QClient",
-            "member": "findById",
-            "generated_type": "example.QClient.FindByIdQuery"
+            "member": "read.findById",
+            "generated_type": "example.QClient.Read"
           },
           "parameters": [
             {
@@ -64,8 +64,13 @@ R16.1 adds optional `queries` entries. A query entry is tooling metadata only:
 - `row_type`: generated row type name;
 - `snapshot`: default snapshot key.
 
+R16.2 records the canonical generated read facade member, such as
+`read.findById` or `read.findAll`, while keeping query IDs and snapshot keys
+stable. The older generated executor classes can still exist in generated Java,
+but metadata points tooling at the current fixed read facade.
+
 The metadata does not include rendered SQL, JDBC binding APIs, Spring beans,
-editor command names, or repository call-site mappings. Existing
+editor command names, execution methods, or repository call-site mappings. Existing
 `mortar-metadata-v1` files without `queries` remain parseable by the Rust
 compiler.
 

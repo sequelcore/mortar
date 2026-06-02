@@ -786,7 +786,7 @@ Scope:
 R16 slices:
 
 - R16.1: Contract, ADR, and API budget. Status: Done.
-- R16.2: Fixed single-table read facades. Status: Planned.
+- R16.2: Fixed single-table read facades. Status: Done.
 - R16.3: Bound parameters, visible SQL, and testkit contract. Status: Planned.
 - R16.4: Examples and usage guidance. Status: Planned.
 
@@ -836,14 +836,47 @@ Current evidence:
   parsing in `rust/crates/mortar-compiler`, processor query-id/generated-source
   metadata for existing generated `findAll` and `findById` executor shapes,
   and testkit SQL assertions for `MortarBoundQuery<?>`.
-- R16.1 deliberately did not generate the R16.2 `Read` facade namespace. The
-  processor guard test
-  `MortarProcessorGenerationTest.doesNotGenerateR16ReadFacadeNamespaceYet`
-  proves the new facade shape is still absent.
-- `gradlew.bat check --no-daemon` passed on 2026-06-01.
-- From `rust`, `cargo fmt --all --check`, `cargo clippy --all-targets
-  --all-features -- -D warnings`, and `cargo test` passed on 2026-06-01.
-- From `editors/vscode`, `bun run typecheck` passed on 2026-06-01.
+- R16.1 deliberately did not generate the R16.2 `Read` facade namespace and
+  used a negative processor guard until the facade shape existed.
+- R16.2 generated one `Q*.Read` namespace per entity with
+  `read(renderer).findById(id)` and `read(renderer).findAll()` returning
+  immutable `MortarBoundQuery<FindByIdRow>` and
+  `MortarBoundQuery<FindAllRow>` values. The facade renders through the
+  supplied `QueryRenderer`, exposes SQL, parameters, parameter types, metadata,
+  and row type through the R16.1 bound-query contract, and has no execution,
+  write, optional-filter, relation, `count`, or `exists` methods.
+- R16.2 added copy-style `.named(...)` to `MortarBoundQuery<T>` and
+  `MortarJdbcBoundQuery<T>` and added explicit `MortarJdbcClient` execution
+  overloads for bound queries. Execution remains in `java/runtime-jdbc`; query
+  objects still do not execute themselves.
+- R16.2 updated processor generated-source metadata to point canonical fixed
+  read entries at `read.findById` and `read.findAll` on `Q*.Read` while keeping
+  query IDs and snapshot keys stable.
+- R16.2 architecture debate outcome: use singular `Read`, keep
+  `read(renderer)` on each generated metamodel, avoid JDBC leakage from the
+  generated facade, keep explicit `findAll()` for reference-data reads, put
+  immutable `.named(...)` on the returned bound query, defer projection support,
+  and include only the narrow `MortarJdbcClient` bound-query bridge needed to
+  make repository code shorter than R15.
+- Focused R16.2 verification on 2026-06-02: `gradlew.bat :java:core:test
+  --tests dev.mortar.core.MortarBoundQueryTest :java:runtime-jdbc:test --tests
+  dev.mortar.jdbc.MortarJdbcBoundQueryTest --tests
+  dev.mortar.jdbc.MortarJdbcClientTest :java:processor:test --tests
+  dev.mortar.processor.MortarProcessorGenerationTest
+  :examples:spring-boot-postgres:test --tests
+  dev.mortar.examples.springpostgres.ClientRepositoryTest --no-daemon` failed
+  first because `MortarBoundQuery.named(String)` did not exist, then passed
+  after implementation.
+- Focused metadata verification on 2026-06-02:
+  `gradlew.bat :java:processor:test --tests
+  dev.mortar.processor.MortarProcessorMetadataFileTest --no-daemon` passed
+  after metadata was updated for the `Read` facade.
+- Final R16.2 verification on 2026-06-02 passed:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`,
+  and `cargo test`; from `editors/vscode`, `bun run typecheck`; `git diff --check`;
+  and the private path scrub for `Proyectos`, `Users`, `R3XED`, `CANITAS`,
+  `Sequel/mortar`, and `Sequel\\mortar` excluding build outputs and caches.
 - Changed modules/docs: `java/core`, `java/runtime-jdbc`, `java/processor`,
   `java/testkit`, `rust/crates/mortar-compiler`, `docs/adr`,
   `docs/api-reference.md`, `docs/metadata.md`, `docs/lsp.md`,

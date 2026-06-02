@@ -10,6 +10,7 @@ import dev.mortar.core.Projection;
 import dev.mortar.core.ProjectionKind;
 import dev.mortar.core.Assignment;
 import dev.mortar.core.InsertSpec;
+import dev.mortar.core.MortarBoundQuery;
 import dev.mortar.core.QueryMetadata;
 
 import org.junit.jupiter.api.Test;
@@ -108,6 +109,144 @@ final class MortarJdbcClientTest {
         assertThat(row).contains("Ricardo");
         assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
+    }
+
+    @Test
+    void executesBoundQueryWithConstructorRowMappingWithoutCallingRenderer() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(
+            dataSource(statement),
+            query -> {
+                throw new AssertionError("renderer should not run for bound queries");
+            }
+        );
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarBoundQuery<ClientRow> query = MortarBoundQuery.of(
+            "ClientRepository.findById",
+            new RenderedQuery(
+                "select id, name from clients where id = ?",
+                List.of(Parameter.of(7L)),
+                new QueryMetadata(List.of(clients), List.of(id, name), List.of())
+            ),
+            ClientRow.class
+        );
+
+        Optional<ClientRow> row = client.fetchOptional(query);
+
+        assertThat(row).contains(new ClientRow(7L, "Ricardo"));
+        assertThat(statement.sql).isEqualTo("select id, name from clients where id = ?");
+        assertThat(statement.boundValues).containsExactly(7L);
+    }
+
+    @Test
+    void executesJdbcBoundQueryWithItsRuntimeRowMapperWithoutCallingRenderer() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(
+            dataSource(statement),
+            query -> {
+                throw new AssertionError("renderer should not run for JDBC bound queries");
+            }
+        );
+        MortarJdbcBoundQuery<String> query = MortarJdbcBoundQuery.of(
+            MortarBoundQuery.of(
+                "ClientRepository.findNameById",
+                new RenderedQuery("select name from clients where id = ?", List.of(Parameter.of(7L))),
+                String.class
+            ),
+            resultSet -> resultSet.getString("name")
+        );
+
+        List<String> rows = client.fetch(query);
+
+        assertThat(rows).containsExactly("Ricardo");
+        assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
+        assertThat(statement.boundValues).containsExactly(7L);
+    }
+
+    @Test
+    void fetchOptionalExecutesJdbcBoundQueryWithItsRuntimeRowMapperWithoutCallingRenderer() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(
+            dataSource(statement),
+            query -> {
+                throw new AssertionError("renderer should not run for JDBC bound queries");
+            }
+        );
+        MortarJdbcBoundQuery<String> query = MortarJdbcBoundQuery.of(
+            MortarBoundQuery.of(
+                "ClientRepository.findNameById",
+                new RenderedQuery("select name from clients where id = ?", List.of(Parameter.of(7L))),
+                String.class
+            ),
+            resultSet -> resultSet.getString("name")
+        );
+
+        Optional<String> row = client.fetchOptional(query);
+
+        assertThat(row).contains("Ricardo");
+        assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
+        assertThat(statement.boundValues).containsExactly(7L);
+    }
+
+    @Test
+    void executesBoundQueryListWithConstructorRowMappingWithoutCallingRenderer() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(
+            dataSource(statement),
+            query -> {
+                throw new AssertionError("renderer should not run for bound queries");
+            }
+        );
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarBoundQuery<ClientRow> query = MortarBoundQuery.of(
+            "ClientRepository.findAll",
+            new RenderedQuery(
+                "select id, name from clients",
+                List.of(),
+                new QueryMetadata(List.of(clients), List.of(id, name), List.of())
+            ),
+            ClientRow.class
+        );
+
+        List<ClientRow> rows = client.fetch(query);
+
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ricardo"));
+        assertThat(statement.sql).isEqualTo("select id, name from clients");
+    }
+
+    @Test
+    void boundQueryExecutionRequiresMetadataColumnsForRowTypeMapping() {
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(new CapturingStatement()), queryRenderer());
+        MortarBoundQuery<ClientRow> query = MortarBoundQuery.unnamed(
+            new RenderedQuery("select id, name from clients", List.of()),
+            ClientRow.class
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> client.fetch(query))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("bound query metadata columns are required for row-type mapping");
+    }
+
+    @Test
+    void rejectsNullBoundQueryArguments() {
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(new CapturingStatement()), queryRenderer());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> client.fetch((MortarBoundQuery<ClientRow>) null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("query cannot be null");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> client.fetchOptional((MortarBoundQuery<ClientRow>) null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("query cannot be null");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> client.fetch((MortarJdbcBoundQuery<ClientRow>) null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("query cannot be null");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> client.fetchOptional((MortarJdbcBoundQuery<ClientRow>) null))
+            .isInstanceOf(NullPointerException.class)
+            .hasMessage("query cannot be null");
     }
 
     @Test

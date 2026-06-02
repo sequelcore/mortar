@@ -18,8 +18,8 @@ asserts the SQL and parameters.
 
 1. Annotate a Java model with `@MortarEntity`, `@MortarId`, and
    `@MortarColumn`.
-2. Let the annotation processor generate a `Q*` metamodel and canonical
-   `findById` executor.
+2. Let the annotation processor generate a `Q*` metamodel and fixed read
+   facade.
 3. Write repository queries against generated Java fields.
 4. Render or execute the query through PostgreSQL/JDBC adapters.
 5. Use SQL snapshots, CLI, LSP, VS Code, or IntelliJ to inspect the generated
@@ -42,25 +42,32 @@ This code is refactorable Java. The PostgreSQL renderer produces:
 select c.id, c.name from clients c where c.id = ? and c.active = ?
 ```
 
-For common read paths, the generated `Q*` type also exposes generated
-executors:
+For common read paths, the generated `Q*` type exposes a fixed read facade:
 
 ```java
 List<QClient.FindAllRow> rows =
-    jdbcClient.fetch(QClient.CLIENT.findAll(renderer));
+    jdbcClient.fetch(
+        QClient.CLIENT.read(renderer)
+            .findAll()
+            .named("ClientRepository.findAll")
+    );
 ```
 
-Primary-key lookups use the same generated-query contract:
+Primary-key lookups bind the identifier into the rendered query without a
+manual generated parameter record:
 
 ```java
-var query = QClient.CLIENT.findById(renderer);
-var parameters = new QClient.FindByIdParameters(7L);
+MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT
+    .read(renderer)
+    .findById(7L)
+    .named("ClientRepository.findById");
 
-Optional<QClient.FindByIdRow> row = jdbcClient.fetchOptional(query, parameters);
+Optional<QClient.FindByIdRow> row = jdbcClient.fetchOptional(query);
 ```
 
-The executor pre-renders SQL through the configured renderer once, then uses
-direct JDBC binders and projection-index row mapping on execution.
+The facade renders SQL through the configured renderer, exposes SQL and
+parameters through `MortarBoundQuery`, and still requires explicit execution
+through `MortarJdbcClient`.
 
 Use `docs/sql-snapshots.md` and `docs/cli.md` when you want snapshot checks or
 offline inspection.

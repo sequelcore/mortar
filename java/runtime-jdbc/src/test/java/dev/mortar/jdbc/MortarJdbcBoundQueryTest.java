@@ -29,6 +29,23 @@ final class MortarJdbcBoundQueryTest {
         assertThat(query.rowMapper()).isNotNull();
     }
 
+    @Test
+    void namedReturnsANewJdbcBoundQueryWithoutMutatingTheOriginal() {
+        MortarJdbcBoundQuery<ClientRow> unnamed = MortarJdbcBoundQuery.of(
+            MortarBoundQuery.unnamed(
+                new RenderedQuery("select id from clients where id = ?", List.of(Parameter.of(7L))),
+                ClientRow.class
+            ),
+            resultSet -> new ClientRow(resultSet.getLong("id"))
+        );
+
+        MortarJdbcBoundQuery<ClientRow> named = unnamed.named("ClientRepository.findById");
+
+        assertThat(unnamed.queryName()).isEmpty();
+        assertThat(named.queryName()).contains("ClientRepository.findById");
+        assertThat(named.rowMapper()).isSameAs(unnamed.rowMapper());
+    }
+
     private record ClientRow(Long id) {
     }
 }

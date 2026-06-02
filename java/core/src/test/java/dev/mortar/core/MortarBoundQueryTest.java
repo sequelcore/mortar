@@ -43,6 +43,19 @@ final class MortarBoundQueryTest {
             .hasMessage("queryName cannot be blank");
     }
 
+    @Test
+    void namedReturnsANewBoundQueryWithoutMutatingTheOriginal() {
+        RenderedQuery renderedQuery = new RenderedQuery("select 1", List.of());
+        MortarBoundQuery<ClientRow> unnamed = MortarBoundQuery.unnamed(renderedQuery, ClientRow.class);
+
+        MortarBoundQuery<ClientRow> named = unnamed.named("ClientRepository.findById");
+
+        assertThat(unnamed.queryName()).isEmpty();
+        assertThat(named.queryName()).contains("ClientRepository.findById");
+        assertThat(named.rendered()).isSameAs(renderedQuery);
+        assertThat(named.rowType()).isEqualTo(ClientRow.class);
+    }
+
     private record ClientRow(Long id) {
     }
 }

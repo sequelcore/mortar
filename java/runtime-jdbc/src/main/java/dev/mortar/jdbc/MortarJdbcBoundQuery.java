@@ -25,6 +25,10 @@ public record MortarJdbcBoundQuery<T>(
         return new MortarJdbcBoundQuery<>(boundQuery, rowMapper);
     }
 
+    public MortarJdbcBoundQuery<T> named(String queryName) {
+        return MortarJdbcBoundQuery.of(boundQuery.named(queryName), rowMapper);
+    }
+
     public Optional<String> queryName() {
         return boundQuery.queryName();
     }

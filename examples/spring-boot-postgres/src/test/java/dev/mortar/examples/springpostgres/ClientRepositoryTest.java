@@ -7,10 +7,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import dev.mortar.core.MortarBoundQuery;
 import dev.mortar.core.QuerySpec;
-import dev.mortar.jdbc.MortarGeneratedQuery;
 import dev.mortar.jdbc.MortarJdbcClient;
-import dev.mortar.jdbc.MortarNoParameters;
 import dev.mortar.postgres.PostgresQueryRenderer;
 import dev.mortar.testkit.MortarSqlAssertions;
 import java.util.List;
@@ -23,18 +22,25 @@ final class ClientRepositoryTest {
 
     @Test
     void buildsTransparentSqlForGeneratedFindById() {
-        QClient.FindByIdQuery query = QClient.CLIENT.findById(renderer);
+        MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT.read(renderer)
+            .findById(7L)
+            .named("ClientRepository.findById");
 
         assertThat(query.sql()).isEqualTo("select c.id, c.name, c.active from clients c where c.id = ?");
+        assertThat(query.parameters()).extracting(parameter -> parameter.value()).containsExactly(7L);
         assertThat(query.parameterTypes()).containsExactly(Long.class);
+        assertThat(query.queryName()).contains("ClientRepository.findById");
     }
 
     @Test
     void buildsTransparentSqlForGeneratedFindAll() {
-        QClient.FindAllQuery query = QClient.CLIENT.findAll(renderer);
+        MortarBoundQuery<QClient.FindAllRow> query = QClient.CLIENT.read(renderer)
+            .findAll()
+            .named("ClientRepository.findAll");
 
         assertThat(query.sql()).isEqualTo("select c.id, c.name, c.active from clients c");
         assertThat(query.parameterTypes()).isEmpty();
+        assertThat(query.queryName()).contains("ClientRepository.findAll");
     }
 
     @Test
@@ -50,14 +56,14 @@ final class ClientRepositoryTest {
     @Test
     void fetchesClientByIdWithGeneratedExecutor() {
         MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
-        when(jdbcClient.fetchOptional(anyFindByIdQuery(), eq(new QClient.FindByIdParameters(7L))))
+        when(jdbcClient.fetchOptional(anyFindByIdQuery()))
             .thenReturn(Optional.of(new QClient.FindByIdRow(7L, "Ada", true)));
         ClientRepository repository = new ClientRepository(jdbcClient, renderer);
 
         Optional<ClientSummary> result = repository.findById(7L);
 
         assertThat(result).contains(new ClientSummary(7L, "Ada"));
-        verify(jdbcClient).fetchOptional(anyFindByIdQuery(), eq(new QClient.FindByIdParameters(7L)));
+        verify(jdbcClient).fetchOptional(anyFindByIdQuery());
     }
 
     @Test
@@ -95,12 +101,12 @@ final class ClientRepositoryTest {
     }
 
     @SuppressWarnings("unchecked")
-    private MortarGeneratedQuery<QClient.FindByIdParameters, QClient.FindByIdRow> anyFindByIdQuery() {
-        return any(MortarGeneratedQuery.class);
+    private MortarBoundQuery<QClient.FindByIdRow> anyFindByIdQuery() {
+        return any(MortarBoundQuery.class);
     }
 
     @SuppressWarnings("unchecked")
-    private MortarGeneratedQuery<MortarNoParameters, QClient.FindAllRow> anyFindAllQuery() {
-        return any(MortarGeneratedQuery.class);
+    private MortarBoundQuery<QClient.FindAllRow> anyFindAllQuery() {
+        return any(MortarBoundQuery.class);
     }
 }

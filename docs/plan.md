@@ -631,6 +631,66 @@ Acceptance criteria: repository code for `findById` and `findAll` is shorter
 than R15, generated SQL remains directly inspectable, and existing R15 executor
 behavior remains covered.
 
+Status: Done on 2026-06-02.
+
+R16.2 architecture debate outcome:
+
+- The xhigh architecture challenge recommended the singular generated namespace
+  `Read` on each `Q*` metamodel instance. `Reads` sounded like an unbounded
+  convenience bag, and `Query` collided with existing query terms.
+- `read(renderer)` belongs on the generated metamodel for discoverability and
+  keeps the facade entity-local.
+- The generated facade must return framework-free `MortarBoundQuery<T>` values,
+  not JDBC adapters, row mappers, generated repositories, or execution methods.
+- `findAll()` remains included because the method is already explicit and is
+  documented for small reference-data reads; diagnostics and future corpus work
+  can add stronger warnings without renaming it.
+- `.named(...)` belongs on the immutable bound query value. It returns a new
+  query object and does not mutate facade state.
+- Projection support remains outside R16.2. `projectRecord` and `projectDto`
+  stay planned for later proof instead of expanding this slice.
+- The facade only meaningfully reduces repository ceremony if
+  `MortarJdbcClient` can explicitly execute bound queries. R16.2 therefore
+  includes a narrow runtime execution bridge for `MortarBoundQuery<T>` and
+  `MortarJdbcBoundQuery<T>` while preserving the rule that query objects do not
+  execute themselves.
+- The accepted method set stays within ADR-0005: `read(renderer)`,
+  `findById(id)`, `findAll()`, immutable `named(...)`, and inspection methods.
+
+Completed scope:
+
+- Generated one `Q*.Read` namespace per entity.
+- Added `read(renderer).findById(id)` returning
+  `MortarBoundQuery<Q*.FindByIdRow>` with the supplied identifier bound into
+  the rendered query.
+- Added `read(renderer).findAll()` returning
+  `MortarBoundQuery<Q*.FindAllRow>` for explicit full-table reads.
+- Added immutable `named(...)` to `MortarBoundQuery<T>` and
+  `MortarJdbcBoundQuery<T>`.
+- Added explicit `MortarJdbcClient.fetch(...)` and `fetchOptional(...)`
+  overloads for bound queries so repositories execute through the runtime
+  adapter without self-executing query objects.
+- Updated processor metadata to point canonical generated-source members at
+  `read.findById` and `read.findAll` on `Q*.Read` while keeping query IDs and
+  snapshot keys stable.
+- Updated `examples/spring-boot-postgres` to use the R16.2 facade for common
+  reads.
+
+Focused verification before final gate:
+
+- `gradlew.bat :java:core:test --tests dev.mortar.core.MortarBoundQueryTest :java:runtime-jdbc:test --tests dev.mortar.jdbc.MortarJdbcBoundQueryTest --tests dev.mortar.jdbc.MortarJdbcClientTest :java:processor:test --tests dev.mortar.processor.MortarProcessorGenerationTest :examples:spring-boot-postgres:test --tests dev.mortar.examples.springpostgres.ClientRepositoryTest --no-daemon`
+  failed first because `MortarBoundQuery.named(String)` did not exist, then
+  passed after implementation.
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorMetadataFileTest --no-daemon`
+  passed after metadata was updated for the `Read` facade.
+- Final R16.2 verification passed on 2026-06-02:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`, `cargo clippy --all-targets --all-features -- -D warnings`,
+  and `cargo test`; from `editors/vscode`, `bun run typecheck`;
+  `git diff --check`; and the private path scrub for `Proyectos`, `Users`,
+  `R3XED`, `CANITAS`, `Sequel/mortar`, and `Sequel\\mortar` excluding build
+  outputs and caches.
+
 #### R16.3: Bound Parameters, Visible SQL, And Testkit Contract
 
 Objective: make fixed generated read facades first-class runtime and testkit
