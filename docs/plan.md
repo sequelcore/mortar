@@ -67,27 +67,24 @@ The following work is complete and represented in the roadmap:
 - LSP, VS Code, Neovim guidance, and IntelliJ adapter;
 - documentation, examples, release policy, and benchmark reports.
 
-## Active Public-Readiness Work
+## Post-R15 Roadmap Direction
 
-The current performance report is a public-readiness draft, not publishable
-performance evidence. Before Mortar can make public performance claims, the
-project must:
+R15 completed the initial public API readiness hardening path. The next work is
+not an application migration. Mortar should first mature its Java authoring
+surface, prove that surface against realistic public query fixtures, and harden
+tooling before real projects depend on it.
 
-- run the manual `Benchmarks` GitHub Actions workflow on a clean commit;
-- retain raw JMH JSON artifacts from CI;
-- attach release commit metadata to the report;
-- record reviewer sign-off against the retained artifacts;
-- add at least one broader workload beyond the current indexed lookup shape.
+The planned sequence is:
 
-The current engineering evidence supports this narrower statement:
+- R16: Java-First Ergonomics And Query Authoring.
+- R17: Real-Query Coverage Gate.
+- R18: Stability, Refactor Safety And Tooling Hardening.
+- R19: Pre-Release Candidate Hardening.
 
-> Mortar's generated prepared JDBC path is already in the same throughput and
-> latency band as direct JDBC for the measured lookup shape, with allocation
-> behavior close to reusable prepared JDBC and materially lower than the
-> measured jOOQ/QueryDSL paths.
-
-It does not support a broad claim that Mortar is universally faster than
-maximum handwritten JDBC.
+Existing application migration waits until Mortar is much more mature. R17 must
+prove R16 ergonomics against a realistic public fixture corpus before any such
+migration is considered, and R19 is a go/no-go gate for future beta or controlled
+migration pilot planning rather than a release promise.
 
 ## Verification Matrix
 
@@ -130,17 +127,50 @@ Public documentation scrub:
 - treat any match as a release blocker until it is replaced with a relative
   path, neutral fixture, or documented placeholder.
 
-## Next Decision Point
+## Next Planned Slice: R16 Java-First Ergonomics And Query Authoring
 
-After public-readiness cleanup, the next product decision should choose one of:
+Status: Planned
 
-- publishability work: CI benchmark artifacts, release metadata, and reviewer
-  sign-off;
-- generated repository executors beyond primary-key lookup;
-- broader benchmark workloads: joins, pages, write batches, and tuned PgJDBC;
-- editor workflow hardening around SQL hover, EXPLAIN, and diagnostics.
+R16 should make common query authoring feel better than raw SQL for Java users
+while preserving early errors, strong autocomplete, visible SQL, and explicit
+runtime behavior.
 
-The next slice should update [`roadmap.md`](roadmap.md) in the same change.
+Planned scope:
+
+- shorter API for common queries;
+- generated query facades;
+- less repository ceremony;
+- better VS Code autocomplete and SQL hover;
+- clear diagnostics when fields, classes, or columns change;
+- repository and service examples;
+- no hidden ORM behavior;
+- no loss of SQL transparency.
+
+R16 must not start migration work. It should update [`roadmap.md`](roadmap.md)
+in the same change when implementation work begins or when scope changes.
+
+## Future Maturity Gates
+
+R17 is planned as the real-query coverage gate. It should use a public
+non-application-specific fixture app and query corpus to cover optional filters,
+joins, stable pagination, count and exists queries, DTO projections,
+search-style queries, simple writes, batches, and compile-time or refactor
+failure cases for renamed or deleted fields. If a capability is not needed by
+that realistic query corpus, it should not enter R17.
+
+R18 is planned as stability, refactor-safety, and tooling hardening. It should
+cover generator golden tests, source and binary compatibility checks, Gradle
+incremental compilation, multi-module cases, metadata-change diagnostics, editor
+behavior against real generated contracts, schema drift workflow, and SQL
+snapshots as a normal developer workflow.
+
+R19 is planned as pre-release candidate hardening. It should decide whether
+Mortar is ready for a serious public beta or release candidate gate, not
+automatically release. Its scope includes Windows and Linux CI confidence,
+release dry-run, benchmark artifacts from clean commits before claims, upgrade
+and migration notes for pre-1.0 changes, security/release/support policy review,
+complete CI-running examples, and a go/no-go checklist for a future beta or
+later controlled migration pilot.
 
 ## Completed Slice: R15 Public API Readiness Hardening
 
@@ -166,7 +196,7 @@ Completed scope:
 
 Non-goals preserved for release review:
 
-- no release, tag, Maven Central publication, or merge to `main`;
+- no release, tag, or Maven Central publication;
 - no new dialects;
 - no ORM aggregate loading, hidden lazy loading, or broad repository abstraction;
 - no Spring dependency in `java/core` or `java/runtime-jdbc`;
