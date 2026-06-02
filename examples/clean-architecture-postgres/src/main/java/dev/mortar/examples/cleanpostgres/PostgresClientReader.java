@@ -29,7 +29,11 @@ public final class PostgresClientReader implements ClientReader {
 
     @Override
     public Optional<ClientSummary> findById(long id) {
-        return jdbcClient.fetchOptional(CLIENT.findById(renderer), new QClient.FindByIdParameters(id))
+        return jdbcClient.fetchOptional(
+                CLIENT.read(renderer)
+                    .findById(id)
+                    .named("PostgresClientReader.findById")
+            )
             .map(row -> new ClientSummary(row.id(), row.name()));
     }
 

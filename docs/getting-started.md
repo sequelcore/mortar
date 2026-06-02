@@ -78,5 +78,5 @@ Use `docs/sql-snapshots.md` and `docs/cli.md` when you want snapshot checks or
 offline inspection.
 
 Next, read [`usage-guide.md`](usage-guide.md) for when to choose generated
-executors, Java DSL queries, adapter-boundary SQL tests, starter diagnostics,
-and benchmark evidence.
+read facades, Java DSL queries, adapter-boundary SQL tests, starter
+diagnostics, and benchmark evidence.

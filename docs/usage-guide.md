@@ -29,6 +29,11 @@ The older direct generated executor methods remain available for hot paths that
 need the `MortarGeneratedQuery` contract, but the fixed `Read` facade is the
 canonical R16.2 repository shape.
 
+The generated `Read` facade is deliberately small. It does not generate
+execution methods, writes, joins, optional filters, `count`, `exists`,
+projections, or repository classes. Repositories still own method names, row to
+DTO mapping, transaction placement, and tests.
+
 Use the Java DSL when the query has application-specific predicates, joins,
 projection shape, sorting, or pagination:
 
@@ -79,7 +84,8 @@ Keep Mortar in infrastructure adapters:
 
 - domain types do not import Mortar;
 - application ports expose business methods;
-- infrastructure repositories build `QuerySpec` or generated queries;
+- infrastructure repositories build `QuerySpec` values or generated
+  `MortarBoundQuery<?>` read facade values;
 - tests assert SQL at the adapter boundary.
 
 See `examples/clean-architecture-postgres` for a CI-compiling example.
@@ -110,6 +116,12 @@ MortarSqlAssertions.assertThatSql(renderer.render(query))
 
 Use Testcontainers when claiming PostgreSQL syntax or execution compatibility.
 Use JMH and retained raw JSON artifacts before making performance claims.
+
+Repository SQL tests catch query drift before a database is involved. If a Java
+entity field, table mapping, selected column, query parameter, or renderer
+contract changes, assertions such as `hasSql(...)`, `hasParameters(...)`, and
+`hasParameterTypes(...)` fail in the adapter test where the repository query is
+owned.
 
 ## Diagnostics
 

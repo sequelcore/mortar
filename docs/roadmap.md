@@ -765,7 +765,7 @@ Current evidence:
 
 ### R16: Java-First Ergonomics And Query Authoring
 
-Status: In Progress
+Status: Done
 
 Goal: let a Java user write bounded fixed-shape read queries with less friction
 than handwritten SQL plus JDBC binding and row mapping, while preserving strong
@@ -774,7 +774,8 @@ autocomplete, early errors, and visible SQL.
 Scope:
 
 - generated fixed single-table read facades for `findById` and `findAll`;
-- fixed DTO/record projection ergonomics for those read shapes;
+- repository row-to-DTO mapping for those read shapes, with generated facade
+  projections deferred;
 - bound-parameter and visible-SQL runtime/testkit contract;
 - one generated read namespace per entity with a strict public API budget;
 - query-id/source-map metadata contract for future editor tooling;
@@ -788,7 +789,7 @@ R16 slices:
 - R16.1: Contract, ADR, and API budget. Status: Done.
 - R16.2: Fixed single-table read facades. Status: Done.
 - R16.3: Bound parameters, visible SQL, and testkit contract. Status: Done.
-- R16.4: Examples and usage guidance. Status: Planned.
+- R16.4: Examples and usage guidance. Status: Done.
 
 Non-goals:
 
@@ -920,6 +921,45 @@ Current evidence:
 - Architecture note: no generated execution methods, repositories, joins,
   optional filters, writes, counts, exists queries, JDBC dependencies in
   `java/core`, or editor source-map hardening were added.
+- Release note: no release, tag, publication, merge, push, or application
+  migration is authorized by this slice.
+- R16.4 completed the public examples and usage guidance convergence for the
+  shipped R16 surface. The Clean Architecture example now uses
+  `CLIENT.read(renderer).findById(id).named("PostgresClientReader.findById")`,
+  executes through `jdbcClient.fetchOptional(query)`, maps generated rows to
+  the domain-facing `ClientSummary`, and asserts SQL drift with
+  `assertThatSql(query).hasSql(...).hasParameters(...).hasParameterTypes(...)`.
+- R16.4 architecture debate outcome: the xhigh challenge approved a narrow
+  docs/examples convergence slice, required removing the legacy generated
+  executor path from the Clean Architecture example, and kept
+  `MortarGeneratedQuery` as an advanced hot-path contract rather than the
+  canonical repository flow. Generated projections, optional filters, joins,
+  writes, `count`, `exists`, generated repositories, self-executing query
+  objects, and LSP/source-map hardening remain outside R16.
+- Focused R16.4 verification on 2026-06-02:
+  `gradlew.bat :examples:clean-architecture-postgres:test --tests
+  dev.mortar.examples.cleanpostgres.PostgresClientReaderTest --no-daemon`
+  failed first because the adapter still used `CLIENT.findById(renderer)` with
+  `FindByIdParameters`, then passed after the adapter moved to the generated
+  `Read` facade. `gradlew.bat :examples:spring-boot-postgres:test --tests
+  dev.mortar.examples.springpostgres.ClientRepositoryTest --no-daemon` and
+  `gradlew.bat :examples:clean-architecture-postgres:check --no-daemon` passed.
+- Final R16.4 verification on 2026-06-02 passed:
+  `gradlew.bat check --no-daemon`; from `rust`,
+  `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`; `git diff --check`;
+  and the private path scrub excluding build outputs and caches.
+- Changed modules/docs: `examples/clean-architecture-postgres`,
+  `docs/api-reference.md`, `docs/ddd-clean-architecture-example.md`,
+  `docs/examples/spring-clean-architecture-repository.md`,
+  `docs/getting-started.md`, `docs/plan.md`, `docs/roadmap.md`,
+  `docs/spring-boot-postgres-example.md`, and `docs/usage-guide.md`.
+- R16 exit criteria are satisfied: generated API growth remains within
+  ADR-0005, fixed read examples compile, SQL and parameter types remain visible
+  through testkit assertions, generated source renders through supplied
+  `QueryRenderer`, `MortarJdbcClient` remains the execution boundary, and no
+  ORM-like behavior was introduced.
 - Release note: no release, tag, publication, merge, push, or application
   migration is authorized by this slice.
 

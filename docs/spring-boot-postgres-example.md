@@ -60,6 +60,10 @@ The generated facade renders SQL through the configured renderer, returns an
 immutable `MortarBoundQuery`, and still executes only when passed to
 `MortarJdbcClient`.
 
+Mortar does not generate the repository. The repository keeps the Spring method
+name, maps generated rows to application DTOs, and chooses whether the result is
+`Optional` or `List`.
+
 Repository tests can assert the generated facade without a database:
 
 ```java
@@ -72,6 +76,10 @@ MortarSqlAssertions.assertThatSql(query)
     .hasParameters(7L)
     .hasParameterTypes(Long.class);
 ```
+
+Those assertions keep SQL visible in CI. If the generated columns, identifier
+binding, parameter Java type, or renderer output drifts, the repository test
+fails before the query reaches a database.
 
 ## Starter Properties
 
@@ -114,6 +122,11 @@ QuerySpec findActiveByIdQuery(long id) {
         .build();
 }
 ```
+
+R16 generated `Read` facades intentionally do not cover optional filters,
+joins, writes, `count`, `exists`, generated projections, generated repositories,
+or self-executing query objects. Keep those shapes explicit until a later
+roadmap slice proves and documents a larger surface.
 
 ## Local Database
 
