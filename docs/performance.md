@@ -34,6 +34,13 @@ gradlew.bat :java:runtime-jdbc:test
 The benchmark module keeps threshold smoke checks. Any public performance claim
 needs a reproducible report using `docs/performance-report-template.md`.
 
+R20.3 retained Java runtime PostgreSQL baseline bundles are produced by the
+manual `Benchmarks` workflow. The bundle path inside the workflow is
+`java/benchmarks/build/reports/jmh/r20.3`, and it contains raw JMH JSON under
+`results/` plus `manifest.json`, `commands.txt`, `summary.md`,
+`review-notes.md`, and environment files. Local smoke JSON under
+`java/benchmarks/build` remains build output and is not public evidence.
+
 Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`

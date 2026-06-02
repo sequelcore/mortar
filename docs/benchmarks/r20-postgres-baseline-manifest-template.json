@@ -1,0 +1,93 @@
+{
+  "schema": "mortar-r20-postgres-baseline-manifest-v1",
+  "benchmarkId": "r20.3-java-runtime-postgres-baseline",
+  "origin": "local-or-github-actions",
+  "status": "internal-measurement-only",
+  "publicClaimsAllowed": false,
+  "commit": "<git-sha>",
+  "branch": "<branch-or-tag>",
+  "cleanWorktree": true,
+  "runDateUtc": "YYYY-MM-DDTHH:MM:SSZ",
+  "workflow": {
+    "name": "Benchmarks",
+    "runId": "<github-run-id-or-local>",
+    "runAttempt": "<github-run-attempt-or-local>",
+    "runner": "<local-or-ci-runner>",
+    "profile": "all",
+    "repeatCount": 2,
+    "includeRegex": "PostgresExecutionBenchmark\\.(plainJdbcFetch|plainJdbcReusableStatementFetch|plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch|jooqFetch|querydslFetch)$"
+  },
+  "jmh": {
+    "version": "1.37",
+    "modeProfiles": [
+      "throughput",
+      "allocation",
+      "latency"
+    ],
+    "warmupIterations": 5,
+    "measurementIterations": 10,
+    "forks": 3,
+    "warmupDuration": "1s",
+    "measurementDuration": "1s",
+    "resultFormat": "json"
+  },
+  "environment": {
+    "os": "<os-and-version>",
+    "cpu": "<cpu-model-core-count>",
+    "memory": "<memory>",
+    "powerPolicy": "<policy-or-unknown>",
+    "javaVersionFile": "environment/java-version.txt",
+    "gradleVersionFile": "environment/gradle-version.txt",
+    "dockerVersionFile": "environment/docker-version.txt",
+    "dockerInfoFile": "environment/docker-info.txt",
+    "memoryFile": "environment/meminfo.txt"
+  },
+  "database": {
+    "postgresImage": "postgres:16-alpine",
+    "testcontainersVersion": "2.0.5",
+    "pgjdbcVersion": "42.7.11",
+    "tunedPgjdbcParameters": {
+      "prepareThreshold": "1",
+      "preparedStatementCacheQueries": "256",
+      "binaryTransfer": "true"
+    },
+    "planCacheMode": "default"
+  },
+  "dataset": {
+    "schema": "routes and clients",
+    "clientRows": 1000,
+    "queryClientId": 777,
+    "indexes": [
+      "clients_active_id_idx"
+    ]
+  },
+  "matrixRows": [
+    "ordinary-jdbc",
+    "reusable-prepared-jdbc",
+    "ordinary-jdbc-find-by-id",
+    "reusable-prepared-jdbc-find-by-id",
+    "tuned-pgjdbc-reusable-jdbc",
+    "mortar-render-per-call",
+    "mortar-pre-rendered-sql",
+    "mortar-processor-generated-executor",
+    "mortar-prepared-processor-generated-executor",
+    "mortar-tuned-processor-generated-executor",
+    "jooq-reference",
+    "querydsl-sql-reference"
+  ],
+  "artifactPaths": {
+    "commands": "commands.txt",
+    "summary": "summary.md",
+    "reviewNotes": "review-notes.md",
+    "environmentDirectory": "environment/",
+    "results": [
+      "results/r20.3-postgres-baseline-throughput-run-1-<sha>.json",
+      "results/r20.3-postgres-baseline-throughput-run-2-<sha>.json",
+      "results/r20.3-postgres-baseline-allocation-run-1-<sha>.json",
+      "results/r20.3-postgres-baseline-allocation-run-2-<sha>.json",
+      "results/r20.3-postgres-baseline-latency-run-1-<sha>.json",
+      "results/r20.3-postgres-baseline-latency-run-2-<sha>.json"
+    ]
+  },
+  "interpretationBoundary": "Internal fixed-shape JMH/PostgreSQL evidence only; no public performance claims."
+}

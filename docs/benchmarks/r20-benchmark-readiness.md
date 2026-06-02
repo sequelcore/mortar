@@ -124,6 +124,29 @@ The R20 architecture/performance debate concluded:
 - Optimizations must wait until evidence isolates a dominant cost. R20.1 and
   R20.2 authorize measurement design only.
 
+The R20.3 artifact-readiness debate concluded:
+
+- R20.3 must use retained artifact bundles, not terminal output or unbundled
+  build-directory JSON, as the evidence unit.
+- The baseline matrix is limited to live PostgreSQL fixed-read rows: ordinary
+  JDBC, reusable prepared JDBC, tuned PgJDBC reusable JDBC, Mortar
+  render-per-call, Mortar pre-rendered SQL, Mortar processor-generated
+  executor, Mortar prepared processor-generated executor, jOOQ reference, and
+  QueryDSL SQL reference.
+- jOOQ and QueryDSL remain reference-library rows. They are included in the
+  retained matrix because R20.3 requires them, but they do not support library
+  ranking claims.
+- Local focused runs may prove harness and JSON generation. Retained CI
+  bundles require at least two repeated runs per selected profile; additional
+  local or CI repeats are required before interpreting overlapping confidence
+  intervals.
+- Optional variants, handwritten generated-style Mortar rows, join/page rows,
+  update-batch rows, and controlled fake-JDBC rows are not R20.3 baseline rows.
+  They move to R20.4 or R20.5 when scoped.
+- The manual benchmark workflow must retain raw JSON, manifest, commands,
+  summary, reviewer notes, and environment files without committing generated
+  benchmark output.
+
 ## Current Benchmark Inventory
 
 | Artifact | Purpose | Readiness |
@@ -259,7 +282,7 @@ Invalid or misleading claims include:
 - R20.1: Benchmark readiness audit and source-backed research. Status: Done.
 - R20.2: Canonical performance plan and public-claim policy. Status: Done.
 - R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
-  Status: Planned.
+  Status: Done.
 - R20.4: Generated fixed-read overhead and allocation profiling. Status:
   Planned.
 - R20.5: DSL query render/execute overhead profiling for broader read and write

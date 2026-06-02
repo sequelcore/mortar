@@ -53,12 +53,21 @@ tasks.register("verifyBenchmarkWorkflow") {
         val content = workflowFile.readText()
         val requiredFragments = listOf(
             "workflow_dispatch:",
+            "repeatCount",
+            "default: \"2\"",
             "jmhPostgresExecution",
             "jmhPostgresExecutionAllocation",
             "jmhPostgresExecutionLatency",
             "jmhIncludes",
+            "R20.3",
+            "manifest.json",
+            "commands.txt",
+            "environment",
+            "meminfo.txt",
+            "review-notes.md",
             "actions/upload-artifact",
-            "java/benchmarks/build/reports/jmh"
+            "java/benchmarks/build/reports/jmh/r20.3",
+            "retention-days: 90"
         )
         val missingFragments = requiredFragments.filterNot(content::contains)
         if (missingFragments.isNotEmpty()) {
