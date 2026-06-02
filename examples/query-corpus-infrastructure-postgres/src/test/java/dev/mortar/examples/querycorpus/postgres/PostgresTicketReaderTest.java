@@ -16,6 +16,7 @@ import dev.mortar.core.MortarBoundQuery;
 import dev.mortar.core.MortarDiagnosticCode;
 import dev.mortar.core.QueryDiagnostics;
 import dev.mortar.core.QuerySpec;
+import dev.mortar.core.TableRef;
 import dev.mortar.examples.querycorpus.application.TicketDetail;
 import dev.mortar.examples.querycorpus.application.TicketHeader;
 import dev.mortar.examples.querycorpus.application.TicketListRow;
@@ -69,6 +70,40 @@ final class PostgresTicketReaderTest {
                 TICKET_RECORD.priority,
                 TICKET_RECORD.openedOn
             );
+    }
+
+    @Test
+    void changedColumnMetadataIsASemanticSqlSnapshotDriftCase() {
+        String baselineSnapshotSql = """
+            select t.id, t.summary, t.priority, t.opened_on from tickets t where t.id = ?""";
+        MortarBoundQuery<QTicketRecord.FindByIdRow> baseline = TICKET_RECORD.read(renderer)
+            .findById(42L)
+            .named("TicketReader.findHeader");
+        assertThatSql(baseline)
+            .hasSql(baselineSnapshotSql)
+            .hasParameters(42L)
+            .hasParameterTypes(Long.class);
+
+        TableRef changedTickets = new TableRef("tickets", "t");
+        QuerySpec changedSummaryColumnQuery = new dev.mortar.core.SimpleMortarDb()
+            .from(TICKET_RECORD)
+            .project(dev.mortar.core.Projection.record(TicketHeader.class, List.of(
+                TICKET_RECORD.id,
+                changedTickets.column("summary", "ticket_summary", String.class),
+                TICKET_RECORD.priority,
+                TICKET_RECORD.openedOn
+            )))
+            .where(ticket -> ticket.id.eq(42L))
+            .named("TicketReader.findHeader")
+            .build();
+
+        String changedSql = renderer.render(changedSummaryColumnQuery).sql();
+        assertThat(changedSql).isNotEqualTo(baselineSnapshotSql);
+        assertThatSql(renderer.render(changedSummaryColumnQuery))
+            .hasSql("""
+                select t.id, t.ticket_summary, t.priority, t.opened_on from tickets t where t.id = ?""")
+            .hasParameters(42L)
+            .hasParameterTypes(Long.class);
     }
 
     @Test
