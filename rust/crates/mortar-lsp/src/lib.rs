@@ -145,7 +145,7 @@ impl LspState {
                 };
                 return Ok(hover_for_snapshot(&snapshot_content, &snapshot_name).unwrap_or(None));
             }
-            GeneratedQueryResolution::FailClosed => return Ok(None),
+            GeneratedQueryResolution::FailClosed { .. } => return Ok(None),
             GeneratedQueryResolution::NotGeneratedCall => {}
         }
 
@@ -182,7 +182,7 @@ impl LspState {
                 actions.extend(explain_actions);
                 return Ok(actions);
             }
-            GeneratedQueryResolution::FailClosed => return Ok(Vec::new()),
+            GeneratedQueryResolution::FailClosed { .. } => return Ok(Vec::new()),
             GeneratedQueryResolution::NotGeneratedCall => {}
         }
 
@@ -296,27 +296,39 @@ impl LspState {
         };
         let generated_call = match generated_call_at(document, position) {
             GeneratedCallDetection::Call(call) => call,
-            GeneratedCallDetection::FailClosed { .. } => {
-                return Ok(GeneratedQueryResolution::FailClosed);
+            GeneratedCallDetection::FailClosed { reason, .. } => {
+                return Ok(GeneratedQueryResolution::FailClosed { reason });
             }
             GeneratedCallDetection::NotGeneratedCall => {
                 return Ok(GeneratedQueryResolution::NotGeneratedCall);
             }
         };
         let Some((metadata_content, source_map_content)) = self.read_source_map_inputs(uri)? else {
-            return Ok(GeneratedQueryResolution::FailClosed);
+            return Ok(GeneratedQueryResolution::FailClosed {
+                reason: GeneratedCallFailClosedReason::SourceMapEvidence,
+            });
         };
 
         let metadata = match parse_mortar_metadata_file(&metadata_content) {
             Ok(metadata) => metadata,
-            Err(_) => return Ok(GeneratedQueryResolution::FailClosed),
+            Err(_) => {
+                return Ok(GeneratedQueryResolution::FailClosed {
+                    reason: GeneratedCallFailClosedReason::SourceMapEvidence,
+                });
+            }
         };
         let source_map = match parse_mortar_source_map_file(&source_map_content) {
             Ok(source_map) => source_map,
-            Err(_) => return Ok(GeneratedQueryResolution::FailClosed),
+            Err(_) => {
+                return Ok(GeneratedQueryResolution::FailClosed {
+                    reason: GeneratedCallFailClosedReason::SourceMapEvidence,
+                });
+            }
         };
         if !detect_source_map_freshness(&metadata, &source_map).is_empty() {
-            return Ok(GeneratedQueryResolution::FailClosed);
+            return Ok(GeneratedQueryResolution::FailClosed {
+                reason: GeneratedCallFailClosedReason::SourceMapEvidence,
+            });
         }
 
         let mut candidates = source_map
@@ -325,7 +337,9 @@ impl LspState {
             .filter(|query| generated_call.matches(query))
             .collect::<Vec<_>>();
         if candidates.len() != 1 {
-            return Ok(GeneratedQueryResolution::FailClosed);
+            return Ok(GeneratedQueryResolution::FailClosed {
+                reason: GeneratedCallFailClosedReason::SourceMapEvidence,
+            });
         };
         Ok(GeneratedQueryResolution::Snapshot(
             candidates.remove(0).snapshot,
@@ -368,8 +382,9 @@ impl LspState {
             .filter_map(|marker| {
                 match self
                     .source_map_snapshot_name_at(uri, marker.position())
-                    .unwrap_or(GeneratedQueryResolution::FailClosed)
-                {
+                    .unwrap_or(GeneratedQueryResolution::FailClosed {
+                        reason: GeneratedCallFailClosedReason::SourceMapEvidence,
+                    }) {
                     GeneratedQueryResolution::Snapshot(snapshot_name) => {
                         self.snapshot_exists(uri, &snapshot_name).map_or_else(
                             |error| {
@@ -386,8 +401,8 @@ impl LspState {
                             },
                         )
                     }
-                    GeneratedQueryResolution::FailClosed => {
-                        Some(marker.diagnostic("Mortar source-map metadata is stale or missing"))
+                    GeneratedQueryResolution::FailClosed { reason } => {
+                        Some(marker.diagnostic_for_fail_closed(reason))
                     }
                     GeneratedQueryResolution::NotGeneratedCall => None,
                 }
@@ -670,7 +685,9 @@ fn non_empty_workspace_roots(workspace_roots: Vec<PathBuf>) -> Vec<PathBuf> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum GeneratedQueryResolution {
     Snapshot(String),
-    FailClosed,
+    FailClosed {
+        reason: GeneratedCallFailClosedReason,
+    },
     NotGeneratedCall,
 }
 
@@ -695,8 +712,45 @@ fn mortar_metadata_bases(root: &std::path::Path) -> Vec<PathBuf> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum GeneratedCallDetection {
     Call(GeneratedCall),
-    FailClosed { start: usize, end: usize },
+    FailClosed {
+        start: usize,
+        end: usize,
+        reason: GeneratedCallFailClosedReason,
+    },
     NotGeneratedCall,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GeneratedCallFailClosedReason {
+    SourceMapEvidence,
+    UnsupportedGeneratedSyntax,
+    IncompleteJavaSyntax,
+}
+
+impl GeneratedCallFailClosedReason {
+    fn diagnostic_code(self) -> &'static str {
+        match self {
+            GeneratedCallFailClosedReason::SourceMapEvidence => "mortar-source-map-stale",
+            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax => {
+                "mortar-generated-call-unsupported"
+            }
+            GeneratedCallFailClosedReason::IncompleteJavaSyntax => "mortar-java-syntax-incomplete",
+        }
+    }
+
+    fn diagnostic_message(self) -> &'static str {
+        match self {
+            GeneratedCallFailClosedReason::SourceMapEvidence => {
+                "Mortar source-map metadata is stale or missing"
+            }
+            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax => {
+                "Mortar generated call uses unsupported Java syntax"
+            }
+            GeneratedCallFailClosedReason::IncompleteJavaSyntax => {
+                "Mortar generated call is inside incomplete Java syntax"
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -747,6 +801,7 @@ enum SyntaxGeneratedCall {
         end: usize,
         method_start: usize,
         member: String,
+        reason: GeneratedCallFailClosedReason,
     },
 }
 
@@ -763,12 +818,13 @@ impl SyntaxGeneratedCall {
     fn detection(&self) -> GeneratedCallDetection {
         match self {
             SyntaxGeneratedCall::Call { call, .. } => GeneratedCallDetection::Call(call.clone()),
-            SyntaxGeneratedCall::FailClosed { start, end, .. } => {
-                GeneratedCallDetection::FailClosed {
-                    start: *start,
-                    end: *end,
-                }
-            }
+            SyntaxGeneratedCall::FailClosed {
+                start, end, reason, ..
+            } => GeneratedCallDetection::FailClosed {
+                start: *start,
+                end: *end,
+                reason: *reason,
+            },
         }
     }
 
@@ -789,6 +845,31 @@ impl SyntaxGeneratedCall {
             member,
         })
     }
+
+    fn fail_closed_with_reason(&self, reason: GeneratedCallFailClosedReason) -> Self {
+        match self {
+            SyntaxGeneratedCall::Call { call, method_start } => SyntaxGeneratedCall::FailClosed {
+                start: call.start,
+                end: call.end,
+                method_start: *method_start,
+                member: call.generated_member.clone(),
+                reason,
+            },
+            SyntaxGeneratedCall::FailClosed {
+                start,
+                end,
+                method_start,
+                member,
+                ..
+            } => SyntaxGeneratedCall::FailClosed {
+                start: *start,
+                end: *end,
+                method_start: *method_start,
+                member: member.clone(),
+                reason,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -804,9 +885,20 @@ impl<'a> JavaSyntaxResolution<'a> {
         parser.set_language(&language.into()).ok()?;
         let tree = parser.parse(document, None)?;
         let root = tree.root_node();
+        let has_syntax_error = root.has_error();
         let imports = JavaImports::parse_syntax(document, root);
         let mut calls = Vec::new();
         collect_generated_method_invocations(document, root, &imports, &mut calls);
+        if has_syntax_error {
+            calls = calls
+                .into_iter()
+                .map(|call| {
+                    call.fail_closed_with_reason(
+                        GeneratedCallFailClosedReason::IncompleteJavaSyntax,
+                    )
+                })
+                .collect();
+        }
         Some(Self { document, calls })
     }
 
@@ -868,6 +960,7 @@ fn syntax_generated_call_for_method_invocation(
             node.end_byte(),
             method_start,
             member,
+            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
         ));
     };
     if node_text(document, read_name) != "read" {
@@ -880,6 +973,7 @@ fn syntax_generated_call_for_method_invocation(
             node.end_byte(),
             method_start,
             member,
+            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
         ));
     };
     let receiver_node = unwrapped_expression_node(receiver_node);
@@ -892,6 +986,7 @@ fn syntax_generated_call_for_method_invocation(
         node.end_byte(),
         method_start,
         member.clone(),
+        GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
     );
     let Some(receiver) = receiver else {
         return Some(fail_closed);
@@ -934,7 +1029,15 @@ fn generated_looking_syntax_fail_closed(
     let object = unwrapped_expression_node(object);
     (object_is_generated_like_local_alias(document, node, object)
         || object_is_generated_read_field(document, node, object))
-    .then(|| syntax_fail_closed(object.start_byte(), node.end_byte(), method_start, member))
+    .then(|| {
+        syntax_fail_closed(
+            object.start_byte(),
+            node.end_byte(),
+            method_start,
+            member,
+            GeneratedCallFailClosedReason::UnsupportedGeneratedSyntax,
+        )
+    })
 }
 
 fn syntax_fail_closed(
@@ -942,12 +1045,14 @@ fn syntax_fail_closed(
     end: usize,
     method_start: usize,
     member: String,
+    reason: GeneratedCallFailClosedReason,
 ) -> SyntaxGeneratedCall {
     SyntaxGeneratedCall::FailClosed {
         start,
         end,
         method_start,
         member,
+        reason,
     }
 }
 
@@ -991,11 +1096,23 @@ fn expression_is_generated_like(document: &str, node: Node<'_>) -> bool {
     }
 }
 
-fn unwrapped_expression_node(node: Node<'_>) -> Node<'_> {
-    match node.kind() {
-        "parenthesized_expression" => first_named_child(node).unwrap_or(node),
-        "cast_expression" => node.child_by_field_name("value").unwrap_or(node),
-        _ => node,
+fn unwrapped_expression_node(mut node: Node<'_>) -> Node<'_> {
+    loop {
+        match node.kind() {
+            "parenthesized_expression" => {
+                let Some(child) = first_named_child(node) else {
+                    return node;
+                };
+                node = child;
+            }
+            "cast_expression" => {
+                let Some(child) = node.child_by_field_name("value") else {
+                    return node;
+                };
+                node = child;
+            }
+            _ => return node,
+        }
     }
 }
 
@@ -1365,7 +1482,15 @@ impl GeneratedCallMarker {
         }
     }
 
+    fn diagnostic_for_fail_closed(&self, reason: GeneratedCallFailClosedReason) -> Diagnostic {
+        self.diagnostic_with_code(reason.diagnostic_code(), reason.diagnostic_message())
+    }
+
     fn diagnostic(&self, message: impl Into<String>) -> Diagnostic {
+        self.diagnostic_with_code("mortar-source-map-stale", message)
+    }
+
+    fn diagnostic_with_code(&self, code: &str, message: impl Into<String>) -> Diagnostic {
         let member_len = utf16_len(&self.member);
         Diagnostic {
             range: Range {
@@ -1376,9 +1501,7 @@ impl GeneratedCallMarker {
                 },
             },
             severity: Some(DiagnosticSeverity::WARNING),
-            code: Some(lsp_types::NumberOrString::String(
-                "mortar-source-map-stale".to_string(),
-            )),
+            code: Some(lsp_types::NumberOrString::String(code.to_string())),
             code_description: None,
             source: Some("mortar".to_string()),
             message: message.into(),
@@ -1501,16 +1624,19 @@ mod tests {
         Connection, Message, Notification as ServerNotification, Request as ServerRequest,
         RequestId,
     };
-    use lsp_types::notification::{DidOpenTextDocument, Notification, PublishDiagnostics};
+    use lsp_types::notification::{
+        DidChangeTextDocument, DidOpenTextDocument, Notification, PublishDiagnostics,
+    };
     use lsp_types::request::{CodeActionRequest, GotoDefinition, HoverRequest, Request};
     use lsp_types::{
         CodeActionContext, CodeActionKind, CodeActionOptions, CodeActionOrCommand,
         CodeActionParams, CodeActionProviderCapability, DiagnosticSeverity,
-        DidOpenTextDocumentParams, GotoDefinitionParams, GotoDefinitionResponse, HoverContents,
-        HoverParams, HoverProviderCapability, MarkedString, PartialResultParams, Position,
-        PublishDiagnosticsParams, Range, TextDocumentIdentifier, TextDocumentItem,
+        DidChangeTextDocumentParams, DidOpenTextDocumentParams, GotoDefinitionParams,
+        GotoDefinitionResponse, HoverContents, HoverParams, HoverProviderCapability, MarkedString,
+        PartialResultParams, Position, PublishDiagnosticsParams, Range,
+        TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentItem,
         TextDocumentPositionParams, TextDocumentSyncCapability, TextDocumentSyncKind, Uri,
-        WorkDoneProgressParams,
+        VersionedTextDocumentIdentifier, WorkDoneProgressParams,
     };
     use mortar_compiler::{DatabaseSchema, DatabaseTable};
     use std::path::{Path, PathBuf};
@@ -2071,6 +2197,209 @@ public final class ClientUsage {
     }
 
     #[test]
+    fn malformed_incremental_generated_call_fails_closed_until_buffer_recovers() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let (server, client) = Connection::memory();
+        let malformed = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        QClient.CLIENT.read(renderer).findById(id);
+"#;
+        let valid = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        QClient.CLIENT.read(renderer).findById(id);
+    }
+}
+"#;
+
+        handle_notification(
+            &server,
+            &ServerNotification {
+                method: DidOpenTextDocument::METHOD.to_string(),
+                params: serde_json::to_value(DidOpenTextDocumentParams {
+                    text_document: TextDocumentItem {
+                        uri: uri.clone(),
+                        language_id: "java".to_string(),
+                        version: 1,
+                        text: malformed.to_string(),
+                    },
+                })
+                .expect("open params should serialize"),
+            },
+            &mut state,
+        )
+        .expect("malformed open should publish diagnostics");
+
+        let Message::Notification(notification) = client
+            .receiver
+            .recv()
+            .expect("malformed diagnostics should be sent")
+        else {
+            panic!("expected diagnostics notification");
+        };
+        let params: PublishDiagnosticsParams =
+            serde_json::from_value(notification.params).expect("diagnostics should parse");
+        assert_eq!(params.diagnostics.len(), 1);
+        assert_eq!(
+            params.diagnostics[0].message,
+            "Mortar generated call is inside incomplete Java syntax"
+        );
+        assert!(matches!(
+            params.diagnostics[0].code,
+            Some(lsp_types::NumberOrString::String(ref code))
+                if code == "mortar-java-syntax-incomplete"
+        ));
+        let malformed_position = position_of(malformed, "findById");
+        assert!(
+            state
+                .hover(&uri, malformed_position)
+                .expect("malformed hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, malformed_position)
+                .expect("malformed code actions should fail closed")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, malformed_position)
+                .expect("malformed definition should fail closed")
+                .is_none()
+        );
+
+        handle_notification(
+            &server,
+            &ServerNotification {
+                method: DidChangeTextDocument::METHOD.to_string(),
+                params: serde_json::to_value(DidChangeTextDocumentParams {
+                    text_document: VersionedTextDocumentIdentifier {
+                        uri: uri.clone(),
+                        version: 2,
+                    },
+                    content_changes: vec![TextDocumentContentChangeEvent {
+                        range: None,
+                        range_length: None,
+                        text: valid.to_string(),
+                    }],
+                })
+                .expect("change params should serialize"),
+            },
+            &mut state,
+        )
+        .expect("valid change should publish diagnostics");
+
+        let Message::Notification(notification) = client
+            .receiver
+            .recv()
+            .expect("valid diagnostics should be sent")
+        else {
+            panic!("expected diagnostics notification");
+        };
+        let params: PublishDiagnosticsParams =
+            serde_json::from_value(notification.params).expect("diagnostics should parse");
+        assert!(params.diagnostics.is_empty());
+        assert!(
+            state
+                .hover(&uri, position_of(valid, "findById"))
+                .expect("valid hover should resolve")
+                .is_some()
+        );
+        assert!(
+            !state
+                .code_actions(&uri, position_of(valid, "findById"))
+                .expect("valid code actions should resolve")
+                .is_empty()
+        );
+        assert!(
+            state
+                .definition(&uri, position_of(valid, "findById"))
+                .expect("valid definition should resolve")
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn deeply_parenthesized_canonical_receivers_still_resolve() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        (((QClient.CLIENT))).read(renderer).findById(id);
+        (((QClient.CLIENT.read(renderer)))).findAll();
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+
+        let find_by_id_hover = state
+            .hover(&uri, position_of(document, "findById"))
+            .expect("hover should resolve")
+            .expect("deeply parenthesized generated receiver should resolve");
+        let find_all_hover = state
+            .hover(&uri, position_of(document, "findAll"))
+            .expect("hover should resolve")
+            .expect("deeply parenthesized read namespace should resolve");
+
+        assert!(matches!(
+            find_by_id_hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id from clients c where c.id = ?")
+        ));
+        assert!(matches!(
+            find_all_hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id, c.name from clients c")
+        ));
+    }
+
+    #[test]
+    fn cast_wrapped_canonical_receivers_still_resolve() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        ((QClient) QClient.CLIENT).read(renderer).findById(id);
+        ((QClient.Read) QClient.CLIENT.read(renderer)).findAll();
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+
+        let find_by_id_hover = state
+            .hover(&uri, position_of(document, "findById"))
+            .expect("hover should resolve")
+            .expect("cast-wrapped generated receiver should resolve");
+        let find_all_hover = state
+            .hover(&uri, position_of(document, "findAll"))
+            .expect("hover should resolve")
+            .expect("cast-wrapped read namespace should resolve");
+
+        assert!(matches!(
+            find_by_id_hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id from clients c where c.id = ?")
+        ));
+        assert!(matches!(
+            find_all_hover.contents,
+            HoverContents::Scalar(MarkedString::String(ref value))
+                if value.contains("select c.id, c.name from clients c")
+        ));
+    }
+
+    #[test]
     fn generated_call_disambiguates_shared_members_by_metamodel_context() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("AccountUsage.java"));
@@ -2569,7 +2898,7 @@ public final class ClientUsage {
                 .expect("code actions should not resolve local aliases before R19.3")
                 .is_empty()
         );
-        assert_source_map_fail_closed_diagnostic(&state, &uri);
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
     }
 
     #[test]
@@ -2601,7 +2930,7 @@ public final class ClientUsage {
                 .expect("definition should not resolve read aliases before R19.3")
                 .is_none()
         );
-        assert_source_map_fail_closed_diagnostic(&state, &uri);
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
     }
 
     #[test]
@@ -2663,6 +2992,112 @@ public final class ClientUsage {
     }
 
     #[test]
+    fn lambda_local_alias_call_fails_closed_with_unsupported_diagnostic() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        Runnable task = () -> {
+            var client = QClient.CLIENT;
+            client.read(renderer).findById(id);
+        };
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("lambda alias hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("lambda alias code actions should fail closed")
+                .is_empty()
+        );
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
+    }
+
+    #[test]
+    fn catch_local_alias_call_fails_closed_with_unsupported_diagnostic() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id) {
+        try {
+            throw new RuntimeException();
+        } catch (RuntimeException ignored) {
+            var client = QClient.CLIENT;
+            client.read(renderer).findById(id);
+        }
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("catch alias hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .definition(&uri, position)
+                .expect("catch alias definition should fail closed")
+                .is_none()
+        );
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
+    }
+
+    #[test]
+    fn switch_local_alias_call_fails_closed_with_unsupported_diagnostic() {
+        let workspace = create_source_map_workspace();
+        let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
+        let mut state = LspState::new(workspace);
+        let document = r#"package example;
+
+public final class ClientUsage {
+    void read(Object renderer, Long id, int branch) {
+        switch (branch) {
+            default -> {
+                var client = QClient.CLIENT;
+                client.read(renderer).findById(id);
+            }
+        }
+    }
+}
+"#;
+        state.open_document(&uri, document.to_string());
+        let position = position_of(document, "findById");
+
+        assert!(
+            state
+                .hover(&uri, position)
+                .expect("switch alias hover should fail closed")
+                .is_none()
+        );
+        assert!(
+            state
+                .code_actions(&uri, position)
+                .expect("switch alias code actions should fail closed")
+                .is_empty()
+        );
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
+    }
+
+    #[test]
     fn parenthesized_local_alias_syntax_fails_closed() {
         let workspace = create_source_map_workspace();
         let uri = file_uri_for_path(&workspace.join("ClientUsage.java"));
@@ -2685,7 +3120,7 @@ public final class ClientUsage {
                 .expect("hover should not resolve parenthesized aliases before R19.3")
                 .is_none()
         );
-        assert_source_map_fail_closed_diagnostic(&state, &uri);
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
     }
 
     #[test]
@@ -2718,7 +3153,7 @@ public final class ClientUsage {
                 .expect("code actions should not resolve reassigned aliases")
                 .is_empty()
         );
-        assert_source_map_fail_closed_diagnostic(&state, &uri);
+        assert_unsupported_generated_call_diagnostic(&state, &uri);
     }
 
     #[test]
@@ -3073,14 +3508,19 @@ public final class SecondRepository {
             .expect("snapshot name should exist")
     }
 
-    fn assert_source_map_fail_closed_diagnostic(state: &LspState, uri: &Uri) {
+    fn assert_unsupported_generated_call_diagnostic(state: &LspState, uri: &Uri) {
         let diagnostics = state.document_diagnostics(uri);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(
             diagnostics[0].message,
-            "Mortar source-map metadata is stale or missing"
+            "Mortar generated call uses unsupported Java syntax"
         );
         assert_eq!(diagnostics[0].severity, Some(DiagnosticSeverity::WARNING));
+        assert!(matches!(
+            diagnostics[0].code,
+            Some(lsp_types::NumberOrString::String(ref code))
+                if code == "mortar-generated-call-unsupported"
+        ));
     }
 
     fn position_of(document: &str, needle: &str) -> Position {

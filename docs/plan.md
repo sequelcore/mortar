@@ -1981,6 +1981,60 @@ binding, or helper-returned receiver support.
 
 ### R19 Slices
 
+R19 residual hardening before alias expansion.
+
+Status: Done.
+
+The required xhigh debate for the residual-risk slice concluded on
+2026-06-02 that this slice should not implement alias success. The safe scope
+is hardening only:
+
+- add integration coverage for malformed and transitional Java buffers during
+  full-document open/change handling;
+- expand canonical receiver coverage for deeply parenthesized and cast-wrapped
+  generated receivers and read namespaces;
+- add negative lexical-scope coverage for lambda, catch, and switch blocks so
+  generated-looking aliases do not leak into unrelated calls;
+- keep local alias and read-namespace alias success deferred until a later
+  slice introduces an identity-bearing local binding model;
+- make fail-closed diagnostics truthful for unsupported generated-looking
+  syntax while preserving stale or missing source-map diagnostics for source
+  evidence failures.
+
+Changed files for this bounded slice are expected to stay within
+`rust/crates/mortar-lsp/src/lib.rs`, `docs/plan.md`, `docs/roadmap.md`, and
+`docs/lsp.md`. Verification is the full Java, Rust, VS Code typecheck, diff,
+scrub, and reviewer gate requested for R19 residual hardening.
+
+Completed scope:
+
+- malformed and transitional full-document Java buffers fail closed during LSP
+  open/change handling and recover when the buffer becomes syntactically
+  complete;
+- deeply parenthesized and cast-wrapped canonical generated receivers and read
+  namespaces still resolve through source-map-backed snapshot routing;
+- lambda, catch, and switch local alias calls remain unsupported and fail
+  closed with an unsupported-syntax diagnostic;
+- local alias success, read-namespace alias success, helper-returned receivers,
+  wildcard static imports, and Java semantic binding remain deferred.
+
+Verification passed on 2026-06-02:
+
+```bash
+gradlew.bat check --no-daemon
+cd rust && cargo fmt --all --check
+cd rust && cargo clippy --all-targets --all-features -- -D warnings
+cd rust && cargo test
+cd editors/vscode && bun run typecheck
+git diff --check
+```
+
+Diff-level private path/project scrub had zero matches. The broad scrub
+excluding build, cache, dependency, and generated outputs found only pre-existing
+Java test fixture data outside this slice. Reviewer gates found no remaining
+ADR-0008, source-map authority, fail-closed, Java API, private-path, or public
+overclaiming blockers after documentation wording was narrowed.
+
 R19.1: Call-resolution contract and ADR/update.
 
 Status: Done.

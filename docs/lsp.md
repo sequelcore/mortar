@@ -51,13 +51,23 @@ receiver chains, and source ranges. Fresh `mortar-source-map-v1` plus
 `mortar-metadata-v1` remains authoritative for query identity and snapshot
 routing, and SQL still comes only from `mortar.sql.snap.json`.
 
+The R19 residual hardening slice after R19.2 keeps alias success deferred. It
+adds coverage for malformed full-document Java buffers, full-document
+open/change recovery, deeply parenthesized and cast-wrapped canonical
+receivers, and lambda/catch/switch alias-scope variants. If tree-sitter can see a
+generated-looking call in incomplete Java syntax, the LSP returns no hover, no
+copy SQL, no EXPLAIN action, and no definition target, then reports an
+incomplete-syntax diagnostic. Unsupported generated-looking alias syntax also
+fails closed with an unsupported-syntax diagnostic instead of being reported as
+stale source-map evidence.
+
 When a generated fixed-read call is present but its metamodel context cannot be
 recovered by local syntax, or metadata/source-map inputs are missing, stale,
 mismatched, or ambiguous, the LSP fails closed: hover and code actions return no
 SQL, definition returns no target, and diagnostics warn that source-map
 metadata is stale or missing.
 
-R19.2 does not add Java type binding, classpath-aware semantics,
+R19 does not yet add Java type binding, classpath-aware semantics,
 helper-returned receiver support, local alias success, wildcard static import
 success, arbitrary DSL call-site analysis, or editor-side SQL rendering.
 

@@ -1341,6 +1341,7 @@ R19 slices:
   Done.
 - R19.2: Local Java syntax resolution foundation with R18 canonical parity.
   Status: Done.
+- R19.2a: Residual fail-closed hardening before alias success. Status: Done.
 - R19.3: Canonical aliases, local variables, and explicit static import
   resolution. Status: Planned.
 - R19.4: Fail-closed diagnostics and VS Code smoke fixture expansion. Status:
@@ -1423,6 +1424,41 @@ R19.1/R19.2 completion record:
   behavior.
 - Focused verification passed on 2026-06-02:
   `cd rust && cargo test -p mortar-lsp`.
+
+R19.2a residual hardening completion record:
+
+- The required xhigh architecture debate concluded that this slice should add
+  hardening tests and reason-accurate fail-closed diagnostics only. Alias
+  success remains deferred because the current generated-like local-name model
+  does not carry enough metamodel/read-namespace identity for safe snapshot
+  routing.
+- `rust/crates/mortar-lsp` now fails closed when tree-sitter can still see a
+  generated-looking call inside incomplete Java syntax. Hover, copy SQL,
+  PostgreSQL EXPLAIN, and definition return no result, and diagnostics report
+  incomplete Java syntax rather than stale source-map evidence.
+- Canonical generated calls now unwrap nested parentheses and casts around the
+  generated receiver or read namespace before source-map-backed snapshot
+  routing. Source-map freshness and `mortar.sql.snap.json` remain authoritative.
+- Local alias and local read-namespace alias success remains unsupported.
+  Unsupported generated-looking alias calls, including lambda, catch, and
+  switch block variants, fail closed with an unsupported-syntax diagnostic.
+- No Java runtime API, generated Java API, VS Code client code,
+  helper-returned receiver, wildcard static import, classpath/type binding,
+  performance, release, or migration behavior changed. The only editor-visible
+  behavior change is narrower fail-closed diagnostics for unsupported and
+  incomplete generated-looking Java syntax.
+- Verification passed on 2026-06-02: `gradlew.bat check --no-daemon`; from
+  `rust`, `cargo fmt --all --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`, and
+  `cargo test`; from `editors/vscode`, `bun run typecheck`;
+  `git diff --check`; and diff-level private path/project scrub with zero
+  matches. Broad scrub excluding build, cache, dependency, and generated
+  outputs found only pre-existing Java test fixture data outside this slice.
+- Reviewer gates for ADR-0008 boundaries, source-map freshness authority,
+  fail-closed behavior, public documentation scope, Java runtime/API stability,
+  and private-path hygiene found no remaining blockers after documentation
+  wording was narrowed to distinguish client code from client-visible
+  diagnostics and full-document change recovery from incremental text sync.
 
 R20 handoff:
 
