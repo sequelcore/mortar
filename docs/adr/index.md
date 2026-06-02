@@ -6,3 +6,4 @@
 - [ADR-0004: Generated JDBC Executor Runtime Contract](0004-generated-jdbc-executor.md)
 - [ADR-0005: R16 Bound Read Query Contract](0005-r16-bound-read-query-contract.md)
 - [ADR-0006: R17 Query Family Decisions](0006-r17-query-family-decisions.md)
+- [ADR-0007: R18 Source-Map And Incremental Contract](0007-r18-source-map-and-incremental-contract.md)

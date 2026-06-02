@@ -128,12 +128,14 @@ own stable `MORTAR_PROCESSOR_*` codes for those diagnostics.
 
 ## Research Basis
 
-R18.1/R18.2 follows current toolchain guidance:
+R18 follows current toolchain guidance:
 
 - Gradle incremental annotation processing distinguishes `isolating` and
   `aggregating` processors and requires processor opt-in metadata. Shared
-  outputs such as a single metadata inventory are an incremental correctness
-  risk and must be proven in R18.4 before making incremental claims.
+  outputs such as a single metadata inventory require aggregating
+  classification or a separate per-entity artifact design. R18.4 classifies the
+  processor as `aggregating` and proves clean/incremental convergence with a
+  temporary multi-module Gradle fixture.
 - `javac` annotation processing runs processors in rounds and compiles
   generated source before normal Java completion, so unresolved generated
   symbols are valid refactor-safety evidence when a stale consumer remains.
@@ -148,9 +150,10 @@ R18.1/R18.2 follows current toolchain guidance:
   message rendering and implementation-dependent diagnostic codes, so R18 tests
   use kind/source/symbol evidence and avoid compiler-code or full-message
   snapshots for javac-owned unresolved symbols.
-- Generated metadata freshness requires explicit stale-data contracts. R18.2
-  classifies it but does not fake it with filesystem hacks; source-map and
-  incremental freshness belong to later R18 slices.
+- Generated metadata freshness requires explicit stale-data contracts. R18.3
+  adds `mortar-source-map-v1` with stable source anchors and semantic
+  fingerprints; R18.4 verifies stale shared output is refreshed or fails closed.
+  Editor hover/copy SQL behavior still belongs to later R18 slices.
 
 References:
 

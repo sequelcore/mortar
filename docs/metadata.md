@@ -82,3 +82,67 @@ mortar inspect --metadata-file build/classes/java/main/META-INF/mortar/entities.
 
 This metadata is tooling input only. It does not add a runtime dependency to
 Spring applications.
+
+## Source Map And Freshness Metadata
+
+R18.3 adds a sibling artifact for generated fixed-read source maps:
+
+```text
+META-INF/mortar/source-map.json
+```
+
+The current source-map format is `mortar-source-map-v1`.
+
+```json
+{
+  "format": "mortar-source-map-v1",
+  "metadata": {
+    "format": "mortar-metadata-v1",
+    "path": "META-INF/mortar/entities.json",
+    "fingerprint": "sha256:..."
+  },
+  "queries": [
+    {
+      "id": "example.Client.findById",
+      "entity_type": "example.Client",
+      "generated_entity_type": "example.QClient",
+      "generated_read_namespace": "example.QClient.Read",
+      "generated_member": "read.findById",
+      "query_name": "findById",
+      "snapshot": "example.Client.findById",
+      "row_type": "example.QClient.FindByIdRow",
+      "parameters": [
+        {
+          "name": "id",
+          "java_type": "java.lang.Long"
+        }
+      ],
+      "source_anchor": {
+        "kind": "java-type",
+        "java_type": "example.Client",
+        "member": "findById"
+      },
+      "freshness": {
+        "fingerprint": "sha256:..."
+      }
+    }
+  ]
+}
+```
+
+The source-map artifact does not replace `mortar-metadata-v1`; it is a
+freshness-checked companion keyed by the same query IDs. It deliberately stores
+stable source anchors instead of javac line/column locations. Java annotation
+processing only provides portable originating-element hints at compilation-unit
+granularity, and annotation-processing diagnostic locations may be approximate.
+
+Freshness fingerprints are semantic. They include query identity, generated
+symbol identity, entity table/alias metadata, ordered column metadata, relation
+metadata, ordered parameter metadata, row type, and snapshot key. They do not
+include timestamps, absolute paths, temp directories, usernames, local build
+paths, rendered SQL, or full generated source text.
+
+Rust tooling must treat missing, mismatched, or stale source-map entries as a
+fail-closed condition before any editor hover, navigation, or copy-SQL feature
+uses the data. R18.3 only defines and parses the contract; editor behavior
+remains later R18 scope.

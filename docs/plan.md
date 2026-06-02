@@ -1661,9 +1661,40 @@ R18.3 was reviewed after the R18.2 unresolved-symbol cleanup. The existing
 `mortar-metadata-v1` query fields already link fixed reads to query IDs,
 generated source owner/member/type, parameter metadata, row types, and snapshot
 keys, but they do not yet define source locations or freshness diagnostics.
-Completing R18.3 therefore needs a clear source-location/freshness design, and
-possibly an ADR if the metadata/source-map format changes. This cleanup stops
-before R18.3 implementation to avoid an overbroad completion claim.
+R18.3 therefore adds ADR-0007 before implementation. The accepted design keeps
+`META-INF/mortar/entities.json` as `mortar-metadata-v1` and adds a sibling
+`META-INF/mortar/source-map.json` artifact with format `mortar-source-map-v1`.
+The new artifact is keyed by the existing fixed-read query IDs and records
+generated entity/read/member coordinates, query name, snapshot key, row type,
+ordered parameters, a stable source anchor, and deterministic freshness
+fingerprints. It does not store absolute paths, timestamps, editor commands,
+repository call-site mappings, rendered SQL, or Java line/column locations.
+
+Research conclusions recorded for R18.3/R18.4:
+
+- Gradle incremental annotation processing distinguishes isolating processors
+  from aggregating processors. A processor that writes shared outputs derived
+  from multiple annotated types fits the aggregating model unless the shared
+  output is split or produced by a separate aggregation step:
+  https://docs.gradle.org/current/userguide/java_plugin.html#sec:incremental_annotation_processing
+- Gradle incremental builds compare task inputs and outputs, while stale-output
+  cleanup is limited; R18.4 must therefore prove stale metadata/source-map
+  output cannot remain apparently valid after supported source changes:
+  https://docs.gradle.org/current/userguide/incremental_build.html
+- Java `Filer` originating elements are dependency-management hints at
+  compilation-unit granularity, not a portable method-level source-position
+  contract:
+  https://docs.oracle.com/en/java/javase/21/docs/api/java.compiler/javax/annotation/processing/Filer.html
+- Java `Messager` locations can be element/annotation/value hints, but the API
+  allows them to be unavailable or approximate:
+  https://docs.oracle.com/en/java/javase/22/docs/api/java.compiler/javax/annotation/processing/Messager.html
+- ECMA-426 source maps support the general generated-to-original mapping
+  concept, but Mortar does not adopt the JavaScript VLQ mapping format for
+  generated Java fixed reads:
+  https://ecma-international.org/publications-and-standards/standards/ecma-426/
+- LSP hover/definition use document positions, ranges, and locations, but R18.3
+  treats those as future consumer inputs only:
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/
 
 #### R18.4: Gradle Incremental And Multi-Module Verification
 
@@ -1672,7 +1703,16 @@ fixture modules.
 
 Expected output: planned verification for domain/application Mortar-free
 boundaries, infrastructure metadata regeneration, stale generated output
-detection, and the processor `isolating` classification risk.
+detection, and the processor incremental classification risk.
+
+R18.4 changes the processor descriptor from `isolating` to `aggregating`
+because `entities.json` and `source-map.json` are shared resources. Verification
+must use disposable temporary fixture projects or temporary source workspaces,
+not checked-in source mutation. The evidence shape is semantic inventory:
+generated symbol presence/absence, query IDs, source-map anchors, freshness
+fingerprints, and clean-vs-incremental convergence for the same source state.
+Whole generated-file snapshots, raw javac message snapshots, exact diagnostic
+counts/order, line/column assertions, and editor behavior are out of scope.
 
 Non-goals: no performance claim about incremental build speed, no private app
 module migration.
@@ -1768,6 +1808,33 @@ contract-hardening gate, not a general tooling or editor-feature release.
 - New ADRs are required only if R18 changes cross-tool contracts such as
   metadata format, source-map format, stale-detection behavior, or public
   compatibility policy. Slice sequencing alone does not need an ADR.
+
+### R18.3/R18.4 Architecture Debate Outcome
+
+The required xhigh R18.3/R18.4 debate concluded on 2026-06-02:
+
+- R18.3 requires an ADR because source-map/freshness data is a cross-tool
+  contract consumed by Java processor output and Rust tooling.
+- Source-map/freshness data should live in a separate
+  `mortar-source-map-v1` artifact instead of adding required fields to
+  `mortar-metadata-v1`.
+- The current processor classification as `isolating` is not defensible while
+  it writes one shared metadata inventory. R18.4 should classify the processor
+  as `aggregating` unless a future slice splits outputs per entity.
+- Reclassification alone is insufficient; tests must prove stale shared
+  metadata/source-map output is overwritten or fails closed when entities or
+  fixed-read query entries disappear.
+- Because shared artifacts must also refresh when all annotated entities are
+  removed, the processor uses non-claiming wildcard annotation support and
+  writes shared artifacts in the final processing round. It must not claim
+  unrelated annotations or skip Mortar entities generated in later rounds.
+- Clean and incremental convergence must be proven in temporary fixture copies
+  or generated test projects, never by destructive mutation of checked-in R17
+  sources.
+- Verification should parse semantic inventories and freshness fingerprints,
+  not compare full generated files.
+- R18.3/R18.4 stop at contract, parser readiness, and Gradle convergence. VS
+  Code hover/copy SQL remains R18.5.
 
 ### R18.1/R18.2 Architecture Debate Outcome
 

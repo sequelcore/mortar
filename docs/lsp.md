@@ -30,14 +30,17 @@ position mapping currently uses an explicit source marker:
 // mortar:snapshot=ClientRepository.findById
 ```
 
-The marker is a transitional explicit contract until Mortar's Java processor emits
-proper source maps.
+The marker is a transitional explicit contract until LSP consumers switch to
+the processor-emitted source-map artifact.
 
 R16.1 defines the first minimal query-id/generated-source metadata hook in
 `META-INF/mortar/entities.json`. The metadata records stable query IDs and
 generated Java symbols only; it does not define editor protocol behavior or
 query semantics. R16.1 does not implement source-map-backed hover/navigation.
-R18 owns hardening editor behavior against real generated facade contracts.
+R18.3 adds parser-ready `META-INF/mortar/source-map.json` data with format
+`mortar-source-map-v1`, stable generated fixed-read anchors, and freshness
+fingerprints. LSP hover/copy SQL still does not consume that artifact in R18.3;
+R18.5 owns editor behavior against real generated facade contracts.
 
 ## Run
 

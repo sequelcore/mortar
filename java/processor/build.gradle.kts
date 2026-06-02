@@ -4,4 +4,5 @@ dependencies {
     api(project(":java:core"))
 
     testImplementation(project(":java:runtime-jdbc"))
+    testImplementation(gradleTestKit())
 }
