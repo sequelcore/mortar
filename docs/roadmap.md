@@ -10,8 +10,8 @@ readiness work. Git history remains the detailed project history.
 ## Current Status
 
 Mortar is pre-release. No public artifact has been published, no public release
-tag has been created, and the first alpha remains gated by external publication
-prerequisites.
+tag has been created, and the first alpha remains gated by protected release
+controls plus an explicit publication action.
 
 Supported current scope:
 
@@ -33,7 +33,8 @@ Current limits:
   measurement, and evidence boundaries; Mortar does not claim broad superiority
   over JDBC, PostgreSQL, jOOQ, QueryDSL, Hibernate, or Spring Data.
 - Publication does not begin until external publisher ownership, credentials,
-  protected release controls, and a later explicit release action are in place.
+  protected release controls, and an explicit release workflow dispatch are in
+  place.
 
 ## Completed Capability Milestones
 
@@ -47,6 +48,7 @@ Current limits:
 | R22 Scalar and mutation contracts | Done | DSL scalar `count`/`exists`, row-count mutations, `RETURNING`, and JDBC execution paths. |
 | R23 Retained performance evidence and optimization decision | Done | Retained Java runtime, Rust tooling, and VS Code editor-latency evidence reviewed; optimization no-go and public performance claims remain blocked. |
 | R24 Public documentation and pre-release readiness | Done | Public documentation, API/Javadocs, examples, packaging dry-runs, CI/security posture, performance wording, benchmark evidence boundaries, and the first alpha publication decision are complete. |
+| R25 Formal release automation | In Progress | Guarded manual release workflow added for Maven Central, crates.io, and VS Code Marketplace; no artifacts have been published. |
 
 R23 retained evidence covers the reviewed Java runtime, Rust tooling/LSP, and
 VS Code editor-latency families. The durable evidence reference is the retained
@@ -112,20 +114,36 @@ Research basis for the R24 documentation posture:
 - Spring Boot auto-configuration and starter documentation.
 - jOOQ and QueryDSL documentation as structure and comparison references only.
 
+## R25: Formal Release Automation
+
+Status: In Progress
+
+Purpose: turn the R24 conditional alpha decision into a guarded, manual release
+path. R25 is not complete until a publication action is either completed or
+explicitly rejected.
+
+| Slice | Status | Outcome |
+| --- | --- | --- |
+| R25.1 Guarded release automation and documentation | Done | Manual workflow supports validate and publish operations, requires exact tag/ref confirmation, uses the protected `release` environment, fetches publisher credentials from Doppler at runtime, and covers Java, Rust, and VS Code artifact families. |
+| R25.2 `0.1.0-alpha.1` publication action | Planned | Verify external release controls, run validation on the exact tag, dispatch selected publication jobs, verify registry results, and record the final outcome. |
+
+R25.1 does not publish, tag, create a GitHub release, merge, push, open a PR, or
+migrate any application. It only establishes the guarded path.
+
 ## Release Path
 
 R24 closes with a conditional go for the `0.1.0-alpha` publication decision.
 This means the repository is ready for a later alpha publication action after
-the external prerequisites below are completed:
+the release prerequisites below are completed:
 
 1. Sonatype Central namespace access for `io.github.sequelcore`, Central Portal
    token, and signing credentials.
 2. crates.io ownership and publish order for `mortar-compiler`,
    `mortar-cli`, and `mortar-lsp`.
 3. VS Code Marketplace publisher ownership for `sequelcore` and a Marketplace PAT.
-4. Protected release environment or equivalent guarded secret access, branch
-   protection/rulesets, and a release automation change that restores guarded
-   publication steps.
+4. Protected release environment or equivalent guarded secret access and branch
+   protection/rulesets.
+5. Successful `validate` workflow run against the exact `v0.1.0-alpha.1` tag.
 
 Publication, tagging, release notes, PR/merge work, and application migration
-remain outside R24 and require a later explicit release action.
+require a later explicit release action.
