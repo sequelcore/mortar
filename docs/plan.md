@@ -322,8 +322,9 @@ R24.7 CI, repository health, and security readiness:
 
 Accepted residual risks:
 
-- VS Code packaging is not bundled yet, so `vsce package` warns about extension
-  file count. The package remains valid for R24.6 dry-run evidence.
+- VS Code packaging now bundles the extension runtime and excludes
+  `node_modules` from the VSIX. `vsce package` may still warn about the
+  bundled runtime file size because it includes the language client.
 - Rust dependent crate publish dry-runs cannot fully verify registry dependency
   resolution until `mortar-compiler` is published or a later release process
   uses a registry staging strategy.
@@ -384,9 +385,9 @@ Readiness review outcome:
   and `mortar-lsp`; `mortar-cli` and `mortar-lsp` remain fail-closed for full
   crates.io dependency resolution until `mortar-compiler` exists in the target
   registry.
-- VS Code packaging creates a local VSIX and does not publish. The known
-  file-count warning is accepted for alpha readiness and should be resolved by
-  bundling before a broader extension release.
+- VS Code packaging creates a local bundled VSIX and does not publish. The
+  package excludes `node_modules`; any remaining size warning is limited to the
+  bundled language-client runtime.
 - Active release-readiness automation is manual and dry-run only with scoped
   read permissions. No active release check performs a registry upload, tag,
   GitHub release, PR, merge, push, or application migration.
