@@ -43,8 +43,11 @@ noise and profiler or allocation evidence isolates that cost.
   performance evidence.
 - EXPLAIN command timing is a separate adapter-path scenario because it crosses
   the VS Code client, Mortar CLI, and PostgreSQL.
-- No production runtime, public API, editor semantic behavior, or benchmark
+- No production runtime, public API, performance optimization, or benchmark
   threshold changes are authorized by R23.3 or R23.4 evidence collection.
+  Correctness or portability defects discovered while producing retained
+  evidence may be fixed as ordinary product fixes, but they do not authorize
+  performance claims or optimizations.
 - R23 may close R23.6 and R23.7 as an explicit no-go if R23.5 does not approve
   an evidence-ranked optimization.
 

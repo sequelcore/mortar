@@ -143,13 +143,14 @@ R23 extends that gate to the post-R22 API surface:
 - R23.4 implements the retained VS Code editor-latency trace workflow.
 - R23 keeps Java runtime evidence, Rust tooling evidence, and editor-latency
   traces separate.
-- R23 does not authorize optimization or public performance wording until
-  retained artifacts, dominant-cost evidence, and benchmark-readiness review
-  approve the exact change or claim.
-- R23.5 remains pending retained artifact review in
-  `docs/benchmarks/r23-performance-gate.md`; R23.6 is not pre-authorized and
-  R23.7 before/after review is not applicable unless R23.5 authorizes an
-  optimization.
+- R23 retained artifacts were produced and reviewed for Java runtime, Rust
+  tooling, and editor-latency evidence.
+- R23.5 closed as optimization no-go in
+  `docs/benchmarks/r23-performance-gate.md`; R23.6 is not authorized and R23.7
+  before/after review is not applicable because no optimization ran.
+- R23.8 blocks public performance claims. Allowed wording is limited to
+  measurement discipline unless a future retained evidence review supports the
+  exact public claim.
 
 Current internal baseline:
 

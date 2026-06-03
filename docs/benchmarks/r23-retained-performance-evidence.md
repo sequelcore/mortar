@@ -1,10 +1,10 @@
 # R23 Retained Performance Evidence Plan
 
 Date: 2026-06-03
-Status: In Progress. R23.2 Java runtime, R23.3 Rust tooling, and R23.4 VS Code
-editor-latency retained workflows are implemented locally. Remote retained
-artifact production and review remain pending. No optimization or public
-performance claim is authorized.
+Status: Done. R23 retained Java runtime, Rust tooling, and VS Code
+editor-latency evidence was produced and reviewed. R23.6 optimization is not
+authorized, R23.7 before/after review is not applicable, and public
+performance claims remain blocked.
 
 ## Purpose
 
@@ -166,20 +166,17 @@ a public tooling-report standard.
 - R23.1 Benchmark planning, research, and xhigh debate. Status: Planned.
 - R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
-- R23.3 Rust tooling benchmark retained evidence. Status: In Progress;
-  retained workflow and local smoke harness are implemented, remote retained
-  artifacts remain pending.
+- R23.3 Rust tooling benchmark retained evidence. Status: Done.
 - R23.4 Editor-latency evidence boundary and retained trace format. Status:
-  In Progress; retained workflow and local smoke harness are implemented,
-  remote retained artifacts remain pending.
+  Done.
 - R23.5 Benchmark-readiness review and evidence-ranked optimization decision.
-  Status: Pending retained artifact review.
+  Status: Done; optimization no-go.
 - R23.6 Evidence-backed optimization implementation only if authorized. Status:
-  Planned only if R23.5 authorizes it.
-- R23.7 Before/after retained benchmark review. Status: Planned only if R23.6
-  runs; otherwise expected to close as not applicable.
-- R23.8 Public performance wording go/no-go. Status: Pending retained artifact
-  review; public performance claims remain blocked.
+  Not authorized.
+- R23.7 Before/after retained benchmark review. Status: Not applicable because
+  no optimization was authorized.
+- R23.8 Public performance wording go/no-go. Status: Done; public performance
+  claims remain blocked.
 
 R23.6 and R23.7 may close as "not authorized" if retained evidence does not
 identify a dominant cost. R24 depends on that explicit go/no-go.
@@ -290,8 +287,9 @@ optimization path or a product-runtime API.
 
 ## R23.3 Implementation Record
 
-R23.3 adds a retained Rust tooling evidence family without changing LSP
-semantics or production editor behavior:
+R23.3 adds a retained Rust tooling evidence family. The final R23 evidence
+commit also includes an LSP file-URI portability fix found while producing
+editor retained evidence:
 
 - `rust/crates/mortar-lsp/benches/r23_rust_tooling_lsp.rs` emits R23 Criterion
   group names for parser, feature-resolution, and diagnostics/full-sync paths;
@@ -312,8 +310,9 @@ optimization claims.
 
 ## R23.4 Implementation Record
 
-R23.4 adds a retained VS Code editor-latency evidence family without changing
-extension production behavior:
+R23.4 adds a retained VS Code editor-latency evidence family. Producing the
+Linux retained editor bundle exposed two real portability defects that were
+fixed before the accepted evidence run:
 
 - `editors/vscode/src/test/suite/smoke.test.ts` writes optional trace JSON only
   when `MORTAR_VSCODE_LATENCY_TRACE` is set;
@@ -329,6 +328,11 @@ extension production behavior:
   workflow points it at a per-run retained result directory instead of tracked
   docs assets;
 - artifact names use `mortar-r23.4-vscode-editor-latency-${scenario}-${sha}`.
+- `editors/vscode/src/extension.ts` resolves configured `.exe` paths to the
+  platform executable when the exact configured file is absent on non-Windows
+  runners;
+- `rust/crates/mortar-lsp/src/lib.rs` formats Unix absolute file URIs as
+  `file:///path` instead of `file:////path`.
 
 R23.4 evidence is client-visible VS Code extension-host evidence only.
 Screenshot capture output is functional evidence plus coarse trace context, not
@@ -343,12 +347,28 @@ Benchmark readiness and optimization criteria are recorded in:
 - `docs/benchmarks/r23-performance-gate.md`;
 - `docs/adr/0010-r23-retained-tooling-and-editor-evidence-boundaries.md`.
 
-Current posture before remote retained artifact review: public performance
-claims are blocked and R23.6 optimization is not pre-authorized. If retained
-artifacts do not isolate a dominant cost, R23.6 will close as not authorized and
-R23.7 before/after retained review will be not applicable. R23.8 may allow only
-measurement-discipline wording unless exact retained artifacts and
-benchmark-readiness sign-off support stronger wording.
+Reviewed remote artifacts:
+
+- R23.2 Java scalar count: run
+  https://github.com/sequelcore/mortar/actions/runs/26887593414, artifact
+  `mortar-r23.2-post-r22-java-runtime-throughput-28303a2f499591fab5bf6e7db1336393fc9cc504`;
+- R23.2 Java DML `RETURNING`: run
+  https://github.com/sequelcore/mortar/actions/runs/26887593463, artifact
+  `mortar-r23.2-post-r22-java-runtime-throughput-28303a2f499591fab5bf6e7db1336393fc9cc504`;
+- R23.3 Rust tooling/LSP: run
+  https://github.com/sequelcore/mortar/actions/runs/26887800615, artifact
+  `mortar-r23.3-rust-tooling-lsp-28303a2f499591fab5bf6e7db1336393fc9cc504`;
+- R23.4 VS Code editor-latency: run
+  https://github.com/sequelcore/mortar/actions/runs/26885861833, artifact
+  `mortar-r23.4-vscode-editor-latency-smoke-28303a2f499591fab5bf6e7db1336393fc9cc504`.
+
+R23.5 benchmark-readiness accepted these bundles as internal retained evidence
+for the R23 gate. R23.6 optimization is not authorized because the evidence did
+not include profiler/allocation isolation, did not retain at least three clean
+bundles for one optimization candidate, and did not isolate a material dominant
+cost above noise. R23.7 before/after retained review is not applicable. R23.8
+allows only measurement-discipline wording and blocks public performance
+claims.
 
 ## Research Basis
 
