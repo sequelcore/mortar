@@ -78,6 +78,6 @@ Use `docs/sql-snapshots.md` and `docs/cli.md` when you want snapshot checks or
 offline inspection.
 
 Next, read [`query-recipes.md`](query-recipes.md) for copyable generated-read,
-repository-adapter, SQL assertion, and AI-agent authoring recipes. Then use
+repository-adapter, and SQL assertion recipes. Then use
 [`usage-guide.md`](usage-guide.md) for broader query-path selection, starter
 diagnostics, and benchmark evidence.

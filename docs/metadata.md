@@ -1,12 +1,18 @@
 # Mortar Build Metadata
 
-The Java annotation processor emits build metadata for Rust tooling at:
+The Java annotation processor emits metadata for CLI, snapshot, and editor
+tooling. The metadata is tooling input only; it does not add a runtime
+dependency to Spring applications.
+
+## Entity Metadata
+
+The processor writes entity metadata at:
 
 ```text
 META-INF/mortar/entities.json
 ```
 
-The current format is `mortar-metadata-v1`.
+Current format: `mortar-metadata-v1`.
 
 ```json
 {
@@ -49,30 +55,11 @@ The current format is `mortar-metadata-v1`.
 }
 ```
 
-Relation metadata includes `nullable` when relation paths are emitted by the
-processor. R9 diagnostics use that field to warn about nullable inner joins.
-
-R16.1 adds optional `queries` entries. A query entry is tooling metadata only:
-
-- `id`: stable generated query identifier scoped to the entity and query
-  shape;
-- `name`: generated query member name;
-- `shape`: fixed query kind such as `findAll` or `findById`;
-- `generated_source`: generated Java symbol information that can be mapped to
-  source later without changing query semantics;
-- `parameters`: ordered generated parameter names and Java types;
-- `row_type`: generated row type name;
-- `snapshot`: default snapshot key.
-
-R16.2 records the canonical generated read facade member, such as
-`read.findById` or `read.findAll`, while keeping query IDs and snapshot keys
-stable. The older generated executor classes can still exist in generated Java,
-but metadata points tooling at the current fixed read facade.
+Query entries are tooling metadata. They identify generated fixed-read shapes,
+parameters, row types, generated source symbols, and default snapshot keys.
 
 The metadata does not include rendered SQL, JDBC binding APIs, Spring beans,
-editor command names, execution methods, or repository call-site mappings. Existing
-`mortar-metadata-v1` files without `queries` remain parseable by the Rust
-compiler.
+editor command names, execution methods, or repository call-site mappings.
 
 The CLI can read the file directly:
 
@@ -80,18 +67,15 @@ The CLI can read the file directly:
 mortar inspect --metadata-file build/classes/java/main/META-INF/mortar/entities.json
 ```
 
-This metadata is tooling input only. It does not add a runtime dependency to
-Spring applications.
+## Source Maps
 
-## Source Map And Freshness Metadata
-
-R18.3 adds a sibling artifact for generated fixed-read source maps:
+The processor also writes source-map metadata at:
 
 ```text
 META-INF/mortar/source-map.json
 ```
 
-The current source-map format is `mortar-source-map-v1`.
+Current format: `mortar-source-map-v1`.
 
 ```json
 {
@@ -130,11 +114,9 @@ The current source-map format is `mortar-source-map-v1`.
 }
 ```
 
-The source-map artifact does not replace `mortar-metadata-v1`; it is a
-freshness-checked companion keyed by the same query IDs. It deliberately stores
-stable source anchors instead of javac line/column locations. Java annotation
-processing only provides portable originating-element hints at compilation-unit
-granularity, and annotation-processing diagnostic locations may be approximate.
+The source map is a freshness-checked companion keyed by the same query IDs as
+`mortar-metadata-v1`. It stores stable source anchors instead of javac
+line/column locations.
 
 Freshness fingerprints are semantic. They include query identity, generated
 symbol identity, entity table/alias metadata, ordered column metadata, relation
@@ -142,32 +124,6 @@ metadata, ordered parameter metadata, row type, and snapshot key. They do not
 include timestamps, absolute paths, temp directories, usernames, local build
 paths, rendered SQL, or full generated source text.
 
-The source-map contract is backed by a shared Java-emitted fixture that contains
-`entities.json` and `source-map.json`. Java processor tests prove the fixture is
-still exact processor output, and Rust compiler tests prove the same bytes parse
-and pass freshness validation. This strengthens the fingerprint contract without
-changing the public Java API.
-
 Rust tooling must treat missing, mismatched, or stale source-map entries as a
-fail-closed condition before any editor hover, navigation, or copy-SQL feature
-uses the data.
-
-The Rust LSP consumes `mortar-source-map-v1` for generated fixed reads only. It
-resolves canonical generated read-facade calls such as
-`QClient.CLIENT.read(renderer).findById(id)` and
-`QClient.CLIENT.read(renderer).findAll()`, plus the finite R19.3 same-file local
-alias shapes documented in `docs/lsp.md`, by generated metamodel/read namespace
-context plus the generated member (`read.findById` or `read.findAll`). It never
-selects source-map entries by `generated_member` alone, because that member is
-shared across entities. The matching entry's `snapshot` key is used to read SQL
-from `mortar.sql.snap.json`, and definition requests navigate to the matching
-snapshot entry. The source-map artifact still does not store rendered SQL,
-editor commands, or generated Java line/column locations.
-
-If metadata, source-map, snapshot evidence, or generated metamodel context is
-stale, missing, ambiguous, unsupported, or unparseable for a generated
-fixed-read call, editor tooling must return no SQL/navigation result and
-surface a reason-specific fail-closed diagnostic rather than falling back to
-manual snapshot markers. Current diagnostics distinguish unsupported alias
-syntax, ambiguous aliases, reassigned aliases, stale or missing source-map
-evidence, missing SQL snapshots, and malformed Java buffers.
+fail-closed condition before hover, navigation, or copy-SQL features use the
+data.

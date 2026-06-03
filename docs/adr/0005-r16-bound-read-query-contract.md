@@ -113,7 +113,7 @@ facade shape exists.
 
 ## Architecture Debate Outcome
 
-An xhigh architecture challenge found R16.1 was at risk of becoming too broad.
+Architecture review found R16.1 was at risk of becoming too broad.
 The accepted correction is to split core inspection from JDBC mapping, avoid a
 hybrid `MortarBoundQuery`, keep query-id/source-map metadata minimal, and treat
 API-budget enforcement as partly documentary until R16.2 generates the new
