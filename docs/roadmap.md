@@ -2024,7 +2024,7 @@ threshold change, public benchmark report, or performance claim.
 
 ### R23: Retained Performance Evidence And Optimization
 
-Status: Planned
+Status: In Progress
 
 Goal: Finish the performance program properly before pre-release readiness is
 evaluated. R20 created measurement discipline, benchmark harnesses, and public
@@ -2035,7 +2035,7 @@ Planned scope:
 
 - R23.1: Benchmark planning, research, and xhigh debate. Status: Planned.
 - R23.2: Post-R22 Java runtime benchmark matrix and retained artifact workflow.
-  Status: Planned.
+  Status: Done.
 - R23.3: Rust tooling benchmark retained evidence. Status: Planned.
 - R23.4: Editor-latency evidence boundary and retained trace format. Status:
   Planned.
@@ -2065,6 +2065,33 @@ Planning document:
   R23 benchmark scenario matrix, retained artifact bundle, optimization
   authorization criteria, public-claim criteria, exclusions, risks, and xhigh
   debate outcome.
+
+R23.2 completion record:
+
+- Added live PostgreSQL/Testcontainers JMH rows for post-R22 Java runtime
+  coverage: `count`, `exists`, insert/update/delete row-count mutations,
+  representative insert `RETURNING` fetch and fetchOptional behavior, and
+  same-SQL non-returning update batch writes.
+- Added R23.2 Gradle presets:
+  `:java:benchmarks:jmhR23PostR22JavaRuntime`,
+  `:java:benchmarks:jmhR23PostR22JavaRuntimeAllocation`, and
+  `:java:benchmarks:jmhR23PostR22JavaRuntimeLatency`.
+- Updated the manual `Benchmarks` workflow to retain
+  `r23.2-post-r22-java-runtime` bundles with raw JMH JSON, exact commands,
+  commit SHA, clean/dirty worktree state, Java/JVM/Gradle/OS/Docker metadata,
+  PostgreSQL/Testcontainers/PgJDBC/Hikari-applicability metadata, dataset
+  notes, derived summary, limitations, unsupported rows, and reviewer notes.
+- Added tests proving the R23.2 matrix and presets include only the intended
+  post-R22 Java runtime scenarios and exclude fake JDBC, rendering-only,
+  jOOQ/QueryDSL, Rust tooling, editor latency, R20 fixed-read, and R23.3+
+  evidence families.
+- Architecture note: no product API changed. The benchmark harness exercises
+  existing public R22 scalar and mutation contracts through `java/benchmarks`;
+  `java/core`, `java/dialect-postgres`, and `java/runtime-jdbc` boundaries are
+  unchanged.
+- Evidence note: R23.2 is measurement workflow only. It does not authorize
+  optimization, threshold tightening, public performance wording, release, tag,
+  publish, PR, push, merge, migration, or announcement work.
 
 Non-goals:
 

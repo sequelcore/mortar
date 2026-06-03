@@ -6,7 +6,7 @@ on:
       jmhIncludes:
         description: "JMH benchmark include regex"
         required: true
-        default: "PostgresExecutionBenchmark\\.(plainJdbcFetch|plainJdbcReusableStatementFetch|plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch|jooqFetch|querydslFetch)$"
+        default: "PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|plainJdbcUpdateBatch|mortarUpdateBatch)$"
       profile:
         description: "Benchmark profile to run: throughput, allocation, latency, or all"
         required: true
@@ -38,14 +38,14 @@ jobs:
 
           repeat_count="${{ inputs.repeatCount }}"
           if ! [[ "$repeat_count" =~ ^[1-9][0-9]*$ ]] || (( repeat_count < 2 )); then
-            echo "repeatCount must be an integer greater than or equal to 2 for retained R20.3 evidence" >&2
+            echo "repeatCount must be an integer greater than or equal to 2 for retained R23.2 evidence" >&2
             exit 1
           fi
 
           profile="${{ inputs.profile }}"
           includes="${{ inputs.jmhIncludes }}"
           report_dir="java/benchmarks/build/reports/jmh"
-          bundle_dir="${report_dir}/r20.3"
+          bundle_dir="${report_dir}/r23.2-post-r22-java-runtime"
           results_dir="${bundle_dir}/results"
           environment_dir="${bundle_dir}/environment"
           short_sha="$(git rev-parse --short=12 HEAD)"
@@ -68,15 +68,15 @@ jobs:
           Profile input: ${profile}
           Repeat count: ${repeat_count}
           Include regex: ${includes}
-          Throughput command: ./gradlew :java:benchmarks:jmhPostgresExecution -PjmhIncludes=${includes} --no-daemon
-          Allocation command: ./gradlew :java:benchmarks:jmhPostgresExecutionAllocation -PjmhIncludes=${includes} --no-daemon
-          Latency command: ./gradlew :java:benchmarks:jmhPostgresExecutionLatency -PjmhIncludes=${includes} --no-daemon
+          Throughput command: ./gradlew :java:benchmarks:jmhR23PostR22JavaRuntime -PjmhIncludes=${includes} --no-daemon
+          Allocation command: ./gradlew :java:benchmarks:jmhR23PostR22JavaRuntimeAllocation -PjmhIncludes=${includes} --no-daemon
+          Latency command: ./gradlew :java:benchmarks:jmhR23PostR22JavaRuntimeLatency -PjmhIncludes=${includes} --no-daemon
           EOF
 
           cat > "${bundle_dir}/summary.md" <<EOF
-          # R20.3 Retained Benchmark Bundle
+          # R23.2 Retained Benchmark Bundle
 
-          This bundle is measurement-only retained evidence for the R20.3 Java runtime JMH/PostgreSQL baseline matrix.
+          This bundle is measurement-only retained evidence for the R23.2 post-R22 Java runtime JMH/PostgreSQL matrix.
           It does not authorize public performance claims.
 
           The uploaded JSON files are raw JMH output. Interpretations require the manifest, environment files,
@@ -90,8 +90,9 @@ jobs:
 
           Required checks:
           - no public performance claim wording;
-          - no fake-JDBC database claim;
-          - Java runtime and Rust tooling performance remain separate;
+          - no fake-JDBC, Rust tooling, or editor-latency claim;
+          - Java runtime evidence remains separate from Rust tooling and editor-latency evidence;
+          - no benchmark-only scalar or mutation runtime API;
           - raw JSON, manifest, commands, environment metadata, and limitations are present.
           EOF
 
@@ -100,7 +101,7 @@ jobs:
             local output_name="$2"
             local profile_name="$3"
             local run_index="$4"
-            local result_name="r20.3-postgres-baseline-${profile_name}-run-${run_index}-${short_sha}.json"
+            local result_name="r23.2-post-r22-java-runtime-${profile_name}-run-${run_index}-${short_sha}.json"
 
             ./gradlew ":java:benchmarks:${task_name}" "-PjmhIncludes=${includes}" --no-daemon
             cp "${report_dir}/${output_name}.json" "${results_dir}/${result_name}"
@@ -110,18 +111,18 @@ jobs:
           for run_index in $(seq 1 "$repeat_count"); do
             case "$profile" in
               throughput)
-                run_profile "jmhPostgresExecution" "postgres-execution" "throughput" "$run_index"
+                run_profile "jmhR23PostR22JavaRuntime" "r23.2-post-r22-java-runtime-throughput" "throughput" "$run_index"
                 ;;
               allocation)
-                run_profile "jmhPostgresExecutionAllocation" "postgres-execution-allocation" "allocation" "$run_index"
+                run_profile "jmhR23PostR22JavaRuntimeAllocation" "r23.2-post-r22-java-runtime-allocation" "allocation" "$run_index"
                 ;;
               latency)
-                run_profile "jmhPostgresExecutionLatency" "postgres-execution-latency" "latency" "$run_index"
+                run_profile "jmhR23PostR22JavaRuntimeLatency" "r23.2-post-r22-java-runtime-latency" "latency" "$run_index"
                 ;;
               all)
-                run_profile "jmhPostgresExecution" "postgres-execution" "throughput" "$run_index"
-                run_profile "jmhPostgresExecutionAllocation" "postgres-execution-allocation" "allocation" "$run_index"
-                run_profile "jmhPostgresExecutionLatency" "postgres-execution-latency" "latency" "$run_index"
+                run_profile "jmhR23PostR22JavaRuntime" "r23.2-post-r22-java-runtime-throughput" "throughput" "$run_index"
+                run_profile "jmhR23PostR22JavaRuntimeAllocation" "r23.2-post-r22-java-runtime-allocation" "allocation" "$run_index"
+                run_profile "jmhR23PostR22JavaRuntimeLatency" "r23.2-post-r22-java-runtime-latency" "latency" "$run_index"
                 ;;
               *)
                 echo "Unsupported profile: ${profile}" >&2
@@ -138,7 +139,7 @@ jobs:
           import platform
           import subprocess
 
-          bundle_dir = pathlib.Path("java/benchmarks/build/reports/jmh/r20.3")
+          bundle_dir = pathlib.Path("java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime")
           results = sorted(
               str(path.relative_to(bundle_dir)).replace("\\", "/")
               for path in (bundle_dir / "results").glob("*.json")
@@ -149,17 +150,31 @@ jobs:
 
           clean = subprocess.run(["git", "diff", "--quiet"]).returncode == 0
           staged_clean = subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode == 0
-          selected_profile = os.environ["R20_PROFILE"]
+          untracked_clean = output(["git", "ls-files", "--others", "--exclude-standard"]) == ""
+          selected_profile = os.environ["R23_PROFILE"]
           mode_profiles = ["throughput", "allocation", "latency"] if selected_profile == "all" else [selected_profile]
           manifest = {
-              "schema": "mortar-r20-postgres-baseline-manifest-v1",
-              "benchmarkId": "r20.3-java-runtime-postgres-baseline",
+              "schema": "mortar-r23-java-runtime-postgres-manifest-v1",
+              "benchmarkId": "r23.2-post-r22-java-runtime",
+              "evidenceFamily": "java-runtime-postgres",
+              "scenarioFamilies": [
+                  "scalar-read",
+                  "row-count-mutation",
+                  "returning-mutation",
+                  "batch-write",
+              ],
               "origin": "github-actions",
               "status": "internal-measurement-only",
               "publicClaimsAllowed": False,
               "commit": output(["git", "rev-parse", "HEAD"]),
               "branch": os.environ.get("GITHUB_REF_NAME", "unknown"),
-              "cleanWorktree": clean and staged_clean,
+              "cleanWorktree": clean and staged_clean and untracked_clean,
+              "worktreeState": {
+                  "unstagedClean": clean,
+                  "stagedClean": staged_clean,
+                  "untrackedClean": untracked_clean,
+                  "gitStatusFile": "environment/git-status.txt",
+              },
               "runDateUtc": datetime.datetime.now(datetime.UTC).isoformat(),
               "workflow": {
                   "name": "Benchmarks",
@@ -167,8 +182,8 @@ jobs:
                   "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", "unknown"),
                   "runner": os.environ.get("RUNNER_OS", "unknown"),
                   "profile": selected_profile,
-                  "repeatCount": int(os.environ["R20_REPEAT_COUNT"]),
-                  "includeRegex": os.environ["R20_INCLUDES"],
+                  "repeatCount": int(os.environ["R23_REPEAT_COUNT"]),
+                  "includeRegex": os.environ["R23_INCLUDES"],
               },
               "jmh": {
                   "version": "1.37",
@@ -194,11 +209,13 @@ jobs:
                   "postgresImage": "postgres:16-alpine",
                   "testcontainersVersion": "2.0.5",
                   "pgjdbcVersion": "42.7.11",
+                  "defaultPgjdbcParameters": {},
                   "tunedPgjdbcParameters": {
                       "prepareThreshold": "1",
                       "preparedStatementCacheQueries": "256",
                       "binaryTransfer": "true",
                   },
+                  "hikari": "not used by R23.2 benchmark harness",
                   "planCacheMode": "default",
               },
               "dataset": {
@@ -208,27 +225,73 @@ jobs:
                   "indexes": ["clients_active_id_idx"],
               },
               "matrixRows": [
-                  "ordinary-jdbc",
-                  "reusable-prepared-jdbc",
-                  "ordinary-jdbc-find-by-id",
-                  "reusable-prepared-jdbc-find-by-id",
-                  "tuned-pgjdbc-reusable-jdbc",
-                  "mortar-render-per-call",
-                  "mortar-pre-rendered-sql",
-                  "mortar-processor-generated-executor",
-                  "mortar-prepared-processor-generated-executor",
-                  "mortar-tuned-processor-generated-executor",
-                  "jooq-reference",
-                  "querydsl-sql-reference",
+                  {"id": "ordinary-jdbc-count-scalar", "scenarioFamily": "scalar-read", "baselineRole": "peer"},
+                  {"id": "mortar-count-scalar", "scenarioFamily": "scalar-read", "baselineRole": "subject"},
+                  {"id": "ordinary-jdbc-exists-scalar", "scenarioFamily": "scalar-read", "baselineRole": "peer"},
+                  {"id": "mortar-exists-scalar", "scenarioFamily": "scalar-read", "baselineRole": "subject"},
+                  {
+                      "id": "ordinary-jdbc-insert-row-count",
+                      "scenarioFamily": "row-count-mutation",
+                      "baselineRole": "peer",
+                  },
+                  {"id": "mortar-insert-row-count", "scenarioFamily": "row-count-mutation", "baselineRole": "subject"},
+                  {
+                      "id": "ordinary-jdbc-update-row-count",
+                      "scenarioFamily": "row-count-mutation",
+                      "baselineRole": "peer",
+                  },
+                  {"id": "mortar-update-row-count", "scenarioFamily": "row-count-mutation", "baselineRole": "subject"},
+                  {
+                      "id": "ordinary-jdbc-delete-row-count",
+                      "scenarioFamily": "row-count-mutation",
+                      "baselineRole": "peer",
+                  },
+                  {"id": "mortar-delete-row-count", "scenarioFamily": "row-count-mutation", "baselineRole": "subject"},
+                  {
+                      "id": "ordinary-jdbc-insert-returning-fetch",
+                      "scenarioFamily": "returning-mutation",
+                      "baselineRole": "peer",
+                  },
+                  {
+                      "id": "mortar-insert-returning-fetch",
+                      "scenarioFamily": "returning-mutation",
+                      "baselineRole": "subject",
+                  },
+                  {
+                      "id": "ordinary-jdbc-insert-returning-fetch-optional",
+                      "scenarioFamily": "returning-mutation",
+                      "baselineRole": "peer",
+                  },
+                  {
+                      "id": "mortar-insert-returning-fetch-optional",
+                      "scenarioFamily": "returning-mutation",
+                      "baselineRole": "subject",
+                  },
+                  {"id": "reusable-prepared-jdbc-update-batch", "scenarioFamily": "batch-write", "baselineRole": "peer"},
+                  {"id": "mortar-same-sql-update-batch", "scenarioFamily": "batch-write", "baselineRole": "subject"},
+              ],
+              "limitations": [
+                  "Internal retained evidence only; no public performance claims.",
+                  "R23.2 excludes fake JDBC, Rust tooling, editor latency, rendering-only rows, and optimizations.",
+                  "Returning mutation coverage uses representative insert RETURNING fetch and fetchOptional rows.",
+                  "Single mutation and returning rows use JMH invocation-level mutable-row state preparation.",
+                  "Batch-write latency is per fixed batch invocation, not per row.",
+              ],
+              "unsupportedRows": [
+                  "batch RETURNING",
+                  "generated scalar facades",
+                  "generated write namespaces",
+                  "reusable scalar or single-mutation Mortar prepared API",
               ],
               "artifactPaths": {
                   "commands": "commands.txt",
                   "summary": "summary.md",
                   "reviewNotes": "review-notes.md",
                   "environmentDirectory": "environment/",
+                  "gitStatus": "environment/git-status.txt",
                   "results": results,
               },
-              "interpretationBoundary": "Internal fixed-shape JMH/PostgreSQL evidence only; no public performance claims.",
+              "interpretationBoundary": "Internal post-R22 Java runtime JMH/PostgreSQL evidence only; no public performance claims.",
           }
           (bundle_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
@@ -237,13 +300,13 @@ jobs:
               data = json.loads((bundle_dir / result).read_text(encoding="utf-8"))
               benchmark_names.extend(item.get("benchmark", "unknown") for item in data)
           summary = [
-              "# R20.3 Retained Benchmark Bundle",
+              "# R23.2 Retained Benchmark Bundle",
               "",
               "This summary is derived from retained raw JMH JSON file names and benchmark entries.",
               "It is measurement-only and does not authorize public performance claims.",
               "",
               f"Profile input: {selected_profile}",
-              f"Repeat count: {os.environ['R20_REPEAT_COUNT']}",
+              f"Repeat count: {os.environ['R23_REPEAT_COUNT']}",
               "",
               "Result files:",
               *[f"- {result}" for result in results],
@@ -251,19 +314,19 @@ jobs:
               "Benchmark entries:",
               *[f"- {name}" for name in sorted(set(benchmark_names))],
               "",
-              "Interpretation boundary: internal fixed-shape JMH/PostgreSQL evidence only.",
+              "Interpretation boundary: internal post-R22 Java runtime JMH/PostgreSQL evidence only.",
           ]
           (bundle_dir / "summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
           PY
         env:
-          R20_PROFILE: ${{ inputs.profile }}
-          R20_REPEAT_COUNT: ${{ inputs.repeatCount }}
-          R20_INCLUDES: ${{ inputs.jmhIncludes }}
+          R23_PROFILE: ${{ inputs.profile }}
+          R23_REPEAT_COUNT: ${{ inputs.repeatCount }}
+          R23_INCLUDES: ${{ inputs.jmhIncludes }}
 
-      - name: Upload R20.3 retained benchmark bundle
+      - name: Upload R23.2 retained benchmark bundle
         uses: actions/upload-artifact@v4
         with:
-          name: mortar-r20.3-jmh-postgres-${{ inputs.profile }}-${{ github.sha }}
-          path: java/benchmarks/build/reports/jmh/r20.3/**
+          name: mortar-r23.2-post-r22-java-runtime-${{ inputs.profile }}-${{ github.sha }}
+          path: java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime/**
           if-no-files-found: error
           retention-days: 90

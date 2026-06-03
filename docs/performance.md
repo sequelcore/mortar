@@ -34,11 +34,11 @@ gradlew.bat :java:runtime-jdbc:test
 The benchmark module keeps threshold smoke checks. Any public performance claim
 needs a reproducible report using `docs/performance-report-template.md`.
 
-R20.3 retained Java runtime PostgreSQL baseline bundles are produced by the
-manual `Benchmarks` workflow. The bundle path inside the workflow is
-`java/benchmarks/build/reports/jmh/r20.3`, and it contains raw JMH JSON under
-`results/` plus `manifest.json`, `commands.txt`, `summary.md`,
-`review-notes.md`, and environment files. Local smoke JSON under
+R23.2 retained Java runtime PostgreSQL bundles are produced by the manual
+`Benchmarks` workflow. The bundle path inside the workflow is
+`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime`, and it
+contains raw JMH JSON under `results/` plus `manifest.json`, `commands.txt`,
+`summary.md`, `review-notes.md`, and environment files. Local smoke JSON under
 `java/benchmarks/build` remains build output and is not public evidence.
 
 R20.4 generated fixed-read profiling uses local JMH presets in
@@ -60,6 +60,18 @@ reusable prepared JDBC join/page, Mortar DSL join/page, reusable prepared JDBC
 update batch, and Mortar DSL update batch. Local JSON remains internal
 engineering evidence unless it is retained with manifest, commands,
 environment metadata, limitations, dataset notes, and review notes.
+
+R23.2 post-R22 Java runtime profiling uses local JMH presets in
+`java:benchmarks`: `jmhR23PostR22JavaRuntime`,
+`jmhR23PostR22JavaRuntimeAllocation`, and
+`jmhR23PostR22JavaRuntimeLatency`. These presets isolate ordinary JDBC and
+Mortar rows for `count`, `exists`, insert/update/delete row-count mutations,
+representative insert `RETURNING` fetch and fetchOptional behavior, and
+same-SQL non-returning update batch writes. Reusable prepared JDBC is used only
+for the batch baseline where the lifecycle matches. The retained workflow uses
+the same R23.2 matrix and does not include fake JDBC, Rust tooling,
+editor-latency rows, jOOQ, QueryDSL, rendering-only rows, optimizations, or
+public performance claims.
 
 R20.6 Rust LSP resolver benchmarking uses Criterion in `rust/crates/mortar-lsp`:
 
@@ -97,12 +109,14 @@ R20.7/R20.8 close as an internal optimization and public-report gate:
   metadata, exact claim boundaries, limitations, and benchmark-readiness
   sign-off exist.
 
-R23 planning extends that gate to the post-R22 API surface:
+R23 extends that gate to the post-R22 API surface:
 
-- `docs/benchmarks/r23-retained-performance-evidence.md` defines the planned
-  scenario matrix for generated fixed reads, DSL reads, join/page reads,
-  scalar reads, row-count mutations, returning mutations, and same-SQL
-  non-returning batch writes.
+- `docs/benchmarks/r23-retained-performance-evidence.md` defines the scenario
+  matrix for generated fixed reads, DSL reads, join/page reads, scalar reads,
+  row-count mutations, returning mutations, and same-SQL non-returning batch
+  writes.
+- R23.2 implements the post-R22 Java runtime scalar/mutation/batch matrix and
+  retained artifact workflow.
 - R23 keeps Java runtime evidence, Rust tooling evidence, and editor-latency
   traces separate.
 - R23 does not authorize optimization or public performance wording until

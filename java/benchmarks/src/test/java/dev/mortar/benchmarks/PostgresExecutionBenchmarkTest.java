@@ -3,6 +3,8 @@ package dev.mortar.benchmarks;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
@@ -47,6 +49,24 @@ final class PostgresExecutionBenchmarkTest {
         Map.entry("reusable-prepared-jdbc-update-batch", "plainJdbcUpdateBatch"),
         Map.entry("mortar-dsl-update-batch", "mortarUpdateBatch")
     );
+    private static final Map<String, String> R23_2_POST_R22_JAVA_RUNTIME_MATRIX = Map.ofEntries(
+        Map.entry("ordinary-jdbc-count-scalar", "plainJdbcCountActive"),
+        Map.entry("mortar-count-scalar", "mortarCountActive"),
+        Map.entry("ordinary-jdbc-exists-scalar", "plainJdbcExistsActive"),
+        Map.entry("mortar-exists-scalar", "mortarExistsActive"),
+        Map.entry("ordinary-jdbc-insert-row-count", "plainJdbcInsertRowCount"),
+        Map.entry("mortar-insert-row-count", "mortarInsertRowCount"),
+        Map.entry("ordinary-jdbc-update-row-count", "plainJdbcUpdateRowCount"),
+        Map.entry("mortar-update-row-count", "mortarUpdateRowCount"),
+        Map.entry("ordinary-jdbc-delete-row-count", "plainJdbcDeleteRowCount"),
+        Map.entry("mortar-delete-row-count", "mortarDeleteRowCount"),
+        Map.entry("ordinary-jdbc-insert-returning-fetch", "plainJdbcInsertReturningFetch"),
+        Map.entry("mortar-insert-returning-fetch", "mortarInsertReturningFetch"),
+        Map.entry("ordinary-jdbc-insert-returning-fetch-optional", "plainJdbcInsertReturningFetchOptional"),
+        Map.entry("mortar-insert-returning-fetch-optional", "mortarInsertReturningFetchOptional"),
+        Map.entry("reusable-prepared-jdbc-update-batch", "plainJdbcUpdateBatch"),
+        Map.entry("mortar-same-sql-update-batch", "mortarUpdateBatch")
+    );
     private static final String R20_4_GENERATED_FIXED_READ_INCLUDE_REGEX =
         "PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|"
             + "plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|"
@@ -54,6 +74,12 @@ final class PostgresExecutionBenchmarkTest {
     private static final String R20_5_DSL_SHAPES_INCLUDE_REGEX =
         "PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|"
             + "plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$";
+    private static final String R23_2_POST_R22_JAVA_RUNTIME_INCLUDE_REGEX =
+        "PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|"
+            + "mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|"
+            + "mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|"
+            + "mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|"
+            + "plainJdbcUpdateBatch|mortarUpdateBatch)$";
 
     @Test
     void fixtureDefinesDeterministicIndexedLookupDataset() {
@@ -232,6 +258,99 @@ final class PostgresExecutionBenchmarkTest {
     }
 
     @Test
+    void r23PostR22JavaRuntimeMatrixUsesOnlyScalarMutationReturningAndBatchScenarioNames() {
+        Set<String> methodNames = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .collect(Collectors.toSet());
+
+        assertThat(R23_2_POST_R22_JAVA_RUNTIME_MATRIX)
+            .containsKeys(
+                "ordinary-jdbc-count-scalar",
+                "mortar-count-scalar",
+                "ordinary-jdbc-exists-scalar",
+                "mortar-exists-scalar",
+                "ordinary-jdbc-insert-row-count",
+                "mortar-insert-row-count",
+                "ordinary-jdbc-update-row-count",
+                "mortar-update-row-count",
+                "ordinary-jdbc-delete-row-count",
+                "mortar-delete-row-count",
+                "ordinary-jdbc-insert-returning-fetch",
+                "mortar-insert-returning-fetch",
+                "ordinary-jdbc-insert-returning-fetch-optional",
+                "mortar-insert-returning-fetch-optional",
+                "reusable-prepared-jdbc-update-batch",
+                "mortar-same-sql-update-batch"
+            );
+        assertThat(methodNames).containsAll(R23_2_POST_R22_JAVA_RUNTIME_MATRIX.values());
+        assertThat(R23_2_POST_R22_JAVA_RUNTIME_MATRIX.values()).doesNotContain(
+            "plainJdbcFetch",
+            "plainJdbcReusableStatementFetch",
+            "plainJdbcFindByIdFetch",
+            "plainJdbcReusableFindByIdFetch",
+            "plainJdbcTunedReusableFindByIdFetch",
+            "mortarJdbcFetch",
+            "mortarPreRenderedJdbcFetch",
+            "mortarProcessorGeneratedFindByIdFetch",
+            "mortarPreparedProcessorGeneratedFindByIdFetch",
+            "mortarTunedProcessorGeneratedFindByIdFetch",
+            "jooqFetch",
+            "querydslFetch"
+        );
+    }
+
+    @Test
+    void r23PostR22JavaRuntimeIncludeRegexSelectsOnlyPostR22ScenarioNames() {
+        Set<String> selectedMethods = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .filter(methodName -> ("PostgresExecutionBenchmark." + methodName)
+                .matches(R23_2_POST_R22_JAVA_RUNTIME_INCLUDE_REGEX))
+            .collect(Collectors.toSet());
+
+        assertThat(selectedMethods)
+            .containsExactlyInAnyOrderElementsOf(R23_2_POST_R22_JAVA_RUNTIME_MATRIX.values());
+    }
+
+    @Test
+    void r23PostR22JavaRuntimeGradlePresetsUseR23NamesAndMatrix() throws Exception {
+        String build = Files.readString(repositoryRoot().resolve("java/benchmarks/build.gradle.kts"));
+        String r23Includes = build.substring(
+            build.indexOf("val r23PostR22JavaRuntimeIncludes"),
+            build.indexOf("dependencies {")
+        );
+
+        assertThat(build)
+            .contains("jmhR23PostR22JavaRuntime")
+            .contains("jmhR23PostR22JavaRuntimeAllocation")
+            .contains("jmhR23PostR22JavaRuntimeLatency")
+            .contains("r23.2-post-r22-java-runtime-throughput.json")
+            .contains("r23.2-post-r22-java-runtime-allocation.json")
+            .contains("r23.2-post-r22-java-runtime-latency.json");
+        assertThat(r23Includes)
+            .contains("plainJdbcCountActive")
+            .contains("mortarCountActive")
+            .contains("plainJdbcExistsActive")
+            .contains("mortarExistsActive")
+            .contains("plainJdbcInsertRowCount")
+            .contains("mortarInsertRowCount")
+            .contains("plainJdbcUpdateRowCount")
+            .contains("mortarUpdateRowCount")
+            .contains("plainJdbcDeleteRowCount")
+            .contains("mortarDeleteRowCount")
+            .contains("plainJdbcInsertReturningFetch")
+            .contains("mortarInsertReturningFetch")
+            .contains("plainJdbcInsertReturningFetchOptional")
+            .contains("mortarInsertReturningFetchOptional")
+            .contains("plainJdbcUpdateBatch")
+            .contains("mortarUpdateBatch")
+            .doesNotContain("JdbcExecutionBenchmark")
+            .doesNotContain("PostgresRenderingBenchmark")
+            .doesNotContain("ReferenceRenderingBenchmark")
+            .doesNotContain("jooqFetch")
+            .doesNotContain("querydslFetch");
+    }
+
+    @Test
     void documentsTunedPgjdbcScenarioParameters() {
         assertThat(PostgresExecutionBenchmark.TUNED_PGJDBC_PARAMETERS)
             .contains("prepareThreshold=1")
@@ -245,5 +364,17 @@ final class PostgresExecutionBenchmarkTest {
 
         assertThat(query.sql()).isEqualTo("select c.id, c.name, c.active from clients c where c.id = ?");
         assertThat(query.parameterTypes()).containsExactly(Long.class);
+    }
+
+    private static Path repositoryRoot() {
+        Path current = Path.of("").toAbsolutePath();
+        while (current != null) {
+            if (Files.exists(current.resolve("settings.gradle.kts"))
+                && Files.exists(current.resolve("CLAUDE.md"))) {
+                return current;
+            }
+            current = current.getParent();
+        }
+        throw new IllegalStateException("repository root not found");
     }
 }
