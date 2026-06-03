@@ -118,7 +118,7 @@ tasks.register("verifyBenchmarkWorkflow") {
 
 tasks.register("verifyPublishWorkflow") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Validates that release-readiness workflows remain dry-run only."
+    description = "Validates that release publication remains manual, guarded, and explicit."
 
     doLast {
         val workflowFile = file(".github/workflows/publish.yml")
@@ -129,14 +129,40 @@ tasks.register("verifyPublishWorkflow") {
         val workflowContent = workflowFile.readText()
         val requiredWorkflowFragments = listOf(
             "workflow_dispatch:",
+            "operation:",
+            "release_ref:",
+            "release_version:",
+            "publish_java:",
+            "publish_rust:",
+            "publish_vscode:",
+            "confirmation:",
             "permissions:",
             "contents: read",
+            "if: " + "$" + "{{ inputs.operation == 'publish' && inputs.publish_java }}",
+            "if: " + "$" + "{{ inputs.operation == 'publish' && inputs.publish_rust }}",
+            "if: " + "$" + "{{ inputs.operation == 'publish' && inputs.publish_vscode }}",
+            "environment: release",
+            "Publishing requires release_ref=",
+            "Publishing requires confirmation=",
             "publishToMavenLocal",
             "cargo package --list -p mortar-compiler",
             "cargo package --list -p mortar-cli",
             "cargo package --list -p mortar-lsp",
             "cargo publish --dry-run -p mortar-compiler",
-            "bun run package:vsix"
+            "bun run package:vsix",
+            "dopplerhq/secrets-fetch-action@v2.0.0",
+            "DOPPLER_TOKEN",
+            "MAVEN_USERNAME",
+            "MAVEN_PASSWORD",
+            "GPG_PRIVATE_KEY",
+            "GPG_PASSPHRASE",
+            "publishAllPublicationsToMavenCentralRepository",
+            "CARGO_REGISTRY_TOKEN",
+            "cargo publish -p mortar-compiler",
+            "cargo publish -p mortar-cli",
+            "cargo publish -p mortar-lsp",
+            "VSCE_PAT",
+            "vsce publish --pre-release"
         )
         val missingWorkflowFragments = requiredWorkflowFragments.filterNot(workflowContent::contains)
         if (missingWorkflowFragments.isNotEmpty()) {
@@ -147,21 +173,20 @@ tasks.register("verifyPublishWorkflow") {
 
         val forbiddenWorkflowFragments = listOf(
             "tags:",
-            "publishToMaven" + "Central",
-            "publishAndReleaseToMaven" + "Central",
-            "publishAllPublicationsToMaven" + "CentralRepository",
-            "DOPPLER" + "_TOKEN",
-            "MAVEN_USERNAME",
-            "MAVEN_PASSWORD",
-            "GPG_",
+            "pull_request:",
             "soft" + "props/action-gh" + "-release",
             "contents: " + "write",
-            "vsce publish"
+            "secrets.MAVEN_USERNAME",
+            "secrets.MAVEN_PASSWORD",
+            "secrets.GPG_PRIVATE_KEY",
+            "secrets.GPG_PASSPHRASE",
+            "secrets.CARGO_REGISTRY_TOKEN",
+            "secrets.VSCE_PAT"
         )
         val presentForbiddenWorkflowFragments = forbiddenWorkflowFragments.filter(workflowContent::contains)
         if (presentForbiddenWorkflowFragments.isNotEmpty()) {
             throw GradleException(
-                "Publish workflow contains non-dry-run fragments: "
+                "Publish workflow contains unguarded or direct-secret fragments: "
                     + presentForbiddenWorkflowFragments.joinToString(", ")
             )
         }
@@ -172,6 +197,7 @@ tasks.register("verifyPublishWorkflow") {
             "com.vanniktech.maven.publish",
             "hasSigningConfiguration",
             "signAllPublications()",
+            "publishToMavenCentral(automaticRelease = true)",
             "coordinates(",
             "mortar-core",
             "mortar-dialect-postgres",
@@ -188,14 +214,12 @@ tasks.register("verifyPublishWorkflow") {
         }
 
         val forbiddenBuildFragments = listOf(
-            "publishToMaven" + "Central(",
-            "publishAndReleaseToMaven" + "Central",
-            "publishAllPublicationsToMaven" + "CentralRepository"
+            "publishAndReleaseToMaven" + "Central"
         )
         val presentForbiddenBuildFragments = forbiddenBuildFragments.filter(buildContent::contains)
         if (presentForbiddenBuildFragments.isNotEmpty()) {
             throw GradleException(
-                "Publishing configuration contains remote publication fragments: "
+                "Publishing configuration contains unsupported remote publication fragments: "
                     + presentForbiddenBuildFragments.joinToString(", ")
             )
         }
@@ -234,6 +258,8 @@ subprojects {
 
     if (path in publishableJavaProjects) {
         configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
+            publishToMavenCentral(automaticRelease = true)
+
             if (hasSigningConfiguration) {
                 signAllPublications()
             }

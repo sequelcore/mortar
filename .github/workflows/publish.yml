@@ -1,25 +1,79 @@
-name: Release Readiness
+name: Release
 
 on:
   workflow_dispatch:
+    inputs:
+      operation:
+        description: "Run validation only, or publish selected artifact families."
+        required: true
+        default: "validate"
+        type: choice
+        options:
+          - validate
+          - publish
+      release_ref:
+        description: "Branch or tag to check out. Publishing requires v<release_version>."
+        required: true
+        default: "main"
+      release_version:
+        description: "Java release version. Rust and VS Code use the base semver for alpha."
+        required: true
+        default: "0.1.0-alpha.1"
+      publish_java:
+        description: "Publish Java artifacts to Maven Central."
+        required: true
+        default: false
+        type: boolean
+      publish_rust:
+        description: "Publish Rust crates to crates.io."
+        required: true
+        default: false
+        type: boolean
+      publish_vscode:
+        description: "Publish the VS Code extension as a Marketplace pre-release."
+        required: true
+        default: false
+        type: boolean
+      doppler_project:
+        description: "Doppler project containing release secrets."
+        required: true
+        default: "sequel"
+      doppler_config:
+        description: "Doppler config containing release secrets."
+        required: true
+        default: "releases"
+      confirmation:
+        description: "Required for publish: publish <release_version>"
+        required: false
+        default: ""
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-readiness-${{ github.ref }}
-  cancel-in-progress: true
+  group: release-${{ inputs.operation }}-${{ inputs.release_ref }}
+  cancel-in-progress: false
 
 jobs:
-  dry-run:
+  validate:
+    name: Validate release candidate
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx2g
+      RELEASE_VERSION: ${{ inputs.release_version }}
+      OPERATION: ${{ inputs.operation }}
+      RELEASE_REF: ${{ inputs.release_ref }}
+      PUBLISH_JAVA: ${{ inputs.publish_java }}
+      PUBLISH_RUST: ${{ inputs.publish_rust }}
+      PUBLISH_VSCODE: ${{ inputs.publish_vscode }}
+      CONFIRMATION: ${{ inputs.confirmation }}
     steps:
-      - name: Checkout
+      - name: Checkout release ref
         uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_ref }}
+          fetch-depth: 0
 
       - name: Setup Java
         uses: actions/setup-java@v5
@@ -38,7 +92,56 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Check
+      - name: Validate release inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "$OPERATION" != "validate" && "$OPERATION" != "publish" ]]; then
+            echo "Unsupported operation: $OPERATION"
+            exit 1
+          fi
+
+          if [[ "$OPERATION" == "validate" ]]; then
+            if [[ "$PUBLISH_JAVA" == "true" || "$PUBLISH_RUST" == "true" || "$PUBLISH_VSCODE" == "true" ]]; then
+              echo "Publish flags must be false when operation=validate."
+              exit 1
+            fi
+            exit 0
+          fi
+
+          expected_ref="v${RELEASE_VERSION}"
+          expected_confirmation="publish ${RELEASE_VERSION}"
+
+          if [[ "$RELEASE_REF" != "$expected_ref" ]]; then
+            echo "Publishing requires release_ref=$expected_ref."
+            exit 1
+          fi
+
+          if [[ "$CONFIRMATION" != "$expected_confirmation" ]]; then
+            echo "Publishing requires confirmation='$expected_confirmation'."
+            exit 1
+          fi
+
+          if [[ "$PUBLISH_JAVA" != "true" && "$PUBLISH_RUST" != "true" && "$PUBLISH_VSCODE" != "true" ]]; then
+            echo "Publishing requires at least one artifact family flag."
+            exit 1
+          fi
+
+      - name: Validate version alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          base_version="${RELEASE_VERSION%%-*}"
+
+          grep -F "version = \"$RELEASE_VERSION\"" build.gradle.kts
+          grep -F "version = \"$base_version\"" rust/crates/mortar-compiler/Cargo.toml
+          grep -F "version = \"$base_version\"" rust/crates/mortar-cli/Cargo.toml
+          grep -F "version = \"$base_version\"" rust/crates/mortar-lsp/Cargo.toml
+
+          BASE_VERSION="$base_version" node -e "const pkg=require('./editors/vscode/package.json'); if (pkg.version !== process.env.BASE_VERSION) { throw new Error('VS Code version mismatch: ' + pkg.version); }"
+
+      - name: Check repository
         run: ./gradlew check --no-daemon
 
       - name: Java Maven local publish dry run
@@ -62,3 +165,155 @@ jobs:
       - name: VS Code package dry run
         run: bun run package:vsix
         working-directory: editors/vscode
+
+  publish-java:
+    name: Publish Java artifacts
+    needs: validate
+    if: ${{ inputs.operation == 'publish' && inputs.publish_java }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx2g
+    steps:
+      - name: Checkout release ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_ref }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: wrapper
+
+      - name: Fetch release secrets
+        uses: dopplerhq/secrets-fetch-action@v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: ${{ inputs.doppler_project }}
+          doppler-config: ${{ inputs.doppler_config }}
+          inject-env-vars: true
+
+      - name: Verify Java publish secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${MAVEN_USERNAME:-}"
+          test -n "${MAVEN_PASSWORD:-}"
+          test -n "${GPG_PRIVATE_KEY:-}"
+          test -n "${GPG_PASSPHRASE:-}"
+
+      - name: Publish Java artifacts to Maven Central
+        run: ./gradlew publishAllPublicationsToMavenCentralRepository --no-configuration-cache
+        env:
+          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ env.MAVEN_USERNAME }}
+          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ env.MAVEN_PASSWORD }}
+          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ env.GPG_PRIVATE_KEY }}
+          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ env.GPG_PASSPHRASE }}
+
+  publish-rust:
+    name: Publish Rust crates
+    needs: validate
+    if: ${{ inputs.operation == 'publish' && inputs.publish_rust }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_ref }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fetch release secrets
+        uses: dopplerhq/secrets-fetch-action@v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: ${{ inputs.doppler_project }}
+          doppler-config: ${{ inputs.doppler_config }}
+          inject-env-vars: true
+
+      - name: Verify Rust publish secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CARGO_REGISTRY_TOKEN:-}"
+
+      - name: Publish Rust crates in dependency order
+        shell: bash
+        working-directory: rust
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ env.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          cargo publish -p mortar-compiler --token "$CARGO_REGISTRY_TOKEN"
+
+          for attempt in {1..12}; do
+            if cargo search mortar-compiler --limit 1 | grep -q '^mortar-compiler = '; then
+              break
+            fi
+            if [[ "$attempt" == "12" ]]; then
+              echo "mortar-compiler did not appear in the crates.io index in time."
+              exit 1
+            fi
+            sleep 10
+          done
+
+          cargo publish -p mortar-cli --token "$CARGO_REGISTRY_TOKEN"
+          cargo publish -p mortar-lsp --token "$CARGO_REGISTRY_TOKEN"
+
+  publish-vscode:
+    name: Publish VS Code extension
+    needs: validate
+    if: ${{ inputs.operation == 'publish' && inputs.publish_vscode }}
+    runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout release ref
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ inputs.release_ref }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Fetch release secrets
+        uses: dopplerhq/secrets-fetch-action@v2.0.0
+        with:
+          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
+          doppler-project: ${{ inputs.doppler_project }}
+          doppler-config: ${{ inputs.doppler_config }}
+          inject-env-vars: true
+
+      - name: Verify VS Code publish secret
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${VSCE_PAT:-}"
+
+      - name: Install VS Code dependencies
+        run: bun install --frozen-lockfile
+        working-directory: editors/vscode
+
+      - name: Package VS Code extension
+        run: bun run package:vsix
+        working-directory: editors/vscode
+
+      - name: Publish VS Code pre-release
+        run: bunx vsce publish --pre-release --pat "$VSCE_PAT"
+        working-directory: editors/vscode
+        env:
+          VSCE_PAT: ${{ env.VSCE_PAT }}

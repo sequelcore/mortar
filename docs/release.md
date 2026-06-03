@@ -2,11 +2,9 @@
 
 Mortar is pre-1.0 and has not published a public release.
 
-R24 recorded a conditional go for the `0.1.0-alpha` publication decision. That
-decision means the repository package/readiness posture is ready for a later
-alpha publication action, but no artifact may be published until the external
-publisher ownership, credentials, protected release controls, and release
-automation changes in this policy are completed.
+R24 recorded a conditional go for the `0.1.0-alpha` publication decision. R25
+adds guarded release automation for a later explicit alpha publication action.
+No artifact has been published yet.
 
 ## Versioning
 
@@ -106,8 +104,9 @@ Before a public release:
     until their internal dependencies are published have package-inspection
     evidence and a documented fail-closed reason.
 13. VS Code package dry-run evidence exists if the extension is included.
-14. Release-readiness automation uses scoped permissions and dry-run jobs only
-    until publication is explicitly authorized.
+14. Release automation uses scoped permissions, manual dispatch, protected
+    environment gates, explicit confirmation, and runtime secret fetch before
+    any upload step.
 15. Release notes are drafted from `CHANGELOG.md`.
 
 ## Dry-Run Commands
@@ -146,26 +145,38 @@ does not publish to the VS Code Marketplace.
 
 ## Publication Policy
 
-Active release automation is readiness-only and does not publish artifacts.
-Publication requires a later explicit go/no-go decision and a separate
-automation change that restores a guarded release path.
+Release automation is manual and guarded. The default workflow operation is
+`validate`, which checks the release candidate without fetching publisher
+credentials or uploading artifacts. Registry uploads require a separate
+`operation=publish` workflow dispatch.
 
-Future publication should be tag-gated and protected by scoped permissions,
-protected secrets, and validation jobs before any upload step. Dry-runs do not
-publish artifacts.
+Publishing requires:
+
+- `release_ref` equal to `v<release_version>`;
+- `confirmation` equal to `publish <release_version>`;
+- at least one selected artifact family;
+- the protected GitHub `release` environment;
+- a repository `DOPPLER_TOKEN` secret that can fetch release credentials from
+  Doppler at runtime.
+
+The workflow does not publish on pushes, branch updates, pull requests, or tag
+creation. It does not create GitHub releases.
 
 Maven Central publishing must use the current Central Portal path, validated
 POM metadata, sources, Javadocs, license metadata, SCM metadata, developer
 metadata, signatures, and CI-provided credentials.
 
 Cargo publishing must inspect package contents before upload because published
-crate versions are permanent and cannot be overwritten.
+crate versions are permanent and cannot be overwritten. Mortar publishes Rust
+crates in dependency order: `mortar-compiler`, then `mortar-cli`, then
+`mortar-lsp`.
 
-VS Code extension publication requires Marketplace publisher credentials and
-packaging constraints for README/CHANGELOG assets. Packaging a VSIX is not the
-same as publishing it.
+VS Code extension publication requires the `sequelcore` Marketplace publisher,
+a Marketplace PAT, and packaging evidence. The current workflow publishes with
+the VS Code pre-release flag when the VS Code artifact family is selected.
 
-Before an alpha publication action, complete these external prerequisites:
+Before an alpha publication action, complete or verify these external
+prerequisites:
 
 1. Confirm Sonatype Central namespace ownership for `io.github.sequelcore`,
    Central Portal token access, and signing credentials.
@@ -173,11 +184,25 @@ Before an alpha publication action, complete these external prerequisites:
    `mortar-lsp`, and publish in dependency order.
 3. Confirm VS Code Marketplace publisher ownership for `sequelcore` and a
    Marketplace PAT if the extension is included.
-4. Add protected release controls for publication credentials, including branch
-   protection or rulesets and a protected environment or equivalent approval
-   gate.
-5. Restore guarded upload steps only in a later release automation change.
+4. Add or verify protected release controls for publication credentials,
+   including branch protection or rulesets and a protected environment or
+   equivalent approval gate.
+5. Run the release workflow in `validate` mode for the exact release tag before
+   any `publish` operation.
+
+Required Doppler release secrets:
+
+- `MAVEN_USERNAME`
+- `MAVEN_PASSWORD`
+- `GPG_PRIVATE_KEY`
+- `GPG_PASSPHRASE`
+- `CARGO_REGISTRY_TOKEN`
+- `VSCE_PAT`
+
+The GitHub repository should store only the Doppler service token needed by the
+release workflow. Do not copy registry tokens, signing keys, or Marketplace PAT
+values into repository secrets, docs, logs, or prompts.
 
 No release, tag, Maven Central publication, crates.io publication, VS Code
 Marketplace publication, GitHub release, PR, merge, or application migration is
-authorized by R24 readiness work.
+authorized by R25.1 automation work alone.

@@ -19,6 +19,9 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 - Added CI release-readiness dry-run checks for Java Maven local publishing,
   Rust package inspection, the compiler crate publish dry-run, and VS Code VSIX
   packaging.
+- Added guarded manual release automation for Maven Central, crates.io, and
+  VS Code Marketplace pre-release publication. No artifacts have been published
+  yet.
 - Added dependency-update and CodeQL security automation for the public
   repository.
 - Added canonical roadmap and public governance docs.
