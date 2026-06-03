@@ -7,8 +7,8 @@ The runnable companion module is `examples/clean-architecture-postgres`. It
 compiles in CI and shows a domain-facing `ClientReader` port implemented by a
 PostgreSQL infrastructure adapter.
 
-For the R21 copyable recipe view of generated reads, SQL assertions, and
-AI-agent invariants, see [`query-recipes.md`](query-recipes.md).
+For copyable generated-read, repository-adapter, and SQL assertion recipes, see
+[`query-recipes.md`](query-recipes.md).
 
 ## Boundary Rule
 

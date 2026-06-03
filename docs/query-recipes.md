@@ -1,33 +1,24 @@
-# AI-Friendly Query Recipes
+# Query Recipes
 
-Mortar is easiest to use correctly when repository code follows a small set of
-repeatable shapes. This guide is the canonical R21 authoring guide for humans
-and AI agents.
-
-The snippets below are backed by the compiling examples in
+Mortar repository code works best when it follows a small set of repeatable,
+testable shapes. The snippets below are backed by the compiling examples in
 `examples/spring-boot-postgres` and `examples/clean-architecture-postgres`.
-Use those modules as the source of truth when copying code into an application.
 
 ## Authoring Rules
 
-- Prefer generated fixed-read facades when the entity has the query shape you
-  need: `read(renderer).findById(...)` or `read(renderer).findAll()`.
-- Use the Java DSL for supported application-specific predicates, joins,
-  projections, sorting, pagination, and writes.
-- Use DSL scalar terminals for `count` and `exists`; do not invent generated
+- Prefer generated fixed-read facades for `read(renderer).findById(...)` and
+  explicit `read(renderer).findAll()`.
+- Use the Java DSL for application-specific predicates, joins, projections,
+  sorting, pagination, scalar reads, and writes.
+- Use DSL scalar terminals for `count` and `exists`; Mortar does not generate
   scalar facade methods.
-- Use explicit mutation specs and bound mutation values for writes; do not
-  invent generated write facades or repositories.
+- Use explicit mutation specs and bound mutation values for writes; Mortar does
+  not generate write facades or repository classes.
 - Name every repository-owned query with `.named("Repository.method")`.
-- Execute through `MortarJdbcClient`; generated query objects do not execute
-  themselves.
-- Keep `Q*`, `QuerySpec`, `MortarBoundQuery<?>`, and `MortarJdbcClient` inside
-  infrastructure adapters.
+- Execute through `MortarJdbcClient`; query values do not execute themselves.
+- Keep Mortar types inside infrastructure adapters.
 - Assert SQL, parameters, and parameter types at the adapter boundary.
-- Do not write raw SQL unless the query explicitly needs an unsupported shape,
-  and keep raw fragments behind `unsafeWhereRaw(...)`.
-- Do not make public performance claims without retained benchmark artifacts
-  and review.
+- Keep raw SQL behind explicit unsafe APIs and test it at the adapter boundary.
 
 ## Generated `findById`
 
@@ -61,8 +52,7 @@ assertThatSql(query)
 ## Generated `findAll`
 
 Use `findAll()` only for explicit full-table reads, typically small reference
-data or bounded fixtures. Do not use it as the default for arbitrary production
-tables.
+data or bounded fixtures.
 
 ```java
 public List<ClientSummary> findAll() {
@@ -77,10 +67,11 @@ public List<ClientSummary> findAll() {
 }
 ```
 
-## Richer Repository Queries
+## DSL Reads
 
-When the query has application-specific predicates, sorting, or pagination,
-use the Java DSL and keep the query construction named and testable.
+When the query has application-specific predicates, sorting, projection, joins,
+or pagination, use the Java DSL and keep the query construction named and
+testable.
 
 ```java
 QuerySpec activePageQuery(int page, int size) {
@@ -94,7 +85,7 @@ QuerySpec activePageQuery(int page, int size) {
 }
 ```
 
-Assert the rendered SQL at the same adapter boundary:
+Assert the rendered SQL:
 
 ```java
 assertThatSql(renderer.render(query))
@@ -125,16 +116,6 @@ public boolean existsActive(long id) {
             .named("ClientRepository.existsActive")
     );
 }
-```
-
-Assert scalar SQL before relying on repository behavior:
-
-```java
-assertThatSql(repository.countActiveQuery())
-    .hasName("ClientRepository.countActive")
-    .hasSql("select count(*) from clients c where c.active = ?")
-    .hasParameters(true)
-    .hasParameterTypes(Boolean.class);
 ```
 
 ## Create, Update, And Delete
@@ -183,20 +164,10 @@ MortarReturningMutation<ClientSummary> createMutation(long id, String name, bool
 }
 ```
 
-When the repository expects `INSERT ... RETURNING` to produce one row, make that
-cardinality explicit in the adapter:
+When the repository expects `INSERT ... RETURNING` to produce one row, enforce
+that cardinality in the adapter.
 
-```java
-public Optional<ClientSummary> create(long id, String name, boolean active) {
-    List<ClientSummary> rows = jdbcClient.fetch(createMutation(id, name, active));
-    if (rows.size() != 1) {
-        throw new IllegalStateException("expected exactly one row from ClientRepository.create");
-    }
-    return Optional.of(rows.getFirst());
-}
-```
-
-## Spring Repository Adapter Pattern
+## Spring Repository Adapter
 
 Spring repositories should be ordinary infrastructure adapters. Mortar does not
 generate Spring repository classes and does not derive queries from method
@@ -233,34 +204,9 @@ public interface ClientReader {
 }
 ```
 
-The adapter implements that port with generated reads or DSL queries. Domain
-services and use cases should not import Mortar types.
+Domain services and use cases should not import Mortar types.
 
-## AI Agent Instructions
-
-When generating or editing Mortar repository code:
-
-1. Read `CLAUDE.md`, `docs/usage-guide.md`, this guide, and the relevant
-   example module before changing code.
-2. Start from generated `Q*` constants and `read(renderer)` for fixed reads.
-3. Add `.named(...)` on the immutable bound query value.
-4. Keep execution in `MortarJdbcClient`; never add `query.fetch(...)` or other
-   self-executing generated query APIs.
-5. Keep SQL visible through `MortarSqlAssertions`, snapshots, or rendered query
-   assertions before claiming the query is correct.
-6. Do not bypass source-map, metadata, or snapshot contracts for editor
-   tooling.
-7. Do not generate repositories, optional-filter method matrices, hidden joins,
-   lazy loading, aggregate loaders, writes, batches, or generated scalar
-   helpers.
-8. Do not add raw SQL unless the requested query cannot be represented by the
-   current generated facade or DSL. If raw SQL is required, use the explicit
-   unsafe API and add adapter-boundary SQL tests.
-9. Do not add runtime optimizations, benchmark thresholds, public performance
-   claims, releases, tags, publishes, migrations, or announcement work as part
-   of authoring recipes.
-
-## What Not To Do
+## Avoid These Shapes
 
 Do not put Mortar in domain services:
 
@@ -301,45 +247,10 @@ visible SQL assertions.
 Use jOOQ when SQL itself is the primary model and the team wants a mature
 SQL-first DSL, broad SQL feature coverage, and schema-driven SQL construction.
 
-Use QueryDSL when generated Java query types are a good fit across the team's
-chosen backend and Mortar's narrower PostgreSQL/Spring transparency contract is
-not the deciding factor.
+Use QueryDSL when generated Java query types fit the team's chosen backend and
+Mortar's narrower PostgreSQL/Spring transparency contract is not the deciding
+factor.
 
 Use JPA or Hibernate when the application needs ORM behavior such as managed
 entity state, identity maps, aggregate graph loading, or lazy relationships.
 Mortar intentionally does not provide those behaviors.
-
-## Troubleshooting Checklist
-
-- Missing `Q*` type: run `gradlew.bat compileJava` and check annotation
-  processor wiring.
-- Missing generated read method: confirm the model has exactly one `@MortarId`
-  and is processed by `MortarProcessor`.
-- Unexpected SQL: add or update a focused `MortarSqlAssertions.assertThatSql`
-  test before changing application behavior.
-- Missing editor SQL for generated reads: check fresh `META-INF/mortar`
-  metadata, source maps, and `mortar.sql.snap.json`; explicit snapshot markers
-  are only the legacy/manual path.
-- Performance question: consult `docs/performance.md`; do not infer runtime
-  claims from local smoke output.
-
-## Research Basis
-
-- VS Code custom instructions document concise project-wide and file-scoped
-  instruction files for AI-assisted coding:
-  https://code.visualstudio.com/docs/agent-customization/custom-instructions
-- OpenAI prompt guidance recommends explicit role/workflow guidance, examples,
-  relevant context, and testing instructions for coding tasks:
-  https://platform.openai.com/docs/guides/prompt-engineering
-- Spring Data JPA documents derived query methods, declared queries, named
-  parameters, and custom implementations:
-  https://docs.spring.io/spring-data/jpa/reference/3.5/jpa/query-methods.html
-- jOOQ documents SQL building, code generation, and SQL execution as mature
-  SQL-first workflows: https://www.jooq.org/doc/latest/manual
-- QueryDSL documents type-safe SQL-like queries for Java, and its SQL query
-  API exposes rendered SQL and bindings:
-  https://querydsl.com/ and
-  https://querydsl.com/static/querydsl/5.0.0/apidocs/com/querydsl/sql/SQLQuery.html
-- LSP 3.17 documents hover, code action, and definition capabilities as
-  position-based editor features:
-  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/

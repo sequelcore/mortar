@@ -1,6 +1,7 @@
 # Contributing To Mortar
 
-Mortar is built under Sequel engineering standards. Contributions are welcome when they keep the project small, explicit, tested, and transparent.
+Contributions are welcome when they keep Mortar small, explicit, tested, and
+transparent.
 
 ## Development Requirements
 

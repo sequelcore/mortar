@@ -1,75 +1,80 @@
 # Mortar
 
-Mortar is a public Java + Rust project for Java-first, refactor-safe, SQL-transparent queries.
+Mortar is Java-first, refactor-safe, SQL-transparent query authoring for
+Spring and PostgreSQL.
 
-The goal is not to hide SQL. The goal is to let Java/Spring developers write queries as code while keeping the generated SQL visible, testable, auditable, and performance-aware.
+Mortar keeps query construction in Java while making the SQL visible before it
+executes. It is not an ORM: it does not provide managed entity state, lazy
+loading, identity maps, implicit graph traversal, or repository method-name
+query derivation.
 
-## Principles
+Status: pre-release. The first planned public version is `0.1.0-alpha.1`; it
+has not been published to Maven Central or crates.io yet.
 
-- Java-first API.
-- SQL transparency as a product feature.
-- Compile-time safety where Java can provide it.
-- No ORM-style hidden lazy loading or invisible query behavior.
-- Clean Architecture boundaries from day one.
-- PostgreSQL first, with additional dialects only after concrete evidence.
-- Benchmarks and tests are part of the contract.
+## Current Scope
 
-## Structure
+- Java 21 and Spring Boot 3.5.x.
+- PostgreSQL 16 through a dedicated PostgreSQL renderer.
+- Generated Java metamodels for annotated models.
+- Generated fixed reads: `findById` and explicit `findAll`.
+- Java DSL reads with predicates, joins, projections, sorting, and pagination.
+- Scalar `count` and `exists` through DSL scalar terminals.
+- Insert, update, delete, row-count mutations, and PostgreSQL `RETURNING`.
+- JDBC runtime execution through explicit `MortarJdbcClient` calls.
+- Spring Boot starter auto-configuration for PostgreSQL/JDBC wiring.
+- SQL assertions, snapshots, metadata, CLI, LSP, and VS Code SQL visibility.
+
+Mortar currently does not claim broad dialect support, broad ORM replacement,
+application migration compatibility, or performance superiority over JDBC,
+PostgreSQL, jOOQ, QueryDSL, Hibernate, or Spring Data.
+
+## Modules
 
 ```text
-java/core                  Pure query model and DSL contracts
-java/processor             Annotation processor for generated metamodels and findById executors
-java/dialect-postgres      PostgreSQL renderer
-java/runtime-jdbc          JDBC execution adapter
-java/spring-boot-starter   Spring Boot integration
-java/testkit               Assertions and snapshot helpers
-editors/vscode             VS Code client for the Mortar LSP server
-editors/intellij           IntelliJ plugin adapter
-rust/crates/mortar-cli     CLI tooling
-rust/crates/mortar-compiler Rust analysis/compiler foundation
-rust/crates/mortar-lsp     Language Server Protocol foundation for editor tooling
-examples/spring-boot-postgres Runnable Spring Boot PostgreSQL example
-examples/clean-architecture-postgres Clean Architecture repository adapter example
+java/core                    Pure query model and DSL contracts
+java/processor               Annotation processor and generated metamodels
+java/dialect-postgres        PostgreSQL rendering
+java/runtime-jdbc            JDBC execution adapter
+java/spring-boot-starter     Spring Boot integration
+java/testkit                 SQL assertions and snapshot helpers
+editors/vscode               VS Code client for Mortar LSP
+editors/intellij             IntelliJ plugin adapter
+rust/crates/mortar-cli       CLI tooling
+rust/crates/mortar-compiler  Metadata, diagnostics, and snapshot tooling
+rust/crates/mortar-lsp       Language Server Protocol server
+examples/spring-boot-postgres
+examples/clean-architecture-postgres
 ```
 
-## Canonical Docs
+## Documentation
 
 - [Getting started](docs/getting-started.md)
 - [Usage guide](docs/usage-guide.md)
-- [AI-friendly query recipes](docs/query-recipes.md)
-- [Roadmap](docs/roadmap.md)
-- [Architecture](docs/spec/architecture.md)
+- [Query recipes](docs/query-recipes.md)
 - [API reference](docs/api-reference.md)
 - [Spring Boot PostgreSQL example](docs/spring-boot-postgres-example.md)
-- [DDD/Clean Architecture example](docs/ddd-clean-architecture-example.md)
-- [Migration from Spring Data @Query](docs/migration-from-spring-data-query.md)
-- [Comparison](docs/comparison.md)
-- [Troubleshooting](docs/troubleshooting.md)
-- [Testkit](docs/testkit.md)
+- [DDD and Clean Architecture example](docs/ddd-clean-architecture-example.md)
+- [Query safety and refactors](docs/refactor-safety.md)
 - [SQL snapshots](docs/sql-snapshots.md)
-- [CLI](docs/cli.md)
+- [Testkit](docs/testkit.md)
 - [LSP](docs/lsp.md)
 - [VS Code](docs/vscode.md)
-- [IntelliJ](docs/intellij.md)
-- [Neovim](docs/neovim.md)
-- [Editor smoke tests](docs/editor-smoke-tests.md)
 - [Build metadata](docs/metadata.md)
-- [Static diagnostics](docs/diagnostics.md)
-- [Performance guide](docs/performance.md)
-- [Performance report template](docs/performance-report-template.md)
-- [PostgreSQL performance report](docs/benchmarks/performance-report-2026-06-01.md)
+- [Performance](docs/performance.md)
 - [Benchmarks](docs/benchmarks/README.md)
-- [ADR index](docs/adr/index.md)
-- [ADR-0001](docs/adr/0001-java-first-sql-transparent-architecture.md)
-- [Market notes](docs/research/market-notes.md)
+- [Comparison](docs/comparison.md)
+- [Troubleshooting](docs/troubleshooting.md)
 - [Release policy](docs/release.md)
+- [Roadmap](docs/roadmap.md)
+- [Current R24 readiness plan](docs/plan.md)
+- [Architecture decisions](docs/adr/index.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 
-## Install
+## Install Preview
 
-Mortar is pre-release. The first planned Maven Central version is
-`0.1.0-alpha.1`.
+These coordinates are planned for the first alpha and are shown so examples can
+stabilize before publication:
 
 ```kotlin
 dependencies {
@@ -82,14 +87,16 @@ dependencies {
 }
 ```
 
+Until artifacts are published, use the repository examples and local builds.
+
 ## Verify
 
 ```bash
-./gradlew check
+gradlew.bat check --no-daemon
 cd rust
 cargo fmt --all --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
+cd ../editors/vscode
+bun run typecheck
 ```
-
-On Windows, use `gradlew.bat check` from the repository root.

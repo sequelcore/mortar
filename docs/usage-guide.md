@@ -4,7 +4,7 @@ Mortar is for Java/Spring applications that want refactor-safe query code and
 visible SQL. It is not an ORM and does not own aggregate loading, lazy loading,
 identity maps, or transaction policy.
 
-For copyable repository recipes and AI-agent authoring invariants, start with
+For copyable repository recipes, start with
 [`query-recipes.md`](query-recipes.md). This guide explains the broader query
 path selection.
 
@@ -29,13 +29,13 @@ MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT
 Optional<QClient.FindByIdRow> row = jdbcClient.fetchOptional(query);
 ```
 
-The older direct generated executor methods remain available for hot paths that
-need the `MortarGeneratedQuery` contract, but the fixed `Read` facade is the
-canonical R16.2 repository shape.
+Direct generated executor methods remain available for hot paths that need the
+`MortarGeneratedQuery` contract, but the fixed `Read` facade is the canonical
+repository shape.
 
 The generated `Read` facade is deliberately small. It does not generate
 execution methods, writes, joins, optional filters, scalar methods,
-projections, or repository classes. R22 `count` and `exists` are DSL scalar
+projections, or repository classes. `count` and `exists` are DSL scalar
 contracts, not generated facade methods. Repositories still own method names,
 row to DTO mapping, transaction placement, and tests.
 

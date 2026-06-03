@@ -1,8 +1,13 @@
 # Mortar Benchmarks
 
-Mortar benchmarks live in `java/benchmarks` and use JMH.
+Mortar benchmark code lives in `java/benchmarks` and Rust LSP benchmarks live
+under `rust/crates/mortar-lsp`.
 
-## Commands
+Benchmark output is evidence only when the scenario, baseline, raw artifacts,
+environment, limitations, and review status are retained together. Local smoke
+output proves a harness can run; it does not support public performance claims.
+
+## Java Commands
 
 Compile benchmark sources:
 
@@ -10,678 +15,114 @@ Compile benchmark sources:
 gradlew.bat :java:benchmarks:compileJava
 ```
 
-Run all benchmarks:
+Run the Java benchmark task:
 
 ```bash
 gradlew.bat :java:benchmarks:jmh
 ```
 
-Run the reproducible baseline profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhBaseline
-```
-
-This writes JSON results to `java/benchmarks/build/reports/jmh/baseline.json`.
-
-Run one benchmark group:
-
-```bash
-gradlew.bat :java:benchmarks:jmh -PjmhIncludes=JdbcExecutionBenchmark
-```
-
-Run allocation profiling:
-
-```bash
-gradlew.bat :java:benchmarks:jmhAllocation -PjmhIncludes=PostgresRenderingBenchmark
-```
-
-Run the baseline profile with allocation metrics:
-
-```bash
-gradlew.bat :java:benchmarks:jmhBaselineAllocation
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/baseline-allocation.json`.
-
-Run real PostgreSQL execution throughput benchmarks:
+Run real PostgreSQL execution profiles:
 
 ```bash
 gradlew.bat :java:benchmarks:jmhPostgresExecution
-```
-
-This starts PostgreSQL 16 through Testcontainers and writes JSON results to
-`java/benchmarks/build/reports/jmh/postgres-execution.json`.
-
-Run real PostgreSQL latency percentile benchmarks:
-
-```bash
+gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation
 gradlew.bat :java:benchmarks:jmhPostgresExecutionLatency
 ```
 
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/postgres-execution-latency.json`.
-
-Run real PostgreSQL allocation benchmarks:
-
-```bash
-gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/postgres-execution-allocation.json`.
-
-Run the R20.4 generated fixed-read throughput profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-throughput.json`.
-
-Run the R20.4 generated fixed-read allocation profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadAllocation
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-allocation.json`.
-
-Run the R20.4 generated fixed-read latency profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadLatency
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-latency.json`.
-
-Run the R20.5 DSL render/execute throughput profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20DslShapes
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-throughput.json`.
-
-Run the R20.5 DSL render/execute allocation profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20DslShapesAllocation
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-allocation.json`.
-
-Run the R20.5 DSL render/execute latency profile:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20DslShapesLatency
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-latency.json`.
-
-Run the R23.2 post-R22 Java runtime throughput profile:
+Run the current scalar/mutation Java runtime retained-evidence profiles
+locally:
 
 ```bash
 gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntime
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime-throughput.json`.
-
-Run the R23.2 post-R22 Java runtime allocation profile:
-
-```bash
 gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntimeAllocation
-```
-
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime-allocation.json`.
-
-Run the R23.2 post-R22 Java runtime latency profile:
-
-```bash
 gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntimeLatency
 ```
 
-This writes JSON results to
-`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime-latency.json`.
+## Rust Tooling Commands
 
-Run the R20.6 Rust LSP resolver benchmark:
-
-```bash
-cd rust
-cargo bench -p mortar-lsp --bench r20_lsp_resolver
-```
-
-This writes Criterion output under `rust/target/criterion`. That output is
-local internal tooling evidence only and must not be committed.
-
-Run the R23.3 retained Rust tooling benchmark target locally:
+Run the retained Rust tooling benchmark target locally:
 
 ```bash
 cd rust
 cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp
 ```
 
-This target reuses the existing R20/R19 LSP corpus but emits R23 benchmark
-group names for retained R23.3 evidence.
-
-Run the smallest R20.6 Rust LSP benchmark smoke:
-
-```bash
-cd rust
-cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
-```
-
-The smoke command proves the Criterion harness and fixture path. It is not
-retained evidence for optimization proposals or public performance reporting.
-
-Run the smallest R23.3 Rust tooling smoke:
-
-```bash
-cd rust
-cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp -- r23_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
-```
-
-The smoke command proves the R23 Criterion target and fixture path. It is not
-retained evidence for optimization proposals or public performance reporting.
-
-Run a short harness smoke test:
-
-```bash
-gradlew.bat :java:benchmarks:jmh -PjmhIncludes=JdbcExecutionBenchmark -PjmhArgs="-wi 0 -i 1 -f 1 -r 100ms -w 100ms"
-```
-
-## Retained CI Artifacts
-
-Public-ready benchmark review needs retained raw JSON, not only copied terminal
-output. Use the manual `Benchmarks` GitHub Actions workflow for repeated real
-PostgreSQL runs with downloadable artifacts.
-
-R20.1 adds the canonical benchmark-readiness audit in
-[`r20-benchmark-readiness.md`](r20-benchmark-readiness.md). When this README and
-the R20 audit disagree, the R20 audit is the stricter rule for public claims.
-R23 adds the post-R22 retained-evidence plan in
-[`r23-retained-performance-evidence.md`](r23-retained-performance-evidence.md).
-When an R23 scenario or optimization/public-claim decision is involved, the R23
-plan is the stricter rule.
-
-Current retained workflow inputs:
-
-- `evidenceFamily`: `java-runtime-postgres`, `rust-tooling-lsp`, or
-  `vscode-editor-latency`.
-- `jmhIncludes`: JMH include regex. Default:
-  `PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|plainJdbcUpdateBatch|mortarUpdateBatch)$`.
-- `profile`: Java profile: `throughput`, `allocation`, `latency`, or `all`.
-- `rustBenchmarkFilter`: Criterion filter for R23.3 Rust tooling, or `all`.
-- `editorScenario`: R23.4 VS Code scenario: `smoke` or `screenshots`.
-- `repeatCount`: integer greater than or equal to `2`.
-
-For `java-runtime-postgres`, the workflow runs PostgreSQL benchmarks on
-`ubuntu-latest`, confirms Docker is available, writes JMH JSON under
-`java/benchmarks/build/reports/jmh`, copies each repeated run into
-`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime`, writes a
-retained `manifest.json`, `commands.txt`, `summary.md`, `review-notes.md`, and
-environment files, then uploads `mortar-r23.2-post-r22-java-runtime-*` with
-90-day retention.
-
-For `rust-tooling-lsp`, the workflow runs
-`cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp`, retains Criterion
-console output and `rust/target/criterion` copies under
-`rust/target/r23.3-rust-tooling-lsp`, writes schema
-`mortar-r23-rust-tooling-criterion-manifest-v1`, and uploads
-`mortar-r23.3-rust-tooling-lsp-*` with 90-day retention.
-
-For `vscode-editor-latency`, the workflow runs VS Code smoke or screenshot
-tests under Xvfb with `MORTAR_VSCODE_LATENCY_TRACE`, retains client-visible
-trace JSON and test output under
-`editors/vscode/build/r23.4-vscode-editor-latency`, writes schema
-`mortar-r23-vscode-editor-latency-manifest-v1`, and uploads
-`mortar-r23.4-vscode-editor-latency-*` with 90-day retention. Screenshot runs
-must set `MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR`; the workflow points it at a
-per-run retained result directory.
-
-## R23 Retained Evidence
-
-R23 is complete as a retained-evidence gate. R23.2 implements the post-R22 Java
-runtime matrix and retained workflow; R23.3 and R23.4 retain Rust tooling and
-VS Code editor-latency evidence separately. R23 does not authorize
-optimization, public performance claims, benchmark threshold tightening,
-release readiness work, or R24 implementation.
-
-Canonical R23 plan:
-
-- [`r23-retained-performance-evidence.md`](r23-retained-performance-evidence.md)
-
-R23.2 covers the post-R22 public executable Java runtime surface:
-
-- R22 scalar reads: `count` and `exists`;
-- R22 row-count mutations: insert, update, and delete;
-- R22 PostgreSQL insert `RETURNING` fetch and fetchOptional behavior;
-- same-SQL non-returning update batch writes.
-
-R23.3 Rust tooling evidence is retained separately from Java runtime bundles
-through `r23.3-rust-tooling-lsp`. R23.4 editor-latency evidence is retained
-separately from both Java runtime and Rust Criterion bundles through
-`r23.4-vscode-editor-latency`.
-
-R23.5 benchmark-readiness and optimization gate docs:
-
-- [`r23-benchmark-readiness.md`](r23-benchmark-readiness.md)
-- [`r23-performance-gate.md`](r23-performance-gate.md)
-
-R23.5 closed as optimization no-go after reviewing retained artifacts from:
-
-- https://github.com/sequelcore/mortar/actions/runs/26887593414
-- https://github.com/sequelcore/mortar/actions/runs/26887593463
-- https://github.com/sequelcore/mortar/actions/runs/26887800615
-- https://github.com/sequelcore/mortar/actions/runs/26885861833
-
-R23.7 before/after review is not applicable because no optimization was
-authorized. R23.8 blocks public performance claims; allowed wording is limited
-to measurement discipline.
-
-Local smoke output remains harness proof only. Retained R23.2 evidence requires
-raw result files, exact commands, clean commit metadata, environment metadata,
-dataset or corpus notes, derived summaries, limitations, profiler/allocation
-evidence where needed, and reviewer notes.
-
-Local smoke command for proving the R23.2 preset and JSON output:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntime "-PjmhIncludes=PostgresExecutionBenchmark[.]mortarCountActive$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r23.2-post-r22-java-runtime-smoke.json" --no-daemon
-```
-
-The JSON remains build output and must not be committed.
-
-## R20.3 PostgreSQL Baseline Matrix
-
-R20.3 is measurement-only. It configures retained artifact generation for the
-Java runtime PostgreSQL baseline matrix; it does not authorize public
-performance claims or runtime optimization.
-
-Canonical include regex:
-
-```text
-PostgresExecutionBenchmark\.(plainJdbcFetch|plainJdbcReusableStatementFetch|plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch|jooqFetch|querydslFetch)$
-```
-
-Run the retained CI bundle from the manual `Benchmarks` workflow with:
-
-- `profile`: `all`;
-- `repeatCount`: `2` minimum for retained evidence;
-- `jmhIncludes`: the canonical regex above.
-
-The workflow runs throughput, allocation, and sample-time latency profiles for
-each repeated run. Raw JSON is retained under `results/`; the manifest records
-the commit, clean-worktree state, command inputs, JMH profile settings,
-environment files, PostgreSQL/Testcontainers/PgJDBC versions, tuned PgJDBC
-parameters, dataset shape, matrix row names, and relative artifact paths.
-
-Local smoke command for proving live PostgreSQL JSON generation:
-
-```bash
-gradlew.bat :java:benchmarks:jmhPostgresExecution "-PjmhIncludes=PostgresExecutionBenchmark[.]plainJdbcFetch$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r20.3-smoke.json" --no-daemon
-```
-
-The local smoke command intentionally uses one R20.3 method so it is shell-safe
-on Windows and quick enough to prove Testcontainers/JMH JSON output. The full
-R20.3 matrix is retained through the manual workflow. Local smoke output
-remains build output and must not be committed. Use
-[`r20-postgres-baseline-manifest-template.json`](r20-postgres-baseline-manifest-template.json)
-when creating an explicitly retained local bundle outside GitHub Actions.
-
-R20.3 matrix rows:
-
-- ordinary JDBC: `PostgresExecutionBenchmark.plainJdbcFetch`;
-- reusable prepared JDBC: `PostgresExecutionBenchmark.plainJdbcReusableStatementFetch`;
-- ordinary JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcFindByIdFetch`;
-- reusable prepared JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetch`;
-- tuned PgJDBC reusable JDBC: `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`;
-- Mortar render-per-call: `PostgresExecutionBenchmark.mortarJdbcFetch`;
-- Mortar pre-rendered SQL: `PostgresExecutionBenchmark.mortarPreRenderedJdbcFetch`;
-- Mortar processor-generated executor: `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetch`;
-- Mortar prepared processor-generated executor: `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetch`;
-- Mortar tuned processor-generated executor: `PostgresExecutionBenchmark.mortarTunedProcessorGeneratedFindByIdFetch`;
-- jOOQ reference row: `PostgresExecutionBenchmark.jooqFetch`;
-- QueryDSL SQL reference row: `PostgresExecutionBenchmark.querydslFetch`.
-
-Optional variants, handwritten generated-style Mortar rows, join/page rows, and
-update-batch rows are not R20.3 baseline rows. They remain available benchmark
-methods, but their interpretation belongs to R20.4 or R20.5.
-
-## R20.4 Generated Fixed-Read Profiling
-
-R20.4 is measurement-only. It isolates generated `findById` fixed-read overhead
-against matched JDBC baselines and does not authorize runtime optimization,
-public performance claims, Java public API changes, or runtime behavior
-changes.
-
-Canonical include regex:
-
-```text
-PostgresExecutionBenchmark\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$
-```
-
-R20.4 matrix rows:
-
-- ordinary JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcFindByIdFetch`;
-- reusable prepared JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetch`;
-- tuned PgJDBC reusable JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`;
-- Mortar processor-generated executor: `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetch`;
-- Mortar prepared processor-generated executor: `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetch`;
-- Mortar tuned processor-generated executor: `PostgresExecutionBenchmark.mortarTunedProcessorGeneratedFindByIdFetch`.
-
-Local full-profile commands:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead --no-daemon
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadAllocation --no-daemon
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadLatency --no-daemon
-```
-
-Equivalent commands using the generic PostgreSQL tasks:
-
-```bash
-gradlew.bat :java:benchmarks:jmhPostgresExecution "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$" --no-daemon
-gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$" --no-daemon
-gradlew.bat :java:benchmarks:jmhPostgresExecutionLatency "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$" --no-daemon
-```
-
-Local smoke command for proving the R20.4 preset and JSON output:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead "-PjmhIncludes=PostgresExecutionBenchmark[.]mortarProcessorGeneratedFindByIdFetch$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r20.4-generated-fixed-read-smoke.json" --no-daemon
-```
-
-The smoke command intentionally uses one generated R20.4 method so it is quick
-enough to prove the local task, include override, Testcontainers startup, and
-JMH JSON writing. The JSON remains build output and must not be committed.
-
-Local retained R20.4 bundles are internal-only unless a later benchmark
-readiness review signs off. A local bundle must include raw JSON for
-throughput, allocation, and latency, exact commands, commit SHA, clean-worktree
-state, date, JDK/Gradle/Docker/PostgreSQL/Testcontainers/PgJDBC versions,
-tuned PgJDBC parameters, dataset notes, a derived summary, limitations, and
-review notes. Build-directory JSON without that bundle metadata is local
-engineering evidence only.
-
-Optional variants, handwritten generated-style Mortar rows, join/page rows,
-update-batch rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC rows remain out
-of the R20.4 interpretation boundary.
-
-## R20.5 DSL Render/Execute Profiling
-
-R20.5 is measurement-only. It profiles existing dynamic DSL render/execute
-paths over live PostgreSQL/Testcontainers rows for broader read and write
-shapes. It does not authorize runtime optimization, public performance claims,
-Java public API changes, generated Java API changes, or benchmark threshold
-changes.
-
-Canonical include regex:
-
-```text
-PostgresExecutionBenchmark\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$
-```
-
-R20.5 matrix rows:
-
-- ordinary JDBC simple read: `PostgresExecutionBenchmark.plainJdbcFetch`;
-- Mortar DSL render-per-call simple read: `PostgresExecutionBenchmark.mortarJdbcFetch`;
-- Mortar pre-rendered simple read: `PostgresExecutionBenchmark.mortarPreRenderedJdbcFetch`;
-- reusable prepared JDBC join/page: `PostgresExecutionBenchmark.plainJdbcJoinPageFetch`;
-- Mortar DSL join/page: `PostgresExecutionBenchmark.mortarJoinPageFetch`;
-- reusable prepared JDBC update batch: `PostgresExecutionBenchmark.plainJdbcUpdateBatch`;
-- Mortar DSL update batch: `PostgresExecutionBenchmark.mortarUpdateBatch`.
-
-Local full-profile commands:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20DslShapes --no-daemon
-gradlew.bat :java:benchmarks:jmhR20DslShapesAllocation --no-daemon
-gradlew.bat :java:benchmarks:jmhR20DslShapesLatency --no-daemon
-```
-
-Equivalent commands using the generic PostgreSQL tasks:
-
-```bash
-gradlew.bat :java:benchmarks:jmhPostgresExecution "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$" --no-daemon
-gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$" --no-daemon
-gradlew.bat :java:benchmarks:jmhPostgresExecutionLatency "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$" --no-daemon
-```
-
-Local smoke command for proving the R20.5 preset and JSON output:
-
-```bash
-gradlew.bat :java:benchmarks:jmhR20DslShapes "-PjmhIncludes=PostgresExecutionBenchmark[.]mortarJoinPageFetch$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r20.5-dsl-shapes-smoke.json" --no-daemon
-```
-
-The smoke command intentionally uses one R20.5 method so it is quick enough to
-prove the local task, include override, Testcontainers startup, and JMH JSON
-writing. The JSON remains build output and must not be committed.
-
-R20.5 keeps `plainJdbcReusableStatementFetch` contextual instead of canonical:
-the simple-read DSL path is compared to ordinary JDBC plus the internal
-pre-rendered Mortar isolate. The join/page and update-batch baselines are
-matched reusable prepared JDBC rows because the Mortar DSL paths reuse stable
-query or mutation specs created at trial setup.
-
-Generated fixed-read R20.4 rows, optional variants, handwritten
-generated-style Mortar rows, jOOQ, QueryDSL SQL, `PostgresRenderingBenchmark`,
-and controlled fake-JDBC rows remain outside the R20.5 interpretation
-boundary. jOOQ and QueryDSL require separate fair-comparison boundaries before
-they can be used for broader DSL shape evidence.
-
-Local retained R20.5 bundles are internal-only unless a later benchmark
-readiness review signs off. A local bundle must include raw JSON for
-throughput, allocation, and latency, exact commands, commit SHA, clean-worktree
-state, date, JDK/Gradle/Docker/PostgreSQL/Testcontainers/PgJDBC versions,
-dataset notes, a derived summary, limitations, and review notes. Build-directory
-JSON without that bundle metadata is local engineering evidence only.
-
-## R20.6 Rust LSP Resolver Benchmarking
-
-R20.6 is measurement-only tooling work. It benchmarks current Rust LSP
-parser/resolver/editor-feature behavior and does not authorize R19 semantic
-changes, parser caching, tree-sitter old-tree reuse, partial-sync behavior,
-Java runtime changes, optimization, or public performance claims.
-
-Harness command:
-
-```bash
-cd rust
-cargo bench -p mortar-lsp --bench r20_lsp_resolver
-```
-
-Smoke command:
-
-```bash
-cd rust
-cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
-```
-
-R20.6 uses Criterion `0.7.0`, not Criterion `0.8.x`, because the Rust workspace
-declares Rust `1.85` and Criterion `0.8.2` requires Rust `1.86`.
-
-Canonical benchmark groups:
-
-- `r20_lsp_parser`: tree-sitter parser latency over canonical generated reads,
-  supported aliases, unsupported alias fail-closed syntax, and a deterministic
-  large Java document.
-- `r20_lsp_editor_features`: hover, copy SQL, PostgreSQL EXPLAIN code action,
-  and definition resolution over canonical generated reads, supported local
-  metamodel aliases, supported read-namespace aliases, unsupported alias
-  fail-closed diagnostics, stale source-map fail-closed behavior, and missing
-  snapshot fail-closed behavior.
-- `r20_lsp_diagnostics_full_sync`: document diagnostics and current full-buffer
-  open/change behavior, including success, unsupported alias, malformed buffer,
-  large-document, and success-to-failure-to-recovery edit scripts.
-
-R20.6 fixture inputs are deterministic local corpus snippets backed by the
-existing R18 `mortar-metadata-v1` and `mortar-source-map-v1` fixtures. Parser
-latency is isolated through direct tree-sitter parsing inside the bench, while
-resolver/editor behavior is measured through the current public `LspState`
-methods. The large-document case is generated deterministically from ordinary
-filler lines plus one canonical generated read; it does not change R19
-semantics.
-
-Criterion results are Rust tooling/editor evidence only. They must remain
-separate from Java JMH/PostgreSQL runtime evidence and cannot support JDBC,
-database, or application-runtime performance claims. Allocation interpretation
-requires retained profiler or allocation artifacts in addition to Criterion
-timing output.
-
-## R20.7/R20.8 Optimization And Public-Report Gate
-
-R20.7 and R20.8 are complete as decision gates. The internal gate record is
-[`r20-performance-gate.md`](r20-performance-gate.md).
-
-R20.7 does not authorize optimization implementation. R20.3-R20.6 prove the
-benchmark harnesses, scenario groups, local smoke paths, and Java/Rust evidence
-boundaries, but they do not provide retained repeated artifacts reviewed enough
-to rank an optimization candidate.
-
-R20.8 is a public-report no-go. `performance-report-2026-06-01.md` remains an
-internal public-readiness draft because it cites local build-output JSON and
-does not attach retained workflow artifacts, clean benchmark commit metadata, or
-reviewer sign-off. Public wording must say internal/local evidence only until
-retained artifacts exist for the exact claim.
-
-Optimization implementation remains blocked for:
-
-- Java runtime generated binder/mapper, prepared-query lifecycle, renderer
-  reuse, PgJDBC default, and threshold changes;
-- Rust LSP parser caching, source-map/snapshot caching, diagnostics scan, and
-  incremental parse strategy changes.
-
-Before any later optimization slice, retain the raw result files, exact
-commands, manifest, environment metadata, corpus or dataset notes, limitations,
-derived summary, profiler/allocation evidence where needed, and reviewer notes.
-Keep Java runtime metrics and Rust tooling metrics separate. Controlled
-JDBC-double rows must not support PostgreSQL, driver, database, or product
-performance claims.
-
-## Current Scenarios
-
-- `PostgresRenderingBenchmark.renderSelectQuery`: Mortar PostgreSQL rendering overhead.
-- `JdbcExecutionBenchmark.plainJdbcFetch`: plain JDBC baseline with controlled JDBC doubles.
-- `JdbcExecutionBenchmark.mortarJdbcFetch`: Mortar JDBC fetch path against the same controlled JDBC doubles.
-- `PostgresExecutionBenchmark.plainJdbcFetch`: real PostgreSQL select through plain JDBC.
-- `PostgresExecutionBenchmark.plainJdbcFetchOptional`: real PostgreSQL at-most-one-row select through plain JDBC.
-- `PostgresExecutionBenchmark.plainJdbcReusableStatementFetch`: real PostgreSQL select through a reused plain JDBC `PreparedStatement`.
-- `PostgresExecutionBenchmark.plainJdbcReusableStatementFetchOptional`: real PostgreSQL at-most-one-row select through a reused plain JDBC `PreparedStatement`.
-- `PostgresExecutionBenchmark.mortarJdbcFetch`: real PostgreSQL select through Mortar with render-per-call execution.
-- `PostgresExecutionBenchmark.mortarJdbcFetchOptional`: real PostgreSQL at-most-one-row select through Mortar with render-per-call execution.
-- `PostgresExecutionBenchmark.mortarPreRenderedJdbcFetch`: real PostgreSQL select through Mortar with pre-rendered SQL.
-- `PostgresExecutionBenchmark.mortarPreRenderedJdbcFetchOptional`: real PostgreSQL at-most-one-row select through Mortar with pre-rendered SQL.
-- `PostgresExecutionBenchmark.mortarGeneratedJdbcFetch`: real PostgreSQL select through a generated-style Mortar query with direct binder and projection-index mapper.
-- `PostgresExecutionBenchmark.mortarGeneratedJdbcFetchOptional`: real PostgreSQL at-most-one-row select through a generated-style Mortar query.
-- `PostgresExecutionBenchmark.mortarPreparedGeneratedJdbcFetch`: real PostgreSQL select through a caller-owned reusable Mortar generated prepared query.
-- `PostgresExecutionBenchmark.mortarPreparedGeneratedJdbcFetchOptional`: real PostgreSQL at-most-one-row select through a caller-owned reusable Mortar generated prepared query.
-- `PostgresExecutionBenchmark.plainJdbcFindByIdFetch`: real PostgreSQL generated-entity `findById` shape through plain JDBC.
-- `PostgresExecutionBenchmark.plainJdbcFindByIdFetchOptional`: real PostgreSQL generated-entity `findById` shape through plain JDBC at-most-one-row mapping.
-- `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetch`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement`.
-- `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetchOptional`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement` with at-most-one-row mapping.
-- `PostgresExecutionBenchmark.plainJdbcJoinPageFetch`: real PostgreSQL joined, ordered, paginated read through a reused plain JDBC `PreparedStatement`.
-- `PostgresExecutionBenchmark.mortarJoinPageFetch`: real PostgreSQL joined, ordered, paginated read through the Mortar DSL/JDBC path.
-- `PostgresExecutionBenchmark.plainJdbcCountActive`: real PostgreSQL `count`
-  scalar through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarCountActive`: real PostgreSQL `count`
-  scalar through Mortar `MortarBoundScalar`.
-- `PostgresExecutionBenchmark.plainJdbcExistsActive`: real PostgreSQL
-  `exists` scalar through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarExistsActive`: real PostgreSQL `exists`
-  scalar through Mortar `MortarBoundScalar`.
-- `PostgresExecutionBenchmark.plainJdbcInsertRowCount`: real PostgreSQL insert
-  row-count mutation through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarInsertRowCount`: real PostgreSQL insert
-  row-count mutation through Mortar `MortarBoundMutation`.
-- `PostgresExecutionBenchmark.plainJdbcUpdateRowCount`: real PostgreSQL update
-  row-count mutation through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarUpdateRowCount`: real PostgreSQL update
-  row-count mutation through Mortar `MortarBoundMutation`.
-- `PostgresExecutionBenchmark.plainJdbcDeleteRowCount`: real PostgreSQL delete
-  row-count mutation through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarDeleteRowCount`: real PostgreSQL delete
-  row-count mutation through Mortar `MortarBoundMutation`.
-- `PostgresExecutionBenchmark.plainJdbcInsertReturningFetch`: real PostgreSQL
-  insert `RETURNING` row fetch through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarInsertReturningFetch`: real PostgreSQL
-  insert `RETURNING` row fetch through Mortar `MortarReturningMutation`.
-- `PostgresExecutionBenchmark.plainJdbcInsertReturningFetchOptional`: real
-  PostgreSQL insert `RETURNING` optional row fetch through ordinary JDBC.
-- `PostgresExecutionBenchmark.mortarInsertReturningFetchOptional`: real
-  PostgreSQL insert `RETURNING` optional row fetch through Mortar
-  `MortarReturningMutation`.
-- `PostgresExecutionBenchmark.plainJdbcUpdateBatch`: real PostgreSQL update batch through plain JDBC.
-- `PostgresExecutionBenchmark.mortarUpdateBatch`: real PostgreSQL update batch through Mortar mutation rendering and JDBC batch execution.
-- `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement` on a PgJDBC connection configured with `prepareThreshold=1`, `preparedStatementCacheQueries=256`, and `binaryTransfer=true`.
-- `PostgresExecutionBenchmark.mortarTunedProcessorGeneratedFindByIdFetch`: real PostgreSQL processor-generated `findById` through Mortar on the same tuned PgJDBC connection settings.
-- `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetch`: real PostgreSQL `findById` through the `QBenchmarkClient` executor emitted by the Mortar annotation processor.
-- `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetchOptional`: real PostgreSQL at-most-one-row `findById` through the processor-generated executor.
-- `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetch`: real PostgreSQL `findById` through a caller-owned reusable prepared query built from the processor-generated executor.
-- `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetchOptional`: real PostgreSQL at-most-one-row `findById` through a caller-owned reusable prepared query built from the processor-generated executor.
-- `PostgresExecutionBenchmark.jooqFetch`: real PostgreSQL select through jOOQ.
-- `PostgresExecutionBenchmark.jooqFetchOptional`: real PostgreSQL at-most-one-row select through jOOQ.
-- `PostgresExecutionBenchmark.querydslFetch`: real PostgreSQL select through QueryDSL SQL.
-- `PostgresExecutionBenchmark.querydslFetchOptional`: real PostgreSQL at-most-one-row select through QueryDSL SQL.
-- `ReferenceRenderingBenchmark.jooqRenderSelectQuery`: jOOQ rendering reference scenario.
-- `ReferenceRenderingBenchmark.querydslRenderSelectQuery`: QueryDSL SQL rendering reference scenario.
-
-The controlled JDBC-double benchmarks measure adapter overhead, not database/network
-throughput. Public claims require full report data in
-[`performance-report-template.md`](../performance-report-template.md).
-
-The real PostgreSQL benchmarks measure deterministic read and write shapes over
-a 1,000-row dataset, using live JDBC connections per JMH trial. They are closer
-to execution evidence than controlled JDBC doubles, but they still do not
-represent a full application workload, connection pooling, concurrent traffic,
-or production database tuning. Tuned PgJDBC scenarios are benchmark-local and do
-not change Mortar runtime defaults.
-The processor-generated `findById` scenarios use a benchmark-only annotated
-entity so the measured Mortar path is emitted by the real annotation processor,
-not by hand-written benchmark code.
-
-## Thresholds
-
-`thresholds.json` is a bootstrap CI contract for stable benchmark metadata. Its
-initial limits are intentionally loose until Mortar publishes reproducible
-baseline data.
-
-## Readiness Rules
+Criterion output under `rust/target/criterion` is local tooling output unless
+it is retained with commands, corpus notes, environment metadata, limitations,
+derived summary, and review notes.
+
+## Retained Evidence
+
+The manual `Benchmarks` GitHub Actions workflow is the canonical retained
+artifact path. It separates evidence families:
+
+- `java-runtime-postgres`
+- `rust-tooling-lsp`
+- `vscode-editor-latency`
+
+Retained Java runtime artifacts must include raw JMH JSON, exact commands,
+commit metadata, clean-worktree state, JDK/Gradle/PostgreSQL/Testcontainers
+metadata, dataset notes, limitations, derived summaries, and review notes.
+
+Retained Rust tooling artifacts must include Criterion output, exact commands,
+Rust/Cargo metadata, corpus notes, limitations, derived summaries, and review
+notes.
+
+Retained VS Code editor-latency artifacts must include trace JSON, test output,
+Bun/VS Code metadata, scenario notes, limitations, derived summaries, and
+review notes.
+
+R23 retained artifacts reviewed for current evidence boundaries:
+
+- Java scalar count:
+  https://github.com/sequelcore/mortar/actions/runs/26887593414
+- Java DML `RETURNING`:
+  https://github.com/sequelcore/mortar/actions/runs/26887593463
+- Rust tooling/LSP:
+  https://github.com/sequelcore/mortar/actions/runs/26887800615
+- VS Code editor latency:
+  https://github.com/sequelcore/mortar/actions/runs/26885861833
+
+R23 closed with optimization no-go and public performance claims blocked. That
+decision means the retained workflows are useful evidence, but they do not
+prove broad speed superiority over any named baseline.
+
+## Current Java Scenarios
+
+Representative Java benchmark scenarios include:
+
+- plain JDBC and Mortar simple reads;
+- reusable prepared JDBC and Mortar join/page reads;
+- generated fixed reads for `findById`;
+- scalar `count` and `exists`;
+- row-count insert, update, and delete;
+- PostgreSQL `RETURNING` fetch and fetchOptional behavior;
+- same-SQL non-returning update batches;
+- jOOQ and QueryDSL reference rows where the benchmark defines a fair
+  comparison boundary.
+
+Controlled JDBC-double benchmarks measure adapter overhead only. They do not
+support PostgreSQL, driver, or product performance claims.
+
+## Public Claim Rules
 
 Public performance claims require:
 
-- `jmhBaseline` output;
-- `jmhBaselineAllocation` output for allocation claims;
-- `jmhPostgresExecution` output for real database execution claims;
-- `jmhPostgresExecutionLatency` output for p50/p95/p99 latency claims;
-- exact baseline naming: ordinary JDBC, tuned PgJDBC, reusable prepared JDBC,
-  maximum handwritten JDBC, jOOQ, or QueryDSL SQL;
-- JDK, OS, CPU, commit, command, fork/warmup/measurement counts, and benchmark
-  source links in a report;
-- retained raw JMH JSON artifacts from the manual `Benchmarks` workflow for
-  any public throughput, allocation, or latency claim;
-- separate interpretation for rendering microbenchmarks and JDBC adapter
-  overhead;
-- no claims about real database throughput from controlled JDBC-double
-  benchmarks;
-- no public claim until a benchmark-readiness review signs off against retained
-  artifacts.
+- retained raw artifacts from the manual benchmark workflow or an equivalent
+  retained evidence bundle;
+- exact commit, commands, environment, dataset/corpus, warmup, measurement,
+  forks, and benchmark source links;
+- exact baseline naming;
+- separate interpretation for Java runtime, Rust tooling, and editor latency;
+- published limitations;
+- review sign-off for the exact wording.
 
-Follow `docs/performance-report-template.md` for public reports.
+Allowed current wording:
 
-Internal baselines:
+> Mortar keeps benchmark discipline for supported scenarios; public performance
+> claims require retained raw artifacts, disclosed methodology, exact baselines,
+> and readiness review.
 
-- `baseline-2026-06-01.md`
-- `postgres-execution-2026-06-01.md`
-- `performance-report-2026-06-01.md`
-- `r20-performance-gate.md`
-- `r23-retained-performance-evidence.md`
+Blocked wording includes unqualified speed claims against JDBC, PostgreSQL,
+jOOQ, QueryDSL, or application workloads without workload-specific retained
+evidence.

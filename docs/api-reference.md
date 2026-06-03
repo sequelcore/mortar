@@ -1,11 +1,7 @@
 # Public API Reference
 
-This page is the human entry point for Mortar's public Java APIs. Javadoc should
+This page is the human entry point for Mortar's public Java APIs. Javadocs
 remain the source of exact method signatures.
-
-Before the first release, handwritten public Java types include concise
-type-level Javadocs and generated `Q*` sources document SQL table, column,
-relation, and generated executor metadata for IDE visibility.
 
 ## Core
 
@@ -17,21 +13,16 @@ Package: `dev.mortar.core`
 - `ColumnRef<T>`: typed column reference and predicate factory.
 - `QueryBuilder<T>`: fluent select query builder.
 - `QuerySpec`: immutable query model.
-- `CountSpec` and `ExistsSpec`: immutable scalar query models for `count` and
-  `exists`.
-- `RenderedQuery`: SQL, parameters, and metadata.
-- `MortarBoundQuery<T>`: immutable, framework-free named rendered read-query
-  inspection contract for SQL, parameters, parameter types, metadata, and row
-  type.
-- `MortarBoundScalar<T>`: immutable, framework-free named rendered scalar
-  inspection contract for SQL, parameters, parameter types, metadata, and scalar
-  type.
+- `CountSpec` and `ExistsSpec`: immutable scalar query models.
+- `RenderedQuery`: SQL, parameters, parameter types, and metadata.
+- `MortarBoundQuery<T>`: immutable named rendered read-query inspection
+  contract.
+- `MortarBoundScalar<T>`: immutable named rendered scalar inspection contract.
 - `InsertSpec`, `UpdateSpec`, and `DeleteSpec`: immutable semantic mutation
   models.
-- `MortarBoundMutation`: immutable, framework-free named rendered row-count
-  mutation contract.
-- `MortarReturningMutation<T>`: immutable, framework-free named rendered
-  mutation contract for PostgreSQL `RETURNING` rows.
+- `MortarBoundMutation`: immutable named rendered row-count mutation contract.
+- `MortarReturningMutation<T>`: immutable named rendered mutation contract for
+  PostgreSQL `RETURNING` rows.
 - `QueryRenderer`: renderer boundary for dialects.
 
 ## Processor
@@ -42,39 +33,29 @@ Package: `dev.mortar.processor`
 - `@MortarId`: identifier marker.
 - `@MortarColumn`: column name and nullability metadata.
 - `@MortarRelation`: relationship metadata for generated joins.
-- `MortarProcessor`: javac annotation processor that generates `Q*`
-  metamodels and common generated JDBC executors for annotated entities.
+- `MortarProcessor`: annotation processor that generates `Q*` metamodels and
+  fixed read facades for annotated entities.
 
 Generated fixed read facades:
 
 - expose nested row records on the generated `Q*` type;
-- accept a `QueryRenderer` so SQL is pre-rendered through the dialect boundary;
+- accept a `QueryRenderer` so SQL is rendered through the dialect boundary;
 - expose `Q*.Read` through `QClient.CLIENT.read(renderer)`;
 - return immutable `MortarBoundQuery<FindByIdRow>` and
   `MortarBoundQuery<FindAllRow>` values;
-- support copy-style `.named("...")` on the returned bound query;
+- support `.named("Repository.method")` on the returned bound query;
 - include generated-source Javadocs for table metadata, selected columns, and
-  generated executor SQL shape.
+  SQL shape.
 
 Current generated fixed read facade methods:
 
-- `read(renderer).findById(id)`: selects all mapped columns by identifier,
-  binds the supplied identifier into the rendered query, and can be executed as
-  `jdbcClient.fetchOptional(query)`.
-- `read(renderer).findAll()`: explicitly selects all mapped columns for
-  full-table reads and can be executed as `jdbcClient.fetch(query)`.
+- `read(renderer).findById(id)`: selects mapped columns by identifier and binds
+  the supplied identifier.
+- `read(renderer).findAll()`: explicitly selects all mapped columns.
 
 Generated `Read` facades do not generate execution methods, writes, joins,
-optional filters, scalar methods, projections, or repository classes. R22
-`count` and `exists` are DSL scalar contracts, not generated facade methods.
-
-The older direct generated executor methods remain available for generated
-hot-path execution through `MortarGeneratedQuery`, but R16.2 usage guidance
-uses `read(renderer)` as the canonical shorter repository path.
-
-Processor diagnostics fail compilation for invalid entity metadata before a
-bad generated query can reach runtime. The stable processor diagnostic codes are
-listed in [`diagnostics.md`](diagnostics.md).
+optional filters, scalar methods, projections, or repository classes. Scalar
+`count` and `exists` are DSL contracts.
 
 ## PostgreSQL
 
@@ -89,22 +70,18 @@ Package: `dev.mortar.postgres`
 
 Package: `dev.mortar.jdbc`
 
-- `MortarJdbcClient`: prepared-statement query and mutation executor. Supports
-  `QuerySpec` execution and pre-rendered `RenderedQuery` execution for hot
-  paths. Supports `fetchOptional(...)` for at-most-one-row lookups. Supports
-  generated-query execution through `MortarGeneratedQuery<P, T>` and explicit
-  caller-owned prepared query reuse through `prepare(...)`. Supports explicit
-  execution of `MortarBoundQuery<T>` and `MortarJdbcBoundQuery<T>` without
-  adding execution methods to query objects. Supports `fetchOne(...)` for
-  `MortarBoundScalar<T>`, `execute(...)` for row-count
-  `MortarBoundMutation`, returning-row fetches for
-  `MortarReturningMutation<T>`, and same-SQL non-returning mutation batches.
+- `MortarJdbcClient`: prepared-statement query and mutation executor. It
+  supports `QuerySpec`, `RenderedQuery`, `MortarBoundQuery<T>`,
+  `MortarBoundScalar<T>`, `MortarBoundMutation`,
+  `MortarReturningMutation<T>`, generated queries, optional single-row fetches,
+  caller-owned prepared query reuse, and same-SQL non-returning mutation
+  batches.
 - `MortarGeneratedQuery<P, T>`: generated query contract with SQL, parameter
   types, metadata, direct JDBC binding, and direct row mapping.
 - `MortarJdbcBoundQuery<T>`: JDBC row-mapping adapter for a core
-  `MortarBoundQuery<T>`. It does not execute itself.
-- `MortarNoParameters`: singleton marker for generated queries that do not need
-  caller-supplied parameters.
+  `MortarBoundQuery<T>`.
+- `MortarNoParameters`: singleton marker for generated queries without caller
+  parameters.
 - `MortarPreparedQuery<P, T>`: reusable prepared generated query for
   caller-owned connection scopes.
 - `RowMapper<T>`: mapper callback for custom row mapping.
@@ -123,8 +100,6 @@ Package: `dev.mortar.spring`
 
 Package: `dev.mortar.testkit`
 
-- `MortarSqlAssertions`: SQL, parameter, and metadata assertions.
-  Accepts `MortarBoundQuery<?>`, `MortarBoundScalar<?>`,
-  `MortarBoundMutation`, `MortarReturningMutation<?>`, and `RenderedQuery`.
-  Bound-value failure messages include the name and result type when available.
+- `MortarSqlAssertions`: SQL, parameter, parameter type, name, and metadata
+  assertions for rendered and bound values.
 - `MortarExplainPlanAssertions`: PostgreSQL EXPLAIN text assertions.

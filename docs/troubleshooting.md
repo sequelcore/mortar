@@ -1,6 +1,6 @@
 # Troubleshooting
 
-For canonical repository recipes and AI-agent authoring rules, see
+For canonical repository recipes, see
 [`query-recipes.md`](query-recipes.md).
 
 ## Generated Q Type Is Missing
