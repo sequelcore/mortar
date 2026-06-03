@@ -61,6 +61,26 @@ update batch, and Mortar DSL update batch. Local JSON remains internal
 engineering evidence unless it is retained with manifest, commands,
 environment metadata, limitations, dataset notes, and review notes.
 
+R20.6 Rust LSP resolver benchmarking uses Criterion in `rust/crates/mortar-lsp`:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver
+```
+
+The focused local smoke is:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+```
+
+These benchmarks cover parser latency, hover/code-action/definition resolution,
+diagnostics, metadata/source-map/snapshot read paths, large-document scans, and
+current full-buffer change behavior. Criterion output under
+`rust/target/criterion` is internal tooling evidence only. It must not be mixed
+into Java runtime or database performance claims.
+
 Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`
@@ -90,3 +110,7 @@ Current performance strategy research:
 - Do not propose DSL render/execute optimizations from a single local smoke or
   unbundled build-output JSON. R20.5 evidence must be repeated and retained
   before optimization candidates are ranked.
+- Do not propose LSP resolver optimizations from a single local Criterion smoke
+  or unbundled `rust/target/criterion` output. R20.6 evidence must be repeated,
+  retained, scenario-specific, and paired with profiler/allocation evidence
+  before tooling optimization candidates are ranked.

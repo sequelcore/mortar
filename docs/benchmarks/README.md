@@ -126,6 +126,26 @@ gradlew.bat :java:benchmarks:jmhR20DslShapesLatency
 This writes JSON results to
 `java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-latency.json`.
 
+Run the R20.6 Rust LSP resolver benchmark:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver
+```
+
+This writes Criterion output under `rust/target/criterion`. That output is
+local internal tooling evidence only and must not be committed.
+
+Run the smallest R20.6 Rust LSP benchmark smoke:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+```
+
+The smoke command proves the Criterion harness and fixture path. It is not
+retained evidence for optimization proposals or public performance reporting.
+
 Run a short harness smoke test:
 
 ```bash
@@ -341,6 +361,58 @@ throughput, allocation, and latency, exact commands, commit SHA, clean-worktree
 state, date, JDK/Gradle/Docker/PostgreSQL/Testcontainers/PgJDBC versions,
 dataset notes, a derived summary, limitations, and review notes. Build-directory
 JSON without that bundle metadata is local engineering evidence only.
+
+## R20.6 Rust LSP Resolver Benchmarking
+
+R20.6 is measurement-only tooling work. It benchmarks current Rust LSP
+parser/resolver/editor-feature behavior and does not authorize R19 semantic
+changes, parser caching, tree-sitter old-tree reuse, partial-sync behavior,
+Java runtime changes, optimization, or public performance claims.
+
+Harness command:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver
+```
+
+Smoke command:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+```
+
+R20.6 uses Criterion `0.7.0`, not Criterion `0.8.x`, because the Rust workspace
+declares Rust `1.85` and Criterion `0.8.2` requires Rust `1.86`.
+
+Canonical benchmark groups:
+
+- `r20_lsp_parser`: tree-sitter parser latency over canonical generated reads,
+  supported aliases, unsupported alias fail-closed syntax, and a deterministic
+  large Java document.
+- `r20_lsp_editor_features`: hover, copy SQL, PostgreSQL EXPLAIN code action,
+  and definition resolution over canonical generated reads, supported local
+  metamodel aliases, supported read-namespace aliases, unsupported alias
+  fail-closed diagnostics, stale source-map fail-closed behavior, and missing
+  snapshot fail-closed behavior.
+- `r20_lsp_diagnostics_full_sync`: document diagnostics and current full-buffer
+  open/change behavior, including success, unsupported alias, malformed buffer,
+  large-document, and success-to-failure-to-recovery edit scripts.
+
+R20.6 fixture inputs are deterministic local corpus snippets backed by the
+existing R18 `mortar-metadata-v1` and `mortar-source-map-v1` fixtures. Parser
+latency is isolated through direct tree-sitter parsing inside the bench, while
+resolver/editor behavior is measured through the current public `LspState`
+methods. The large-document case is generated deterministically from ordinary
+filler lines plus one canonical generated read; it does not change R19
+semantics.
+
+Criterion results are Rust tooling/editor evidence only. They must remain
+separate from Java JMH/PostgreSQL runtime evidence and cannot support JDBC,
+database, or application-runtime performance claims. Allocation interpretation
+requires retained profiler or allocation artifacts in addition to Criterion
+timing output.
 
 ## Current Scenarios
 
