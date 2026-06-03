@@ -3072,39 +3072,240 @@ Status: Planned.
 
 R23 should finish the performance program properly before pre-release readiness
 is evaluated. R20 created the measurement discipline, benchmark harnesses, and
-public-claim policy. R23 must produce retained, repeated, reviewable evidence
-on the post-R22 API surface, then optimize only if the evidence identifies a
-dominant cost.
+public-claim policy. R22 then added scalar reads and mutation contracts without
+generated scalar or write facades. R23 must produce retained, repeated,
+reviewable evidence on that post-R22 API surface, then optimize only if the
+evidence identifies a dominant cost above noise.
 
-Planned scope:
+Canonical benchmark planning lives in
+[`benchmarks/r23-retained-performance-evidence.md`](benchmarks/r23-retained-performance-evidence.md).
+When this section and the benchmark plan disagree, the benchmark plan is the
+stricter rule for benchmark evidence and public claims.
 
-- run repeated Java runtime JMH/PostgreSQL benchmark workflows on a clean commit
-  and retain raw artifacts;
-- run generated fixed-read, scalar, mutation, broader DSL, join/page, and batch
-  scenarios where supported by R22;
-- keep JDBC, PgJDBC-tuned JDBC, jOOQ, and QueryDSL reference comparisons fair
-  and explicitly bounded;
-- run Rust LSP/tooling benchmarks separately from Java runtime evidence;
-- capture commands, environment metadata, dataset/corpus notes, limitations,
-  raw JSON, derived summaries, and reviewer notes;
-- profile allocation and latency before proposing optimizations;
-- implement only evidence-ranked optimizations with before/after retained
-  artifacts and review;
-- decide whether any public performance wording is allowed, and keep no-go if
-  evidence is insufficient.
+### Problem Statement
 
-Rejected scope:
+Mortar cannot enter pre-release readiness with only local benchmark smoke
+output and pre-R22 scenario coverage. The public identity is Java-first,
+refactor-safe, SQL-transparent persistence code for Spring/PostgreSQL. That
+identity now includes row reads, scalar reads, row-count mutations, returning
+mutations, and same-SQL non-returning batch writes. R23 exists to prove what is
+measurable, retain the evidence, and decide whether optimization is authorized.
 
-- optimizing from local smoke output;
-- public performance claims without retained artifacts and reviewer sign-off;
-- changing API shape only for benchmark convenience;
-- mixing Rust tooling latency with Java/JDBC runtime claims;
-- release, tag, publish, PR, push, migration, or announcement work.
+R23 is not an optimization shortcut. It is an evidence and decision gate.
+Optimization remains blocked until retained artifacts prove a dominant cost,
+and public performance claims remain blocked until exact retained evidence and
+reviewer sign-off exist.
 
-R23 must not be marked Done until either evidence-backed optimizations are
-implemented and re-measured, or the retained evidence explicitly supports a
-no-optimization decision. In both cases, public claims remain blocked unless the
-exact claim has retained artifacts and reviewer sign-off.
+### Post-R22 Benchmark Scenario Matrix
+
+R23 Java runtime planning must cover the executable post-R22 surface without
+adding benchmark-only APIs:
+
+| Family | Required Mortar rows | Matched baselines | Status |
+| --- | --- | --- | --- |
+| Generated fixed read | processor-generated `findById`, prepared generated `findById`, tuned generated `findById` | ordinary JDBC, reusable prepared JDBC, tuned PgJDBC for the same `findById` SQL and mapper | R20.4 harness exists; retained R23 bundle needed |
+| DSL read | render-per-call simple read, pre-rendered simple read | ordinary JDBC simple read; reusable JDBC only when lifecycle matches | R20.5 harness exists; retained R23 bundle needed |
+| Join/page read | DSL joined ordered page | reusable prepared JDBC with same SQL, bind order, page size, offset, and mapper | R20.5 harness exists; retained R23 bundle needed |
+| Scalar read | DSL `count`, DSL `exists` | plain JDBC scalar rows with same SQL, bind order, scalar type, and lifecycle | Gap after R22; plan only in R23.2 |
+| Row-count mutation | insert/update/delete row-count mutations | plain JDBC update rows with same SQL, bind order, and update-count interpretation | Gap after R22; plan only in R23.2 |
+| Returning mutation | PostgreSQL `RETURNING` insert/update/delete where supported by public API | plain JDBC `RETURNING` rows with same returning columns and mapper | Gap after R22; plan only in R23.2 |
+| Batch write | same-SQL non-returning batch writes | reusable prepared JDBC batch with same SQL, bind order, batch size, and update counts | Existing update-batch row plus R22 batch contract review |
+
+Generated scalar facades, generated write namespaces, generated repositories,
+and self-executing query values remain excluded because R22 rejected them.
+
+### Java Runtime Benchmark Plan
+
+Java runtime evidence uses JMH over live PostgreSQL/Testcontainers for database
+execution scenarios. The controlled JDBC-double benchmarks remain adapter
+overhead checks only and cannot support database, driver, or product
+performance claims.
+
+R23 Java planning requires:
+
+- retained clean-commit bundles for generated fixed-read, DSL read, join/page,
+  scalar read, mutation, returning-mutation, and batch-write families;
+- throughput, allocation, and sample-time latency profiles where the scenario
+  supports them;
+- matched SQL shape, bind values, bind order, connection lifecycle, statement
+  lifecycle, row/scalar materialization, dataset, indexes, and PgJDBC settings
+  for every baseline row;
+- EXPLAIN output for plan-sensitive claims;
+- ordinary JDBC, reusable prepared JDBC, and tuned PgJDBC named precisely;
+- jOOQ and QueryDSL rows treated as reference-library rows only when statement
+  type, bind behavior, fetch behavior, SQL shape, row materialization, and type
+  mapping are documented.
+
+### Rust Tooling Benchmark Plan
+
+Rust tooling evidence remains separate from Java runtime evidence. R20.6
+created Criterion coverage for parser latency, hover/code-action/definition
+resolution, diagnostics, metadata/source-map/snapshot read paths, large
+documents, and current full-buffer change behavior.
+
+R23 Rust planning requires:
+
+- retained Criterion output for the existing LSP resolver groups;
+- corpus and fixture manifests for generated-read, alias, stale source-map,
+  missing snapshot, malformed-buffer, large-document, and edit-script cases;
+- exact Cargo commands, Rust toolchain, OS/CPU/memory metadata, feature flags,
+  and limitations;
+- profiler or allocation evidence before any parser caching, source-map
+  caching, diagnostics scan, or incremental parse strategy is proposed;
+- no Java runtime, PostgreSQL, JDBC, or database claim from Criterion data.
+
+Editor latency is related but separate. Client-visible timings for VS Code or
+other editors require their own retained traces, editor environment metadata,
+and limitations. They must not be mixed with Rust parser/resolver microbenchmarks
+or Java runtime benchmarks.
+
+### Retained Artifact Bundle Format
+
+An R23 optimization-decision bundle must include:
+
+- raw JMH JSON or raw Criterion output for every repeated run;
+- exact commands, include regexes, profile settings, fork/warmup/measurement
+  counts, result paths, and feature flags;
+- commit SHA, branch or tag, date, and clean-worktree confirmation;
+- OS, CPU, memory, JDK or Rust toolchain, Gradle or Cargo version, and profiler
+  settings;
+- PostgreSQL image/version, Docker version, Testcontainers version, PgJDBC
+  version, JDBC URL parameters, `prepareThreshold`, statement-cache settings,
+  binary transfer setting, and `plan_cache_mode` if changed;
+- dataset or corpus manifest, schema notes, row counts, indexes, target query
+  IDs, and EXPLAIN output for plan-sensitive Java claims;
+- derived summary generated from raw artifacts;
+- limitations, failed rows, unsupported rows, and reviewer notes;
+- dominant-cost evidence: JFR or async-profiler for Java, profiler/allocation
+  evidence for Rust tooling, or request-trace timing for editor latency.
+
+Build-directory JSON, terminal output, local smoke output, and unbundled
+Criterion directories are harness proof only. They are not optimization
+authorization and are never public evidence.
+
+### Optimization Authorization Criteria
+
+Optimization is authorized only when:
+
+- at least three retained clean-commit runs exist for the scenario family;
+- retained throughput, allocation, or latency evidence identifies a consistent
+  material issue;
+- profiler or allocation evidence isolates a dominant cost;
+- the expected change preserves public API shape and architecture boundaries;
+- the change is not benchmark-specific and applies to real repository code;
+- the expected gain is at least 10% in one primary metric with no meaningful
+  regression in paired metrics;
+- results are not same-band because of overlapping error bars or run-to-run
+  spread;
+- benchmark-readiness review approves the evidence boundary.
+
+If no scenario meets these criteria, R23 should close the optimization decision
+as no-go rather than forcing a product-code change.
+
+### Public-Claim Criteria
+
+Public performance wording remains no-go unless all criteria below are met for
+the exact claim:
+
+- retained raw artifacts exist for the exact scenario and baseline;
+- benchmark source, command, environment, dataset, limitations, and commit are
+  disclosed;
+- the claim names the exact baseline, such as ordinary JDBC, reusable prepared
+  JDBC, tuned PgJDBC, jOOQ reference row, or QueryDSL SQL reference row;
+- throughput, allocation, and latency evidence support the wording;
+- confidence intervals and run-to-run spread do not contradict the wording;
+- independent benchmark-readiness review signs off;
+- Java runtime, Rust tooling, and editor latency evidence remain separate.
+
+R23 should not pursue public Rust tooling or editor-latency claims. Those
+families remain internal engineering evidence unless a later roadmap slice
+defines a public tooling-report standard.
+
+### Excluded Claims And Comparisons
+
+R23 forbids:
+
+- "Mortar is faster than JDBC";
+- "Mortar is faster than maximum handwritten JDBC";
+- "Mortar beats jOOQ" or "Mortar beats QueryDSL" without exact retained
+  scenario evidence;
+- database or runtime claims from controlled JDBC doubles;
+- database or runtime claims from rendering-only JMH;
+- Java runtime claims from Rust Criterion or editor latency traces;
+- product-default claims from tuned PgJDBC benchmark settings;
+- Hibernate/JPA or ORM workload comparisons;
+- application-level claims from one deterministic fixture;
+- public wording broader than the exact retained evidence boundary.
+
+### R23 Slices
+
+- R23.1 Benchmark planning, research, and xhigh debate. Status: Planned.
+- R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
+  Status: Planned.
+- R23.3 Rust tooling benchmark retained evidence. Status: Planned.
+- R23.4 Editor-latency evidence boundary and retained trace format. Status:
+  Planned.
+- R23.5 Benchmark-readiness review and evidence-ranked optimization decision.
+  Status: Planned.
+- R23.6 Evidence-backed optimization implementation only if authorized. Status:
+  Planned.
+- R23.7 Before/after retained benchmark review. Status: Planned.
+- R23.8 Public performance wording go/no-go. Status: Planned.
+
+R23.6 and R23.7 may close as "not authorized" if retained evidence does not
+identify a dominant cost. R24 depends on that explicit go/no-go.
+
+### Risks
+
+- Testcontainers and CI runners may add enough noise that retained evidence is
+  useful for direction but not optimization authorization.
+- R22 scalar and mutation benchmarks may require harness work before evidence
+  exists, and that harness work must not change product APIs.
+- jOOQ and QueryDSL rows can be misleading unless lifecycle and materialization
+  are normalized and documented.
+- PgJDBC tuned rows can be misread as Mortar defaults unless every bundle marks
+  them as benchmark-local settings.
+- Editor latency can be confused with Rust parser/resolver speed unless traces
+  are retained as a separate evidence family.
+- A 90-day workflow artifact retention period may be insufficient for long-term
+  public reports unless release evidence is copied into a reviewed, durable
+  report bundle.
+
+### Xhigh Debate Outcome
+
+The xhigh architecture debate concluded that R23 must stay evidence-first and
+split optimization into gated sub-slices. Required scenarios are generated
+fixed reads, DSL reads, join/page reads, R22 scalar reads, row-count mutations,
+returning mutations, and same-SQL non-returning batch writes. Comparisons are
+fair only when SQL, bindings, lifecycle, materialization, dataset, and driver
+settings match. Java runtime evidence, Rust tooling evidence, and editor
+latency evidence are separate artifact families. Optimization starts only after
+retained evidence isolates a dominant cost above noise. Public claims remain
+forbidden unless the exact claim has retained artifacts and benchmark-readiness
+sign-off.
+
+### Verification Plan
+
+R23 planning/design completion requires:
+
+- documentation-only diff review;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/project scrub excluding build, cache, dependency, generated, and
+  target outputs;
+- benchmark-readiness, public-claim discipline, Sequel standards,
+  no-overclaiming, no product-code drift, and no R24/release drift review.
+
+Research basis:
+
+- OpenJDK JMH, JMH samples, PgJDBC, PostgreSQL protocol/PREPARE/EXPLAIN,
+  Testcontainers PostgreSQL, jOOQ, QueryDSL SQL, async-profiler, JFR,
+  Criterion, ACM artifact review, SPEC run rules, and GitHub Actions artifact
+  retention documentation, as linked from the R23 benchmark plan.
 
 ## R24 Planned Gate: Pre-Release Readiness
 

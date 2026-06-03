@@ -2033,19 +2033,38 @@ post-R22 API surface, then optimize only if evidence identifies a dominant cost.
 
 Planned scope:
 
-- repeated Java runtime JMH/PostgreSQL benchmark workflows on a clean commit
-  with retained raw artifacts;
-- generated fixed-read, scalar, mutation, broader DSL, join/page, and batch
-  scenarios where supported by R22;
-- fair and explicitly bounded JDBC, PgJDBC-tuned JDBC, jOOQ, and QueryDSL
-  reference comparisons;
-- Rust LSP/tooling benchmarks kept separate from Java runtime evidence;
-- commands, environment metadata, dataset/corpus notes, limitations, raw JSON,
-  derived summaries, and reviewer notes;
-- allocation and latency profiling before optimization proposals;
-- evidence-ranked optimizations only, with before/after retained artifacts and
-  review;
-- public performance wording go/no-go for exact claims only.
+- R23.1: Benchmark planning, research, and xhigh debate. Status: Planned.
+- R23.2: Post-R22 Java runtime benchmark matrix and retained artifact workflow.
+  Status: Planned.
+- R23.3: Rust tooling benchmark retained evidence. Status: Planned.
+- R23.4: Editor-latency evidence boundary and retained trace format. Status:
+  Planned.
+- R23.5: Benchmark-readiness review and evidence-ranked optimization decision.
+  Status: Planned.
+- R23.6: Evidence-backed optimization implementation only if authorized.
+  Status: Planned.
+- R23.7: Before/after retained benchmark review. Status: Planned.
+- R23.8: Public performance wording go/no-go. Status: Planned.
+
+Planned evidence matrix:
+
+- generated fixed-read rows from R20.4;
+- DSL simple read, join/page read, and same-SQL non-returning batch rows from
+  R20.5;
+- post-R22 scalar rows for `count` and `exists`;
+- post-R22 row-count mutation rows for insert, update, and delete;
+- post-R22 PostgreSQL `RETURNING` mutation rows;
+- Rust LSP/tooling Criterion evidence retained separately from Java runtime
+  evidence;
+- editor-latency traces retained separately from both Java runtime and Rust
+  tooling evidence.
+
+Planning document:
+
+- `docs/benchmarks/r23-retained-performance-evidence.md` defines the canonical
+  R23 benchmark scenario matrix, retained artifact bundle, optimization
+  authorization criteria, public-claim criteria, exclusions, risks, and xhigh
+  debate outcome.
 
 Non-goals:
 
@@ -2053,16 +2072,26 @@ Non-goals:
 - public performance claims without retained artifacts and reviewer sign-off;
 - changing API shape only for benchmark convenience;
 - mixing Rust tooling latency with Java/JDBC runtime claims;
+- generated scalar facades, generated write namespaces, generated
+  repositories, or self-executing query values for benchmark convenience;
 - release, tag, publish, PR, push, migration, or announcement work.
 
 Exit criteria:
 
-- retained artifacts exist for the measured scenarios;
-- benchmark-readiness review approves the evidence boundary;
-- optimization decisions are ranked by retained evidence;
-- any implemented optimization has before/after retained evidence;
+- R23.1-R23.4 define and, in later implementation slices, produce retained
+  evidence bundles for Java runtime, Rust tooling, and editor-latency families;
+- retained Java runtime artifacts cover generated fixed reads, DSL reads,
+  join/page reads, scalar reads, row-count mutations, returning mutations, and
+  batch writes where supported by the public R22 surface;
+- benchmark-readiness review approves the evidence boundary before any
+  optimization decision;
+- optimization decisions are ranked by retained evidence and may close as
+  no-go if no dominant cost is proven;
+- any implemented optimization has before/after retained artifacts and review;
 - public performance claims remain blocked unless exact retained evidence and
-  reviewer sign-off exist.
+  reviewer sign-off exist;
+- R24 remains Planned and depends on R23's evidence-backed optimization
+  go/no-go and public-wording go/no-go.
 
 ### R24: Pre-Release Readiness
 
@@ -2083,6 +2112,8 @@ Planned scope:
 - public docs scrub for private paths, usernames, local build-output claims,
   and unsupported performance statements;
 - benchmark-report go/no-go only if retained evidence exists;
+- R23 evidence, optimization go/no-go, and public-wording go/no-go reviewed as
+  pre-release blockers;
 - explicit `0.1.0-alpha` go/no-go decision.
 
 Non-goals:
