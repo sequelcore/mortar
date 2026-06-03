@@ -12,8 +12,10 @@ Use those modules as the source of truth when copying code into an application.
 
 - Prefer generated fixed-read facades when the entity has the query shape you
   need: `read(renderer).findById(...)` or `read(renderer).findAll()`.
-- Use the Java DSL for application-specific predicates, joins, projections,
-  sorting, pagination, writes, `count`, or `exists`.
+- Use the Java DSL for supported application-specific predicates, joins,
+  projections, sorting, pagination, and writes.
+- Treat `count` and `exists` as future scalar-query contracts until a later
+  roadmap slice approves them explicitly.
 - Name every repository-owned query with `.named("Repository.method")`.
 - Execute through `MortarJdbcClient`; generated query objects do not execute
   themselves.

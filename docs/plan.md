@@ -2801,6 +2801,9 @@ Review result:
   started, usage, example, comparison, and troubleshooting docs.
 - No overclaiming found: R21 makes no performance, replacement, release,
   publish, migration, or benchmark claim.
+- Review follow-up: the R21 recipe authoring rules were corrected to avoid
+  presenting deferred `count` and `exists` scalar-query contracts as current
+  DSL authoring paths.
 - Remaining risk: snippets are excerpts from compiling examples, not a new
   standalone recipe module. The xhigh debate accepted this to avoid duplicate
   fixture drift.
