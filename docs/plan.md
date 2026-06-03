@@ -3242,23 +3242,21 @@ R23 forbids:
 - R23.1 Benchmark planning, research, and xhigh debate. Status: Done.
 - R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
-- R23.3 Rust tooling benchmark retained evidence. Status: In Progress;
-  retained workflow and local smoke harness are implemented, remote retained
-  artifacts remain pending.
+- R23.3 Rust tooling benchmark retained evidence. Status: Done.
 - R23.4 Editor-latency evidence boundary and retained trace format. Status:
-  In Progress; retained workflow and local smoke harness are implemented,
-  remote retained artifacts remain pending.
+  Done.
 - R23.5 Benchmark-readiness review and evidence-ranked optimization decision.
-  Status: Pending retained artifact review.
+  Status: Done; optimization no-go.
 - R23.6 Evidence-backed optimization implementation only if authorized. Status:
-  Planned only if R23.5 authorizes it.
-- R23.7 Before/after retained benchmark review. Status: Planned only if R23.6
-  runs; otherwise expected to close as not applicable.
-- R23.8 Public performance wording go/no-go. Status: Pending retained artifact
-  review; public performance claims remain blocked.
+  Not authorized.
+- R23.7 Before/after retained benchmark review. Status: Not applicable because
+  no optimization was authorized.
+- R23.8 Public performance wording go/no-go. Status: Done; public performance
+  claims remain blocked.
 
-R23.6 and R23.7 may close as "not authorized" if retained evidence does not
-identify a dominant cost. R24 depends on that explicit go/no-go.
+R23.6 closed as not authorized because retained evidence did not isolate a
+dominant cost with the required profiler/allocation support. R23.7 is not
+applicable. R24 depends on that explicit go/no-go.
 
 ### R23.2 Completion Record
 
@@ -3300,8 +3298,9 @@ Xhigh debate outcome:
 
 ### R23.3-R23.8 Completion Record
 
-R23.3 implements retained Rust tooling evidence without changing LSP semantics
-or production editor behavior:
+R23.3 implements retained Rust tooling evidence. The final R23 evidence commit
+also includes an LSP file-URI portability fix found while producing editor
+retained evidence:
 
 - added `r23_rust_tooling_lsp` as an R23 Criterion target for parser,
   feature-resolution, and diagnostics/full-sync paths;
@@ -3313,8 +3312,9 @@ or production editor behavior:
   clean-worktree state, Rust/Cargo/OS/CPU/memory metadata, corpus notes,
   derived summary, limitations, and reviewer notes.
 
-R23.4 implements retained VS Code editor-latency evidence without changing
-production extension behavior:
+R23.4 implements retained VS Code editor-latency evidence. Producing the Linux
+retained editor bundle exposed real portability defects that were fixed before
+the accepted retained run:
 
 - added optional `MORTAR_VSCODE_LATENCY_TRACE` output to the VS Code smoke test
   harness;
@@ -3326,6 +3326,11 @@ production extension behavior:
   with trace JSON, test output, exact commands, commit metadata,
   clean-worktree-before-run state, Rust/Cargo/Bun/OS/CPU/memory/PostgreSQL
   metadata, corpus notes, derived summary, limitations, and reviewer notes.
+- `editors/vscode/src/extension.ts` resolves configured `.exe` paths to the
+  platform executable when the exact configured file is absent on non-Windows
+  runners.
+- `rust/crates/mortar-lsp/src/lib.rs` formats Unix absolute file URIs as
+  `file:///path` instead of `file:////path`.
 
 R23.5-R23.8 current posture:
 
@@ -3334,12 +3339,16 @@ R23.5-R23.8 current posture:
   review.
 - `docs/benchmarks/r23-performance-gate.md` records the optimization gate
   criteria.
-- R23.6 is not pre-authorized; no optimization is implemented before retained
-  artifact review.
-- R23.7 before/after retained review is not applicable unless R23.6 is
-  authorized.
-- R23.8 public performance wording remains blocked before retained artifact
-  review, except possible measurement-discipline wording after sign-off.
+- Reviewed retained artifact runs:
+  https://github.com/sequelcore/mortar/actions/runs/26887593414,
+  https://github.com/sequelcore/mortar/actions/runs/26887593463,
+  https://github.com/sequelcore/mortar/actions/runs/26887800615, and
+  https://github.com/sequelcore/mortar/actions/runs/26885861833.
+- R23.6 is not authorized; no performance optimization is implemented.
+- R23.7 before/after retained review is not applicable because no optimization
+  was authorized.
+- R23.8 public performance wording remains blocked except
+  measurement-discipline wording after sign-off.
 
 ### Risks
 

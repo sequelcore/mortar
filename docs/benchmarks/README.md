@@ -250,10 +250,11 @@ per-run retained result directory.
 
 ## R23 Retained Evidence
 
-R23 is in progress. R23.2 implements the post-R22 Java runtime matrix and
-retained workflow. It does not authorize optimization, public performance
-claims, benchmark threshold tightening, API changes, release readiness work, or
-R24 implementation.
+R23 is complete as a retained-evidence gate. R23.2 implements the post-R22 Java
+runtime matrix and retained workflow; R23.3 and R23.4 retain Rust tooling and
+VS Code editor-latency evidence separately. R23 does not authorize
+optimization, public performance claims, benchmark threshold tightening,
+release readiness work, or R24 implementation.
 
 Canonical R23 plan:
 
@@ -275,6 +276,17 @@ R23.5 benchmark-readiness and optimization gate docs:
 
 - [`r23-benchmark-readiness.md`](r23-benchmark-readiness.md)
 - [`r23-performance-gate.md`](r23-performance-gate.md)
+
+R23.5 closed as optimization no-go after reviewing retained artifacts from:
+
+- https://github.com/sequelcore/mortar/actions/runs/26887593414
+- https://github.com/sequelcore/mortar/actions/runs/26887593463
+- https://github.com/sequelcore/mortar/actions/runs/26887800615
+- https://github.com/sequelcore/mortar/actions/runs/26885861833
+
+R23.7 before/after review is not applicable because no optimization was
+authorized. R23.8 blocks public performance claims; allowed wording is limited
+to measurement discipline.
 
 Local smoke output remains harness proof only. Retained R23.2 evidence requires
 raw result files, exact commands, clean commit metadata, environment metadata,

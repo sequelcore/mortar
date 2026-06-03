@@ -2024,7 +2024,7 @@ threshold change, public benchmark report, or performance claim.
 
 ### R23: Retained Performance Evidence And Optimization
 
-Status: In Progress
+Status: Done
 
 Goal: Finish the performance program properly before pre-release readiness is
 evaluated. R20 created measurement discipline, benchmark harnesses, and public
@@ -2036,20 +2036,17 @@ Planned scope:
 - R23.1: Benchmark planning, research, and xhigh debate. Status: Done.
 - R23.2: Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
-- R23.3: Rust tooling benchmark retained evidence. Status: In Progress;
-  retained workflow and local smoke harness are implemented, remote retained
-  artifacts remain pending.
+- R23.3: Rust tooling benchmark retained evidence. Status: Done.
 - R23.4: Editor-latency evidence boundary and retained trace format. Status:
-  In Progress; retained workflow and local smoke harness are implemented,
-  remote retained artifacts remain pending.
+  Done.
 - R23.5: Benchmark-readiness review and evidence-ranked optimization decision.
-  Status: Pending retained artifact review.
+  Status: Done; optimization no-go.
 - R23.6: Evidence-backed optimization implementation only if authorized.
-  Status: Planned only if R23.5 authorizes it.
-- R23.7: Before/after retained benchmark review. Status: Planned only if R23.6
-  runs; otherwise expected to close as not applicable.
-- R23.8: Public performance wording go/no-go. Status: Pending retained artifact
-  review; public performance claims remain blocked.
+  Status: Not authorized.
+- R23.7: Before/after retained benchmark review. Status: Not applicable because
+  no optimization was authorized.
+- R23.8: Public performance wording go/no-go. Status: Done; public performance
+  claims remain blocked.
 
 Planned evidence matrix:
 
@@ -2119,12 +2116,26 @@ R23.3-R23.8 completion record:
   clean-worktree-before-run state, Rust/Cargo/Bun/OS/CPU/memory/PostgreSQL
   metadata, corpus notes, derived summary, limitations, and reviewer notes.
 - Added `docs/benchmarks/r23-benchmark-readiness.md` and
-  `docs/benchmarks/r23-performance-gate.md`. Current posture before remote
-  retained artifact review: no optimization is pre-authorized and public
-  performance claims remain blocked.
+  `docs/benchmarks/r23-performance-gate.md`. Retained artifact review closed
+  R23.5 as optimization no-go; public performance claims remain blocked.
 - Evidence note: Rust Criterion timing is tooling/LSP evidence only. VS Code
   traces are client-visible editor evidence only. Neither supports Java runtime
   or PostgreSQL performance claims.
+
+Reviewed retained artifacts:
+
+- R23.2 Java scalar count:
+  https://github.com/sequelcore/mortar/actions/runs/26887593414,
+  `mortar-r23.2-post-r22-java-runtime-throughput-28303a2f499591fab5bf6e7db1336393fc9cc504`.
+- R23.2 Java DML `RETURNING`:
+  https://github.com/sequelcore/mortar/actions/runs/26887593463,
+  `mortar-r23.2-post-r22-java-runtime-throughput-28303a2f499591fab5bf6e7db1336393fc9cc504`.
+- R23.3 Rust tooling/LSP:
+  https://github.com/sequelcore/mortar/actions/runs/26887800615,
+  `mortar-r23.3-rust-tooling-lsp-28303a2f499591fab5bf6e7db1336393fc9cc504`.
+- R23.4 VS Code editor-latency:
+  https://github.com/sequelcore/mortar/actions/runs/26885861833,
+  `mortar-r23.4-vscode-editor-latency-smoke-28303a2f499591fab5bf6e7db1336393fc9cc504`.
 
 Non-goals:
 
