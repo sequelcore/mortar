@@ -97,6 +97,18 @@ R20.7/R20.8 close as an internal optimization and public-report gate:
   metadata, exact claim boundaries, limitations, and benchmark-readiness
   sign-off exist.
 
+R23 planning extends that gate to the post-R22 API surface:
+
+- `docs/benchmarks/r23-retained-performance-evidence.md` defines the planned
+  scenario matrix for generated fixed reads, DSL reads, join/page reads,
+  scalar reads, row-count mutations, returning mutations, and same-SQL
+  non-returning batch writes.
+- R23 keeps Java runtime evidence, Rust tooling evidence, and editor-latency
+  traces separate.
+- R23 does not authorize optimization or public performance wording until
+  retained artifacts, dominant-cost evidence, and benchmark-readiness review
+  approve the exact change or claim.
+
 Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`
@@ -107,6 +119,10 @@ Current internal baseline:
 Current performance strategy research:
 
 - `docs/research/postgres-performance-strategy.md`
+
+Current benchmark planning:
+
+- `docs/benchmarks/r23-retained-performance-evidence.md`
 
 ## Rules
 
@@ -134,3 +150,6 @@ Current performance strategy research:
 - Do not implement R20 optimization candidates or publish R20 performance
   reports without the retained evidence and review recorded as required by
   `docs/benchmarks/r20-performance-gate.md`.
+- Do not implement R23 optimization candidates or publish R23 performance
+  wording without the retained evidence and review recorded as required by
+  `docs/benchmarks/r23-retained-performance-evidence.md`.

@@ -161,6 +161,10 @@ PostgreSQL runs with downloadable artifacts.
 R20.1 adds the canonical benchmark-readiness audit in
 [`r20-benchmark-readiness.md`](r20-benchmark-readiness.md). When this README and
 the R20 audit disagree, the R20 audit is the stricter rule for public claims.
+R23 adds the post-R22 retained-evidence plan in
+[`r23-retained-performance-evidence.md`](r23-retained-performance-evidence.md).
+When an R23 scenario or optimization/public-claim decision is involved, the R23
+plan is the stricter rule.
 
 Workflow inputs:
 
@@ -169,13 +173,45 @@ Workflow inputs:
 - `profile`: `throughput`, `allocation`, `latency`, or `all`.
 - `repeatCount`: integer greater than or equal to `2`.
 
-The workflow runs PostgreSQL benchmarks on `ubuntu-latest`, confirms Docker is
-available, writes JMH JSON under `java/benchmarks/build/reports/jmh`, copies
-each repeated run into
-`java/benchmarks/build/reports/jmh/r20.3/results`, writes a retained
-`manifest.json`, `commands.txt`, `summary.md`, `review-notes.md`, and
-environment files under `java/benchmarks/build/reports/jmh/r20.3`, then uploads
-the bundle with 90 day retention.
+The current workflow runs PostgreSQL benchmarks on `ubuntu-latest`, confirms
+Docker is available, writes JMH JSON under
+`java/benchmarks/build/reports/jmh`, copies each repeated run into an R20.3
+bundle, writes a retained `manifest.json`, `commands.txt`, `summary.md`,
+`review-notes.md`, and environment files, then uploads the bundle with 90-day
+retention.
+
+R23 planning keeps the manual retained-workflow model but requires future R23
+bundles to stop using R20.3 names. Java runtime, Rust tooling, and editor
+latency evidence must use separate bundle ids, manifests, and artifact paths.
+This README documents that requirement only; it does not implement a workflow
+change.
+
+## R23 Retained Evidence Planning
+
+R23 is design and evidence policy until later slices implement benchmark or
+workflow changes. It does not authorize optimization, public performance
+claims, benchmark threshold tightening, API changes, release readiness work, or
+R24 implementation.
+
+Canonical R23 plan:
+
+- [`r23-retained-performance-evidence.md`](r23-retained-performance-evidence.md)
+
+R23 must cover the post-R22 public executable surface:
+
+- generated fixed-read rows from R20.4;
+- DSL simple read, join/page read, and same-SQL non-returning batch rows from
+  R20.5;
+- R22 scalar reads: `count` and `exists`;
+- R22 row-count mutations: insert, update, and delete;
+- R22 PostgreSQL `RETURNING` mutations;
+- Rust LSP/tooling Criterion evidence retained separately;
+- editor-latency traces retained separately.
+
+Local smoke output remains harness proof only. Retained R23 evidence requires
+raw result files, exact commands, clean commit metadata, environment metadata,
+dataset or corpus notes, derived summaries, limitations, profiler/allocation
+evidence where needed, and reviewer notes.
 
 ## R20.3 PostgreSQL Baseline Matrix
 
@@ -531,3 +567,4 @@ Internal baselines:
 - `postgres-execution-2026-06-01.md`
 - `performance-report-2026-06-01.md`
 - `r20-performance-gate.md`
+- `r23-retained-performance-evidence.md`
