@@ -2162,38 +2162,100 @@ Exit criteria:
   authorized;
 - public performance claims remain blocked unless exact retained evidence and
   reviewer sign-off exist;
-- R24 remains Planned and depends on R23's evidence-backed optimization
-  go/no-go and public-wording go/no-go.
+- R24 depends on R23's evidence-backed optimization go/no-go and
+  public-wording go/no-go.
 
-### R24: Pre-Release Readiness
+### R24: Public Documentation And Pre-Release Readiness
 
-Status: Planned
+Status: In Progress
 
-Goal: Decide whether Mortar is ready for a first public alpha after R22 closes
-the repository persistence-cycle surface and R23 completes retained performance
-evidence plus any justified optimization work.
+Purpose: prepare Mortar for a first public alpha readiness decision after R22
+closed the repository persistence-cycle surface and R23 closed retained
+performance evidence with optimization no-go and public performance claims
+blocked.
 
-Planned scope:
+R24 comes before any first public release. It is a readiness program, not an
+artifact publication step.
 
-- public API and Javadocs review;
-- README, getting started, recipes, troubleshooting, comparison, release policy,
-  and changelog review;
-- Maven Central and GitHub release dry-run verification;
-- Rust crate dry-run verification where applicable;
-- CI status and branch protection review;
-- public docs scrub for private paths, usernames, local build-output claims,
-  and unsupported performance statements;
-- benchmark-report go/no-go only if retained evidence exists;
-- R23 evidence, optimization go/no-go, and public-wording go/no-go reviewed as
-  pre-release blockers;
-- explicit `0.1.0-alpha` go/no-go decision.
+Roadmap slices:
 
-Non-goals:
+- R24.1: Documentation canonization strategy and readiness plan. Status: Done.
+- R24.2: Public documentation canon audit. Status: Planned.
+- R24.3: Public documentation rewrite and cleanup. Status: Planned.
+- R24.4: API and Javadocs readiness review. Status: Planned.
+- R24.5: Examples and first-user path readiness. Status: Planned.
+- R24.6: Packaging and publishing dry-runs. Status: Planned.
+- R24.7: CI, repository health, and security readiness. Status: Planned.
+- R24.8: Performance wording and benchmark evidence review. Status: Planned.
+- R24.9: `0.1.0-alpha` go/no-go decision. Status: Planned.
 
-- release, tag, publish, or announcement execution;
-- private application migration;
-- new product feature implementation;
-- public performance report without retained benchmark evidence.
+Canonical documentation strategy:
+
+- `README.md` is the public entry point.
+- `docs/roadmap.md` is the canonical roadmap, status, and durable evidence
+  source.
+- `docs/plan.md` is the current R24 readiness plan only.
+- `docs/release.md` owns versioning, compatibility, artifact, and publication
+  policy.
+- `docs/adr/` keeps only durable architecture decisions.
+- Topical guides own current usage, not implementation history:
+  `docs/getting-started.md`, `docs/usage-guide.md`,
+  `docs/query-recipes.md`, `docs/refactor-safety.md`,
+  `docs/sql-snapshots.md`, `docs/spring-boot-postgres-example.md`,
+  `docs/spring-boot-compatibility.md`, `docs/testkit.md`,
+  `docs/performance.md`, `docs/benchmarks/README.md`,
+  `docs/api-reference.md`, `docs/troubleshooting.md`,
+  `docs/comparison.md`, `docs/metadata.md`, `docs/diagnostics.md`,
+  `docs/cli.md`, `docs/lsp.md`, and editor docs.
+
+R24 cleanup rules:
+
+- Rewrite public docs to describe current contracts, usage, limits, supported
+  scope, and next milestones.
+- Delete or synthesize historical construction details into canonical docs.
+- Do not create archive, history, engineering-log, or similar folders.
+- Keep ADRs only when they document real architectural decisions.
+- Remove internal process residue from public docs.
+- Keep R23 Done and keep R24 open until all readiness checks close.
+
+Public wording policy:
+
+- Mortar must not claim broad performance superiority.
+- Mortar may say: "Mortar keeps benchmark discipline for supported scenarios;
+  public performance claims require retained raw artifacts, disclosed
+  methodology, exact baselines, and readiness review."
+- Current public scope is Java 21, Spring Boot, JDBC, PostgreSQL, generated
+  Java metamodels, SQL snapshots, diagnostics, and Rust-based CLI/LSP tooling.
+- Current limits must remain visible: no full ORM, no hidden lazy loading, no
+  broad dialect claim, no application migration claim, and no performance claim
+  beyond retained evidence.
+
+R24.1 architecture review outcome:
+
+- Keep `docs/roadmap.md` as the single durable roadmap and status source.
+- Convert `docs/plan.md` from a long-lived planning archive into the current
+  R24 working plan.
+- Do not add an ADR for R24.1 because this follows the existing canonical
+  roadmap rule. Add an ADR later only if documentation governance becomes a
+  standing rule beyond R24.
+- Do not add archive, history, or log folders; durable history belongs in git,
+  roadmap evidence, ADRs, changelog, release policy, and benchmark reports.
+- Keep GitHub Packages as a strategy question, not the default public
+  distribution path unless R24.6 decides otherwise.
+
+R24.1 research basis:
+
+- Sonatype Central Publisher Portal and requirements.
+- Gradle Maven Publish documentation.
+- GitHub Actions workflow permissions and package publishing documentation.
+- GitHub Packages Gradle registry documentation.
+- GitHub repository security and CodeQL guidance.
+- OpenSSF Scorecard and OSPS Baseline guidance.
+- Cargo package and publish documentation.
+- VS Code extension publishing documentation.
+- Spring Boot auto-configuration and starter documentation.
+- jOOQ and QueryDSL public documentation as reference-quality inputs for
+  discoverability, structure, and SQL visibility.
 
 ## Canonical Update Protocol
 
