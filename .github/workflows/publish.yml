@@ -1,20 +1,17 @@
-name: Publish
+name: Release Readiness
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: release-readiness-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  validate:
+  dry-run:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,63 +32,33 @@ jobs:
         with:
           gradle-version: wrapper
 
-      - name: Validate tag format
-        if: startsWith(github.ref, 'refs/tags/')
-        run: |
-          if [[ ! "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
-            echo "Tag ${GITHUB_REF_NAME} is not a semantic version (v*.*.*)"
-            exit 1
-          fi
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
 
       - name: Check
         run: ./gradlew check --no-daemon
 
-      - name: Publish dry run
+      - name: Java Maven local publish dry run
         run: ./gradlew publishToMavenLocal --no-daemon --no-configuration-cache
 
-  publish:
-    needs: validate
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-    permissions:
-      contents: write
-    env:
-      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx2g
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
+      - name: Rust crate package inspection
+        run: |
+          cargo package --list -p mortar-compiler
+          cargo package --list -p mortar-cli
+          cargo package --list -p mortar-lsp
+        working-directory: rust
 
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 21
+      - name: Rust compiler crate publish dry run
+        run: cargo publish --dry-run -p mortar-compiler
+        working-directory: rust
 
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          gradle-version: wrapper
+      - name: Install VS Code dependencies
+        run: bun install --frozen-lockfile
+        working-directory: editors/vscode
 
-      - name: Install Doppler CLI
-        uses: dopplerhq/cli-action@v3
-
-      - name: Fetch secrets from Doppler
-        uses: dopplerhq/secrets-fetch-action@v1.3.0
-        with:
-          doppler-token: ${{ secrets.DOPPLER_TOKEN }}
-          doppler-project: sequel-core
-          doppler-config: prd
-          inject-env-vars: true
-
-      - name: Publish to Maven Central
-        run: ./gradlew publishToMavenCentral --no-daemon --no-configuration-cache
-        env:
-          ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ env.MAVEN_USERNAME }}
-          ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ env.MAVEN_PASSWORD }}
-          ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ env.GPG_PRIVATE_KEY }}
-          ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ env.GPG_PASSPHRASE }}
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
-        with:
-          generate_release_notes: true
+      - name: VS Code package dry run
+        run: bun run package:vsix
+        working-directory: editors/vscode

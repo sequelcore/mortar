@@ -20,8 +20,8 @@ readiness decision authorizes them.
 | R24.3 Public documentation rewrite and cleanup | Done |
 | R24.4 API and Javadocs readiness review | Done |
 | R24.5 Examples and first-user path readiness | Done |
-| R24.6 Packaging and publishing dry-runs | Planned |
-| R24.7 CI, repository health, and security readiness | Planned |
+| R24.6 Packaging and publishing dry-runs | Done |
+| R24.7 CI, repository health, and security readiness | Done |
 | R24.8 Performance wording and benchmark evidence review | Planned |
 | R24.9 `0.1.0-alpha` go/no-go decision | Planned |
 
@@ -271,6 +271,68 @@ Residual risks:
   fixture names where they identify durable history or test fixtures. They were
   removed from current first-user prose.
 
+## R24.6/R24.7 Readiness Decision
+
+R24.6 and R24.7 use a dry-run-only, fail-closed release-readiness posture.
+Active workflows validate package shape and repository readiness without
+publishing, tagging, creating releases, opening pull requests, merging, pushing,
+or migrating an application.
+
+Publishing remains a later decision. The previous tag-triggered publication
+workflow was converted to a manual release-readiness workflow, and the Gradle
+build now verifies that active workflows and Java publishing configuration do
+not contain remote upload paths.
+
+## R24.6/R24.7 Outcome
+
+R24.6 packaging readiness:
+
+- Java publishable modules remain limited to `java/core`,
+  `java/dialect-postgres`, `java/runtime-jdbc`, `java/spring-boot-starter`,
+  `java/processor`, and `java/testkit`; examples, benchmarks, aggregate
+  projects, and editor plugins remain outside Maven publication.
+- Java coordinates, generated POM metadata, source jars, Javadocs, Spring Boot
+  starter metadata, annotation processor metadata, and Maven local publication
+  were validated without Maven Central or GitHub Packages upload.
+- GitHub Packages is not an active registry for R24 readiness. Maven Central
+  remains the intended public Java registry unless a later release decision
+  adds a separate GitHub Packages strategy.
+- Rust package contents were inspected for `mortar-compiler`, `mortar-cli`, and
+  `mortar-lsp`. The compiler crate dry-run passes; dependent crate dry-runs
+  fail closed until the compiler crate exists in the target registry.
+- VS Code packaging now produces a local VSIX through `vsce package` and does
+  not publish to the Marketplace.
+
+R24.7 CI, repository health, and security readiness:
+
+- CI and release-readiness workflows use explicit minimal permissions.
+- The active release-readiness workflow has no tag trigger, repository write
+  permission, publishing secret fetch, Maven Central upload, crates.io upload,
+  Marketplace publish, or GitHub release creation.
+- Benchmark workflows remain manual and evidence-oriented.
+- Dependabot monitors GitHub Actions, Gradle, Cargo, and VS Code npm
+  dependencies.
+- CodeQL runs for Java and TypeScript with job-scoped security upload
+  permission.
+- `LICENSE`, `NOTICE`, `CONTRIBUTING.md`, `SECURITY.md`, and
+  `CODE_OF_CONDUCT.md` remain the public repository health surface. No
+  placeholder issue templates or ownership files were added without a confirmed
+  public owner path.
+
+Accepted residual risks:
+
+- VS Code packaging is not bundled yet, so `vsce package` warns about extension
+  file count. The package remains valid for R24.6 dry-run evidence.
+- Rust dependent crate publish dry-runs cannot fully verify registry dependency
+  resolution until `mortar-compiler` is published or a later release process
+  uses a registry staging strategy.
+- Java, Rust, and VS Code version alignment remains a later R24.9 decision:
+  Java is `0.1.0-alpha.1`, while Rust crates and the VS Code extension remain
+  `0.1.0`.
+- Branch protection, protected environments, publisher ownership, Central
+  credentials, crates.io ownership, and Marketplace credentials are external
+  release prerequisites and are not completed by R24.6/R24.7.
+
 ## Research Basis
 
 - Sonatype Central Portal publishing and requirements:
@@ -320,14 +382,37 @@ Additional R24.4/R24.5 research basis:
   documentation reference:
   https://querydsl.com/static/querydsl/latest/reference/html_single/
 
+Additional R24.6/R24.7 research basis:
+
+- Sonatype Central Portal publishing requirements:
+  https://central.sonatype.org/publish/requirements/
+- Gradle signing and publication guidance:
+  https://docs.gradle.org/current/userguide/publishing_signing.html
+- GitHub Packages Gradle registry guidance:
+  https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-gradle-registry
+- GitHub Actions secure-use guidance:
+  https://docs.github.com/en/actions/reference/security/secure-use
+- GitHub security features:
+  https://docs.github.com/en/code-security/getting-started/github-security-features
+- OpenSSF Scorecard checks:
+  https://github.com/ossf/scorecard/blob/main/docs/checks.md
+- Cargo manifest package metadata and include/exclude guidance:
+  https://doc.rust-lang.org/cargo/reference/manifest.html
+- Cargo publish dry-run guidance:
+  https://doc.rust-lang.org/cargo/commands/cargo-publish.html
+- VS Code extension packaging and publishing guidance:
+  https://code.visualstudio.com/api/working-with-extensions/publishing-extension
+- VS Code command contribution guidance:
+  https://code.visualstudio.com/api/extension-guides/command
+- Spring Boot auto-configuration and starter guidance:
+  https://docs.spring.io/spring-boot/reference/features/developing-auto-configuration.html
+
 ## Remaining R24 Work
 
-R24.6-R24.9 remain Planned:
+R24.8-R24.9 remain Planned:
 
-1. Packaging and publishing dry-runs.
-2. CI, repository health, and security readiness.
-3. Performance wording and benchmark evidence review.
-4. `0.1.0-alpha` go/no-go decision.
+1. Performance wording and benchmark evidence review.
+2. `0.1.0-alpha` go/no-go decision.
 
 ## Verification Plan
 
@@ -345,4 +430,4 @@ R24 documentation changes require:
 - link/reference sanity check
 - documentation review for no archive/log clutter, no construction diary, no
   public overclaims, no broken references, R23 Done, R24 In Progress, and only
-  R24.4/R24.5 newly Done in this change
+  R24.6/R24.7 newly Done in this change
