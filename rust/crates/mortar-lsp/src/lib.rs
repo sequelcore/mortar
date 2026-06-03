@@ -1294,10 +1294,8 @@ fn collect_local_generated_binding_before_call(
                 }
             }
         }
-        "assignment_expression" => {
-            if assignment_targets_name(document, node, target_name) {
-                state.reassigned = true;
-            }
+        "assignment_expression" if assignment_targets_name(document, node, target_name) => {
+            state.reassigned = true;
         }
         _ => {}
     }
