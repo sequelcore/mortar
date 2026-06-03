@@ -1983,7 +1983,17 @@ fn snapshot_name_range(snapshot_content: &str, snapshot_name: &str) -> Option<Ra
 
 fn file_uri_for_path(path: &std::path::Path) -> LspResult<Uri> {
     let normalized = path.to_string_lossy().replace('\\', "/");
-    format!("file:///{normalized}").parse().map_err(Into::into)
+    file_uri_string_for_normalized_path(&normalized)
+        .parse()
+        .map_err(Into::into)
+}
+
+fn file_uri_string_for_normalized_path(normalized: &str) -> String {
+    if normalized.starts_with('/') {
+        format!("file://{normalized}")
+    } else {
+        format!("file:///{normalized}")
+    }
 }
 
 fn explicit_snapshot_marker_before(document: &str, line: u32) -> Option<String> {
@@ -4120,6 +4130,17 @@ public final class ClientRepository {
     }
 
     #[test]
+    fn formats_unix_absolute_paths_as_file_uris_without_empty_authority_path() {
+        let uri = super::file_uri_for_path(Path::new("/workspace/mortar/mortar.sql.snap.json"))
+            .expect("URI should format");
+
+        assert_eq!(
+            uri.as_str(),
+            "file:///workspace/mortar/mortar.sql.snap.json"
+        );
+    }
+
+    #[test]
     fn normalizes_windows_drive_paths_from_file_uris() {
         let path =
             file_uri_to_path("file:///Z:/workspace/mortar").expect("URI should convert to a path");
@@ -4437,8 +4458,12 @@ public final class SecondRepository {
 
     fn file_uri_for_path(path: &Path) -> Uri {
         let normalized = path.to_string_lossy().replace('\\', "/");
-        format!("file:///{normalized}")
-            .parse()
-            .expect("path URI should parse")
+        if normalized.starts_with('/') {
+            format!("file://{normalized}")
+        } else {
+            format!("file:///{normalized}")
+        }
+        .parse()
+        .expect("path URI should parse")
     }
 }
