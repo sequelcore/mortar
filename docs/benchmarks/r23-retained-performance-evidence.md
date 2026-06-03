@@ -163,7 +163,7 @@ a public tooling-report standard.
 
 ## R23 Slices
 
-- R23.1 Benchmark planning, research, and xhigh debate. Status: Planned.
+- R23.1 Benchmark planning, research, and xhigh debate. Status: Done.
 - R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
 - R23.3 Rust tooling benchmark retained evidence. Status: Done.
