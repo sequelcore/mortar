@@ -1,8 +1,10 @@
 # R23 Retained Performance Evidence Plan
 
 Date: 2026-06-03
-Status: In Progress. R23.2 Java runtime matrix and retained workflow are done.
-No optimization or public performance claim is authorized.
+Status: In Progress. R23.2 Java runtime, R23.3 Rust tooling, and R23.4 VS Code
+editor-latency retained workflows are implemented locally. Remote retained
+artifact production and review remain pending. No optimization or public
+performance claim is authorized.
 
 ## Purpose
 
@@ -34,8 +36,9 @@ R20 left these items deliberately unresolved:
 - R20.4 generated fixed-read and R20.5 DSL shape presets are local harnesses
   until repeated raw artifacts, manifests, environment metadata, limitations,
   and review notes are retained;
-- R20.6 Criterion output is tooling evidence only and lacks a retained R23
-  bundle with profiler or allocation evidence;
+- R20.6 Criterion output is tooling evidence only; R23.3 adds retained R23
+  bundle wiring but still requires profiler or allocation evidence before any
+  tooling optimization;
 - no optimization candidate has retained evidence proving a dominant cost;
 - no public performance claim has exact retained artifacts and reviewer
   sign-off.
@@ -163,15 +166,20 @@ a public tooling-report standard.
 - R23.1 Benchmark planning, research, and xhigh debate. Status: Planned.
 - R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
-- R23.3 Rust tooling benchmark retained evidence. Status: Planned.
+- R23.3 Rust tooling benchmark retained evidence. Status: In Progress;
+  retained workflow and local smoke harness are implemented, remote retained
+  artifacts remain pending.
 - R23.4 Editor-latency evidence boundary and retained trace format. Status:
-  Planned.
+  In Progress; retained workflow and local smoke harness are implemented,
+  remote retained artifacts remain pending.
 - R23.5 Benchmark-readiness review and evidence-ranked optimization decision.
-  Status: Planned.
+  Status: Pending retained artifact review.
 - R23.6 Evidence-backed optimization implementation only if authorized. Status:
-  Planned.
-- R23.7 Before/after retained benchmark review. Status: Planned.
-- R23.8 Public performance wording go/no-go. Status: Planned.
+  Planned only if R23.5 authorizes it.
+- R23.7 Before/after retained benchmark review. Status: Planned only if R23.6
+  runs; otherwise expected to close as not applicable.
+- R23.8 Public performance wording go/no-go. Status: Pending retained artifact
+  review; public performance claims remain blocked.
 
 R23.6 and R23.7 may close as "not authorized" if retained evidence does not
 identify a dominant cost. R24 depends on that explicit go/no-go.
@@ -191,16 +199,40 @@ R23.2 generalizes the R20.3 pattern for Java runtime evidence:
 - retained artifact names use
   `mortar-r23.2-post-r22-java-runtime-${profile}-${sha}`;
 - the manifest schema is `mortar-r23-java-runtime-postgres-manifest-v1`;
-- Rust tooling bundles should retain Criterion output, commands, toolchain
-  metadata, corpus manifests, profiler/allocation artifacts, limitations, and
-  review notes separately from Java runtime bundles;
-- editor-latency bundles should retain client-visible timing traces and editor
-  environment metadata separately from Rust parser/resolver Criterion output;
+- Rust tooling bundles retain Criterion output, commands, toolchain metadata,
+  corpus manifests, limitations, and review notes separately from Java runtime
+  bundles under `r23.3-rust-tooling-lsp`; profiler/allocation artifacts are
+  required before any optimization is authorized;
+- editor-latency bundles retain client-visible timing traces and editor
+  environment metadata under `r23.4-vscode-editor-latency` separately from Rust
+  parser/resolver Criterion output;
 - artifact retention should preserve the existing manual workflow discipline
   and documented retention period;
 - local smoke output remains uncommitted build output.
 
 ## Xhigh Debate Outcome
+
+The xhigh architecture debate for R23.3-R23.5 concluded that R23 must keep three
+separate evidence products: Java runtime, Rust tooling, and VS Code editor
+latency. Rust Criterion timing is server/tooling evidence, not editor UX
+latency. VS Code smoke or screenshot traces are client-visible extension-host
+evidence, not Java runtime evidence. EXPLAIN command timing crosses the VS Code
+client, Mortar CLI, and PostgreSQL, so it is a separate adapter-path scenario
+inside the editor-latency family.
+
+The debate approved `r23.3-rust-tooling-lsp` with schema
+`mortar-r23-rust-tooling-criterion-manifest-v1` and
+`r23.4-vscode-editor-latency` with schema
+`mortar-r23-vscode-editor-latency-manifest-v1`. It also recommended that R23.5
+default to no optimization unless retained repeated clean-commit bundles plus
+profiler/allocation evidence isolate a material dominant cost above noise.
+
+Hard no-go items from the debate: no benchmark-only APIs, no benchmark-only
+caches or flags, no fake JDBC, no render-only runtime claims, no public
+performance wording, no threshold tightening, no parser caching, no
+source-map/snapshot caching, no diagnostics optimization, and no partial-sync
+strategy unless a later evidence-ranked decision and ADR authorize the exact
+change.
 
 The xhigh architecture debate for R23.2 concluded that this slice must remain a
 Java-runtime evidence slice only. `java/core` owns scalar and mutation
@@ -255,6 +287,68 @@ Single mutation and returning benchmark rows use JMH invocation-level
 mutable-row state preparation scoped only to those R23.2 rows. That setup is
 state preparation for deterministic row-count and `RETURNING` behavior, not an
 optimization path or a product-runtime API.
+
+## R23.3 Implementation Record
+
+R23.3 adds a retained Rust tooling evidence family without changing LSP
+semantics or production editor behavior:
+
+- `rust/crates/mortar-lsp/benches/r23_rust_tooling_lsp.rs` emits R23 Criterion
+  group names for parser, feature-resolution, and diagnostics/full-sync paths;
+- `rust/crates/mortar-lsp/benches/support/lsp_benchmark_suite.rs` keeps the
+  shared Criterion harness logic in one place so the historical R20 bench and
+  the R23 retained bench do not duplicate behavior;
+- the manual `Benchmarks` workflow retains
+  `rust/target/r23.3-rust-tooling-lsp` bundles with raw Criterion console
+  output, copied Criterion directories, exact commands, commit metadata,
+  clean-worktree state, Rust/Cargo/OS/CPU/memory metadata, corpus notes,
+  derived summary, limitations, and reviewer notes;
+- artifact names use `mortar-r23.3-rust-tooling-lsp-${sha}`; the selected
+  Criterion filter is retained in the manifest and commands.
+
+R23.3 evidence is Rust tooling/LSP evidence only. It does not support Java
+runtime, PostgreSQL, JDBC, VS Code editor UX latency, public performance, or
+optimization claims.
+
+## R23.4 Implementation Record
+
+R23.4 adds a retained VS Code editor-latency evidence family without changing
+extension production behavior:
+
+- `editors/vscode/src/test/suite/smoke.test.ts` writes optional trace JSON only
+  when `MORTAR_VSCODE_LATENCY_TRACE` is set;
+- trace entries cover client-visible hover provider, code-action provider,
+  definition provider, diagnostics publication, `mortar.copySql`, and
+  `mortar.explainSql` where a PostgreSQL connection is supplied;
+- the manual `Benchmarks` workflow retains
+  `editors/vscode/build/r23.4-vscode-editor-latency` bundles with trace JSON,
+  test output, exact commands, commit metadata, clean-worktree-before-run
+  state, Rust/Cargo/Bun/OS/CPU/memory/PostgreSQL metadata, corpus notes,
+  derived summary, limitations, and reviewer notes;
+- screenshot runs require `MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR`, and the
+  workflow points it at a per-run retained result directory instead of tracked
+  docs assets;
+- artifact names use `mortar-r23.4-vscode-editor-latency-${scenario}-${sha}`.
+
+R23.4 evidence is client-visible VS Code extension-host evidence only.
+Screenshot capture output is functional evidence plus coarse trace context, not
+a precise UX latency claim. EXPLAIN command timing is interpreted separately
+because it includes the Mortar CLI and PostgreSQL service.
+
+## R23.5-R23.8 Decision Criteria
+
+Benchmark readiness and optimization criteria are recorded in:
+
+- `docs/benchmarks/r23-benchmark-readiness.md`;
+- `docs/benchmarks/r23-performance-gate.md`;
+- `docs/adr/0010-r23-retained-tooling-and-editor-evidence-boundaries.md`.
+
+Current posture before remote retained artifact review: public performance
+claims are blocked and R23.6 optimization is not pre-authorized. If retained
+artifacts do not isolate a dominant cost, R23.6 will close as not authorized and
+R23.7 before/after retained review will be not applicable. R23.8 may allow only
+measurement-discipline wording unless exact retained artifacts and
+benchmark-readiness sign-off support stronger wording.
 
 ## Research Basis
 

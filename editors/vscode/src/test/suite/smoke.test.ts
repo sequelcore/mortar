@@ -1,8 +1,21 @@
 import * as assert from "assert";
+import * as fs from "fs";
 import * as path from "path";
 import * as vscode from "vscode";
 
+interface LatencyTraceEntry {
+  scenario: string;
+  operation: string;
+  elapsedMilliseconds: number;
+}
+
+const latencyTrace: LatencyTraceEntry[] = [];
+
 suite("Mortar VS Code extension smoke", () => {
+  suiteTeardown(() => {
+    writeLatencyTrace();
+  });
+
   test("activates for Java files and contributes commands", async () => {
     const document = await vscode.workspace.openTextDocument({
       content: "package example;\npublic final class Smoke {}\n",
@@ -80,9 +93,14 @@ suite("Mortar VS Code extension smoke", () => {
     const document = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(document);
 
-    const diagnostics = await waitFor(
-      () => vscode.languages.getDiagnostics(uri),
-      (diagnostics) => diagnostics.length > 0,
+    const diagnostics = await measureLatency(
+      "unsupportedAliasDiagnostics",
+      "diagnostics-published",
+      () =>
+        waitFor(
+          () => vscode.languages.getDiagnostics(uri),
+          (diagnostics) => diagnostics.length > 0,
+        ),
     );
 
     assert.equal(diagnostics[0].source, "mortar");
@@ -100,10 +118,15 @@ suite("Mortar VS Code extension smoke", () => {
     needle: string,
   ): Promise<void> {
     const position = positionOfAfter(document, methodName, needle);
-    const hovers = await vscode.commands.executeCommand<vscode.Hover[]>(
-      "vscode.executeHoverProvider",
-      uri,
-      position,
+    const hovers = await measureLatency(
+      methodName,
+      "hover-provider",
+      () =>
+        vscode.commands.executeCommand<vscode.Hover[]>(
+          "vscode.executeHoverProvider",
+          uri,
+          position,
+        ),
     );
     assert.ok(
       hovers.some((hover) =>
@@ -116,17 +139,29 @@ suite("Mortar VS Code extension smoke", () => {
       "SQL hover should include generated SQL",
     );
 
-    const actions = await vscode.commands.executeCommand<
-      (vscode.CodeAction | vscode.Command)[]
-    >("vscode.executeCodeActionProvider", uri, new vscode.Range(position, position));
+    const actions = await measureLatency(
+      methodName,
+      "code-action-provider",
+      () =>
+        vscode.commands.executeCommand<(vscode.CodeAction | vscode.Command)[]>(
+          "vscode.executeCodeActionProvider",
+          uri,
+          new vscode.Range(position, position),
+        ),
+    );
     const titles = actions.map((action) => action.title);
     assert.ok(titles.includes("Copy generated SQL"));
     assert.ok(titles.includes("Run PostgreSQL EXPLAIN"));
 
-    const definitions = await vscode.commands.executeCommand<vscode.Location[]>(
-      "vscode.executeDefinitionProvider",
-      uri,
-      position,
+    const definitions = await measureLatency(
+      methodName,
+      "definition-provider",
+      () =>
+        vscode.commands.executeCommand<vscode.Location[]>(
+          "vscode.executeDefinitionProvider",
+          uri,
+          position,
+        ),
     );
     assert.ok(
       definitions.some((definition) => {
@@ -153,9 +188,14 @@ suite("Mortar VS Code extension smoke", () => {
     const document = await vscode.workspace.openTextDocument(uri);
     await vscode.window.showTextDocument(document);
 
-    const diagnostics = await waitFor(
-      () => vscode.languages.getDiagnostics(uri),
-      (diagnostics) => diagnostics.length > 0,
+    const diagnostics = await measureLatency(
+      "missingSnapshotDiagnostics",
+      "diagnostics-published",
+      () =>
+        waitFor(
+          () => vscode.languages.getDiagnostics(uri),
+          (diagnostics) => diagnostics.length > 0,
+        ),
     );
 
     assert.equal(diagnostics[0].source, "mortar");
@@ -168,7 +208,9 @@ suite("Mortar VS Code extension smoke", () => {
   test("copy SQL command writes to clipboard", async () => {
     const sql = "select c.id from clients c where c.id = ?";
 
-    await vscode.commands.executeCommand("mortar.copySql", sql);
+    await measureLatency("copySql", "command", () =>
+      vscode.commands.executeCommand("mortar.copySql", sql),
+    );
 
     assert.equal(await vscode.env.clipboard.readText(), sql);
   });
@@ -188,10 +230,12 @@ suite("Mortar VS Code extension smoke", () => {
     );
 
     try {
-      const result = await vscode.commands.executeCommand<{
-        ok: boolean;
-        output: string;
-      }>("mortar.explainSql", "select 1");
+      const result = await measureLatency("explainSql", "command", () =>
+        vscode.commands.executeCommand<{
+          ok: boolean;
+          output: string;
+        }>("mortar.explainSql", "select 1"),
+      );
 
       assert.equal(result.ok, true);
       assert.match(result.output, /Result/);
@@ -254,4 +298,44 @@ function delay(milliseconds: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, milliseconds);
   });
+}
+
+async function measureLatency<T>(
+  scenario: string,
+  operation: string,
+  action: () => PromiseLike<T>,
+): Promise<T> {
+  const startedAt = Date.now();
+  try {
+    return await action();
+  } finally {
+    if (process.env.MORTAR_VSCODE_LATENCY_TRACE !== undefined) {
+      latencyTrace.push({
+        scenario,
+        operation,
+        elapsedMilliseconds: Date.now() - startedAt,
+      });
+    }
+  }
+}
+
+function writeLatencyTrace(): void {
+  const tracePath = process.env.MORTAR_VSCODE_LATENCY_TRACE;
+  if (tracePath === undefined || tracePath.trim() === "") {
+    return;
+  }
+
+  fs.mkdirSync(path.dirname(tracePath), { recursive: true });
+  fs.writeFileSync(
+    tracePath,
+    JSON.stringify(
+      {
+        schema: "mortar-r23-vscode-editor-latency-trace-v1",
+        entries: latencyTrace,
+      },
+      null,
+      2,
+    ) + "\n",
+    "utf-8",
+  );
 }

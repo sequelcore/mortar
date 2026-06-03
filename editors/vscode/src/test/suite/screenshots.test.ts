@@ -91,7 +91,8 @@ async function captureWorkbenchScreenshot(fileName: string): Promise<void> {
       captureBeyondViewport: false,
       format: "png",
     });
-    const outputDir = path.resolve(smokeWorkspace(), "../../../docs/assets/editor-smoke");
+    const outputDir = process.env.MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR;
+    assert.ok(outputDir, "MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR is required for screenshots");
     fs.mkdirSync(outputDir, { recursive: true });
     fs.writeFileSync(
       path.join(outputDir, fileName),

@@ -2033,18 +2033,23 @@ post-R22 API surface, then optimize only if evidence identifies a dominant cost.
 
 Planned scope:
 
-- R23.1: Benchmark planning, research, and xhigh debate. Status: Planned.
+- R23.1: Benchmark planning, research, and xhigh debate. Status: Done.
 - R23.2: Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
-- R23.3: Rust tooling benchmark retained evidence. Status: Planned.
+- R23.3: Rust tooling benchmark retained evidence. Status: In Progress;
+  retained workflow and local smoke harness are implemented, remote retained
+  artifacts remain pending.
 - R23.4: Editor-latency evidence boundary and retained trace format. Status:
-  Planned.
+  In Progress; retained workflow and local smoke harness are implemented,
+  remote retained artifacts remain pending.
 - R23.5: Benchmark-readiness review and evidence-ranked optimization decision.
-  Status: Planned.
+  Status: Pending retained artifact review.
 - R23.6: Evidence-backed optimization implementation only if authorized.
-  Status: Planned.
-- R23.7: Before/after retained benchmark review. Status: Planned.
-- R23.8: Public performance wording go/no-go. Status: Planned.
+  Status: Planned only if R23.5 authorizes it.
+- R23.7: Before/after retained benchmark review. Status: Planned only if R23.6
+  runs; otherwise expected to close as not applicable.
+- R23.8: Public performance wording go/no-go. Status: Pending retained artifact
+  review; public performance claims remain blocked.
 
 Planned evidence matrix:
 
@@ -2093,6 +2098,34 @@ R23.2 completion record:
   optimization, threshold tightening, public performance wording, release, tag,
   publish, PR, push, merge, migration, or announcement work.
 
+R23.3-R23.8 completion record:
+
+- Added ADR-0010 for retained tooling/editor evidence boundaries.
+- Added the R23 Criterion target `r23_rust_tooling_lsp`, backed by shared LSP
+  benchmark logic and the existing R20/R19 corpus, so retained R23 evidence
+  uses R23 group names without duplicating benchmark behavior.
+- Updated the manual `Benchmarks` workflow with the `rust-tooling-lsp` family,
+  retaining `rust/target/r23.3-rust-tooling-lsp` bundles with raw Criterion
+  output, copied `rust/target/criterion` data, exact commands, commit metadata,
+  clean-worktree state, Rust/Cargo/OS/CPU/memory metadata, corpus notes,
+  derived summary, limitations, and reviewer notes.
+- Added optional VS Code latency tracing to the smoke test harness through
+  `MORTAR_VSCODE_LATENCY_TRACE`, covering hover, code actions, definition,
+  diagnostics, copy SQL, and EXPLAIN command behavior when PostgreSQL is
+  available.
+- Updated the manual `Benchmarks` workflow with the `vscode-editor-latency`
+  family, retaining `editors/vscode/build/r23.4-vscode-editor-latency` bundles
+  with trace JSON, test output, exact commands, commit metadata,
+  clean-worktree-before-run state, Rust/Cargo/Bun/OS/CPU/memory/PostgreSQL
+  metadata, corpus notes, derived summary, limitations, and reviewer notes.
+- Added `docs/benchmarks/r23-benchmark-readiness.md` and
+  `docs/benchmarks/r23-performance-gate.md`. Current posture before remote
+  retained artifact review: no optimization is pre-authorized and public
+  performance claims remain blocked.
+- Evidence note: Rust Criterion timing is tooling/LSP evidence only. VS Code
+  traces are client-visible editor evidence only. Neither supports Java runtime
+  or PostgreSQL performance claims.
+
 Non-goals:
 
 - optimizing from local smoke output;
@@ -2105,16 +2138,17 @@ Non-goals:
 
 Exit criteria:
 
-- R23.1-R23.4 define and, in later implementation slices, produce retained
-  evidence bundles for Java runtime, Rust tooling, and editor-latency families;
+- R23.1-R23.4 define and produce retained workflow bundles for Java runtime,
+  Rust tooling, and editor-latency families;
 - retained Java runtime artifacts cover generated fixed reads, DSL reads,
   join/page reads, scalar reads, row-count mutations, returning mutations, and
   batch writes where supported by the public R22 surface;
 - benchmark-readiness review approves the evidence boundary before any
   optimization decision;
-- optimization decisions are ranked by retained evidence and may close as
-  no-go if no dominant cost is proven;
-- any implemented optimization has before/after retained artifacts and review;
+- optimization decisions are ranked by retained evidence and may close as no-go
+  if no dominant cost is proven;
+- before/after retained review is not applicable unless an optimization is
+  authorized;
 - public performance claims remain blocked unless exact retained evidence and
   reviewer sign-off exist;
 - R24 remains Planned and depends on R23's evidence-backed optimization

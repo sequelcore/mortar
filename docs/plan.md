@@ -3239,18 +3239,23 @@ R23 forbids:
 
 ### R23 Slices
 
-- R23.1 Benchmark planning, research, and xhigh debate. Status: Planned.
+- R23.1 Benchmark planning, research, and xhigh debate. Status: Done.
 - R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
   Status: Done.
-- R23.3 Rust tooling benchmark retained evidence. Status: Planned.
+- R23.3 Rust tooling benchmark retained evidence. Status: In Progress;
+  retained workflow and local smoke harness are implemented, remote retained
+  artifacts remain pending.
 - R23.4 Editor-latency evidence boundary and retained trace format. Status:
-  Planned.
+  In Progress; retained workflow and local smoke harness are implemented,
+  remote retained artifacts remain pending.
 - R23.5 Benchmark-readiness review and evidence-ranked optimization decision.
-  Status: Planned.
+  Status: Pending retained artifact review.
 - R23.6 Evidence-backed optimization implementation only if authorized. Status:
-  Planned.
-- R23.7 Before/after retained benchmark review. Status: Planned.
-- R23.8 Public performance wording go/no-go. Status: Planned.
+  Planned only if R23.5 authorizes it.
+- R23.7 Before/after retained benchmark review. Status: Planned only if R23.6
+  runs; otherwise expected to close as not applicable.
+- R23.8 Public performance wording go/no-go. Status: Pending retained artifact
+  review; public performance claims remain blocked.
 
 R23.6 and R23.7 may close as "not authorized" if retained evidence does not
 identify a dominant cost. R24 depends on that explicit go/no-go.
@@ -3292,6 +3297,49 @@ Xhigh debate outcome:
 - keep fake JDBC, Rust tooling, editor latency, jOOQ/QueryDSL, render-only
   rows, optimizations, public claims, threshold tightening, release, tag,
   publish, PR, push, merge, migration, and announcement work out of scope.
+
+### R23.3-R23.8 Completion Record
+
+R23.3 implements retained Rust tooling evidence without changing LSP semantics
+or production editor behavior:
+
+- added `r23_rust_tooling_lsp` as an R23 Criterion target for parser,
+  feature-resolution, and diagnostics/full-sync paths;
+- shared the R20 and R23 Criterion harness logic so the historical R20 target
+  and retained R23 target do not duplicate behavior;
+- updated the manual `Benchmarks` workflow with the `rust-tooling-lsp` family,
+  retaining `rust/target/r23.3-rust-tooling-lsp` bundles with raw Criterion
+  output, copied `rust/target/criterion` data, exact commands, commit metadata,
+  clean-worktree state, Rust/Cargo/OS/CPU/memory metadata, corpus notes,
+  derived summary, limitations, and reviewer notes.
+
+R23.4 implements retained VS Code editor-latency evidence without changing
+production extension behavior:
+
+- added optional `MORTAR_VSCODE_LATENCY_TRACE` output to the VS Code smoke test
+  harness;
+- trace entries cover hover provider, code-action provider, definition
+  provider, diagnostics publication, `mortar.copySql`, and `mortar.explainSql`
+  where PostgreSQL is supplied;
+- updated the manual `Benchmarks` workflow with the `vscode-editor-latency`
+  family, retaining `editors/vscode/build/r23.4-vscode-editor-latency` bundles
+  with trace JSON, test output, exact commands, commit metadata,
+  clean-worktree-before-run state, Rust/Cargo/Bun/OS/CPU/memory/PostgreSQL
+  metadata, corpus notes, derived summary, limitations, and reviewer notes.
+
+R23.5-R23.8 current posture:
+
+- ADR-0010 records the evidence boundaries.
+- `docs/benchmarks/r23-benchmark-readiness.md` records benchmark-readiness
+  review.
+- `docs/benchmarks/r23-performance-gate.md` records the optimization gate
+  criteria.
+- R23.6 is not pre-authorized; no optimization is implemented before retained
+  artifact review.
+- R23.7 before/after retained review is not applicable unless R23.6 is
+  authorized.
+- R23.8 public performance wording remains blocked before retained artifact
+  review, except possible measurement-discipline wording after sign-off.
 
 ### Risks
 

@@ -3,21 +3,43 @@ name: Benchmarks
 on:
   workflow_dispatch:
     inputs:
+      evidenceFamily:
+        description: "Retained evidence family to run"
+        required: true
+        type: choice
+        default: "java-runtime-postgres"
+        options:
+          - "java-runtime-postgres"
+          - "rust-tooling-lsp"
+          - "vscode-editor-latency"
       jmhIncludes:
-        description: "JMH benchmark include regex"
+        description: "JMH benchmark include regex for java-runtime-postgres"
         required: true
         default: "PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|plainJdbcUpdateBatch|mortarUpdateBatch)$"
       profile:
-        description: "Benchmark profile to run: throughput, allocation, latency, or all"
+        description: "Java profile: throughput, allocation, latency, or all"
         required: true
         default: "all"
+      rustBenchmarkFilter:
+        description: "Criterion filter for rust-tooling-lsp, or all"
+        required: true
+        default: "all"
+      editorScenario:
+        description: "VS Code scenario: smoke or screenshots"
+        required: true
+        type: choice
+        default: "smoke"
+        options:
+          - "smoke"
+          - "screenshots"
       repeatCount:
-        description: "Number of repeated runs for the selected profile"
+        description: "Number of repeated runs for the selected evidence family"
         required: true
         default: "2"
 
 jobs:
   postgres-execution:
+    if: ${{ inputs.evidenceFamily == 'java-runtime-postgres' }}
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -65,22 +87,13 @@ jobs:
 
           cat > "${bundle_dir}/commands.txt" <<EOF
           Workflow: Benchmarks
+          Evidence family: java-runtime-postgres
           Profile input: ${profile}
           Repeat count: ${repeat_count}
           Include regex: ${includes}
           Throughput command: ./gradlew :java:benchmarks:jmhR23PostR22JavaRuntime -PjmhIncludes=${includes} --no-daemon
           Allocation command: ./gradlew :java:benchmarks:jmhR23PostR22JavaRuntimeAllocation -PjmhIncludes=${includes} --no-daemon
           Latency command: ./gradlew :java:benchmarks:jmhR23PostR22JavaRuntimeLatency -PjmhIncludes=${includes} --no-daemon
-          EOF
-
-          cat > "${bundle_dir}/summary.md" <<EOF
-          # R23.2 Retained Benchmark Bundle
-
-          This bundle is measurement-only retained evidence for the R23.2 post-R22 Java runtime JMH/PostgreSQL matrix.
-          It does not authorize public performance claims.
-
-          The uploaded JSON files are raw JMH output. Interpretations require the manifest, environment files,
-          repeated runs, limitations, and benchmark-readiness review.
           EOF
 
           cat > "${bundle_dir}/review-notes.md" <<EOF
@@ -328,5 +341,452 @@ jobs:
         with:
           name: mortar-r23.2-post-r22-java-runtime-${{ inputs.profile }}-${{ github.sha }}
           path: java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime/**
+          if-no-files-found: error
+          retention-days: 90
+
+  rust-tooling-lsp:
+    if: ${{ inputs.evidenceFamily == 'rust-tooling-lsp' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Run retained Criterion evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repeat_count="${{ inputs.repeatCount }}"
+          if ! [[ "$repeat_count" =~ ^[1-9][0-9]*$ ]] || (( repeat_count < 2 )); then
+            echo "repeatCount must be an integer greater than or equal to 2 for retained R23.3 evidence" >&2
+            exit 1
+          fi
+
+          filter="${{ inputs.rustBenchmarkFilter }}"
+          bundle_dir="${GITHUB_WORKSPACE}/rust/target/r23.3-rust-tooling-lsp"
+          results_dir="${bundle_dir}/results"
+          environment_dir="${bundle_dir}/environment"
+          short_sha="$(git rev-parse --short=12 HEAD)"
+
+          mkdir -p "${results_dir}" "${environment_dir}"
+          git status --short > "${environment_dir}/git-status.txt"
+          git rev-parse HEAD > "${environment_dir}/commit-sha.txt"
+          rustc -Vv > "${environment_dir}/rustc-version.txt"
+          cargo --version > "${environment_dir}/cargo-version.txt"
+          uname -a > "${environment_dir}/uname.txt"
+          lscpu > "${environment_dir}/lscpu.txt"
+          cat /proc/meminfo > "${environment_dir}/meminfo.txt"
+
+          cat > "${bundle_dir}/commands.txt" <<EOF
+          Workflow: Benchmarks
+          Evidence family: rust-tooling-lsp
+          Repeat count: ${repeat_count}
+          Benchmark target: r23_rust_tooling_lsp
+          Criterion filter: ${filter}
+          Raw Criterion directory: rust/target/criterion
+          Full command: cd rust && cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp
+          Smoke command: cd rust && cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp -- r23_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+          EOF
+
+          cat > "${bundle_dir}/corpus-notes.md" <<EOF
+          # R23.3 Corpus Notes
+
+          The R23.3 benchmark target reuses the existing R20/R19 LSP benchmark corpus for generated-read, alias, stale source-map, missing snapshot, malformed-buffer, large-document, and full-buffer edit-script cases.
+
+          Scenario families:
+          - parser
+          - feature-resolution
+          - diagnostics-full-sync
+
+          This is Rust tooling/LSP evidence only. It is not VS Code editor UX latency and not Java runtime or PostgreSQL evidence.
+          EOF
+
+          cat > "${bundle_dir}/review-notes.md" <<EOF
+          # Review Notes
+
+          Reviewer sign-off: pending.
+
+          Required checks:
+          - raw Criterion console output and Criterion target directory are retained;
+          - exact Cargo commands, commit, clean-worktree state, Rust toolchain, OS, CPU, memory, corpus notes, limitations, and summary are present;
+          - evidence remains Rust tooling/LSP only;
+          - no Java runtime, PostgreSQL, JDBC, VS Code UX latency, public performance claim, or optimization authorization is inferred.
+          EOF
+
+          pushd rust
+          for run_index in $(seq 1 "$repeat_count"); do
+            rm -rf target/criterion
+            if [[ "$filter" == "all" ]]; then
+              cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp 2>&1 | tee "${results_dir}/criterion-run-${run_index}-${short_sha}.txt"
+            else
+              cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp -- "$filter" 2>&1 | tee "${results_dir}/criterion-run-${run_index}-${short_sha}.txt"
+            fi
+            cp -R target/criterion "${results_dir}/criterion-run-${run_index}-${short_sha}"
+          done
+          popd
+
+          python - <<'PY'
+          import datetime
+          import json
+          import os
+          import pathlib
+          import platform
+          import subprocess
+
+          bundle_dir = pathlib.Path("rust/target/r23.3-rust-tooling-lsp")
+          results = sorted(
+              str(path.relative_to(bundle_dir)).replace("\\", "/")
+              for path in (bundle_dir / "results").glob("*")
+          )
+
+          def output(command):
+              return subprocess.check_output(command, text=True).strip()
+
+          clean = subprocess.run(["git", "diff", "--quiet"]).returncode == 0
+          staged_clean = subprocess.run(["git", "diff", "--cached", "--quiet"]).returncode == 0
+          untracked_clean = output(["git", "ls-files", "--others", "--exclude-standard"]) == ""
+          manifest = {
+              "schema": "mortar-r23-rust-tooling-criterion-manifest-v1",
+              "benchmarkId": "r23.3-rust-tooling-lsp",
+              "evidenceFamily": "rust-tooling-lsp",
+              "scenarioFamilies": ["parser", "feature-resolution", "diagnostics-full-sync"],
+              "origin": "github-actions",
+              "status": "internal-measurement-only",
+              "publicClaimsAllowed": False,
+              "optimizationAuthorized": False,
+              "commit": output(["git", "rev-parse", "HEAD"]),
+              "branch": os.environ.get("GITHUB_REF_NAME", "unknown"),
+              "cleanWorktree": clean and staged_clean and untracked_clean,
+              "worktreeState": {
+                  "unstagedClean": clean,
+                  "stagedClean": staged_clean,
+                  "untrackedClean": untracked_clean,
+                  "gitStatusFile": "environment/git-status.txt",
+              },
+              "runDateUtc": datetime.datetime.now(datetime.UTC).isoformat(),
+              "workflow": {
+                  "name": "Benchmarks",
+                  "runId": os.environ.get("GITHUB_RUN_ID", "unknown"),
+                  "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", "unknown"),
+                  "runner": os.environ.get("RUNNER_OS", "unknown"),
+                  "repeatCount": int(os.environ["R23_REPEAT_COUNT"]),
+                  "criterionFilter": os.environ["R23_RUST_FILTER"],
+              },
+              "criterion": {
+                  "version": "0.7.0",
+                  "benchmarkTarget": "r23_rust_tooling_lsp",
+                  "outputDirectory": "results/",
+              },
+              "environment": {
+                  "os": platform.platform(),
+                  "rustcVersionFile": "environment/rustc-version.txt",
+                  "cargoVersionFile": "environment/cargo-version.txt",
+                  "cpuFile": "environment/lscpu.txt",
+                  "memoryFile": "environment/meminfo.txt",
+                  "powerPolicy": "unknown",
+              },
+              "corpus": {
+                  "notes": "corpus-notes.md",
+                  "fixtures": [
+                      "canonical generated read",
+                      "supported metamodel alias",
+                      "supported read-namespace alias",
+                      "unsupported alias fail-closed",
+                      "stale source map fail-closed",
+                      "missing snapshot fail-closed",
+                      "malformed buffer",
+                      "large generated-read document",
+                      "full-buffer success-failure-recovery edit script",
+                  ],
+              },
+              "limitations": [
+                  "Internal Rust tooling/LSP evidence only; no Java runtime, PostgreSQL, JDBC, or editor UX latency claim.",
+                  "Criterion timing does not include VS Code extension-host, language-client transport, UI scheduling, clipboard, or PostgreSQL EXPLAIN command latency.",
+                  "No profiler or allocation evidence is retained in this bundle, so optimization remains blocked.",
+                  "CI runner noise prevents public performance wording from this bundle alone.",
+              ],
+              "artifactPaths": {
+                  "commands": "commands.txt",
+                  "summary": "summary.md",
+                  "reviewNotes": "review-notes.md",
+                  "corpusNotes": "corpus-notes.md",
+                  "environmentDirectory": "environment/",
+                  "results": results,
+              },
+              "interpretationBoundary": "Internal Rust tooling/LSP Criterion evidence only; not VS Code editor UX latency and not Java runtime evidence.",
+          }
+          (bundle_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+          summary = [
+              "# R23.3 Retained Rust Tooling Bundle",
+              "",
+              "This summary is derived from retained Criterion output files.",
+              "It is measurement-only and does not authorize optimization or public performance claims.",
+              "",
+              f"Repeat count: {os.environ['R23_REPEAT_COUNT']}",
+              f"Criterion filter: {os.environ['R23_RUST_FILTER']}",
+              "",
+              "Result files:",
+              *[f"- {result}" for result in results],
+              "",
+              "Interpretation boundary: internal Rust tooling/LSP Criterion evidence only.",
+          ]
+          (bundle_dir / "summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
+          PY
+        env:
+          R23_REPEAT_COUNT: ${{ inputs.repeatCount }}
+          R23_RUST_FILTER: ${{ inputs.rustBenchmarkFilter }}
+
+      - name: Upload R23.3 retained Rust tooling bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mortar-r23.3-rust-tooling-lsp-${{ github.sha }}
+          path: rust/target/r23.3-rust-tooling-lsp/**
+          if-no-files-found: error
+          retention-days: 90
+
+  vscode-editor-latency:
+    if: ${{ inputs.evidenceFamily == 'vscode-editor-latency' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install VS Code test dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb
+
+      - name: Run retained VS Code editor-latency evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repeat_count="${{ inputs.repeatCount }}"
+          if ! [[ "$repeat_count" =~ ^[1-9][0-9]*$ ]] || (( repeat_count < 2 )); then
+            echo "repeatCount must be an integer greater than or equal to 2 for retained R23.4 evidence" >&2
+            exit 1
+          fi
+
+          scenario="${{ inputs.editorScenario }}"
+          bundle_dir="${GITHUB_WORKSPACE}/editors/vscode/build/r23.4-vscode-editor-latency"
+          results_dir="${bundle_dir}/results"
+          environment_dir="${bundle_dir}/environment"
+          short_sha="$(git rev-parse --short=12 HEAD)"
+
+          mkdir -p "${results_dir}" "${environment_dir}"
+          git status --short > "${environment_dir}/git-status-before.txt"
+          git rev-parse HEAD > "${environment_dir}/commit-sha.txt"
+          rustc -Vv > "${environment_dir}/rustc-version.txt"
+          cargo --version > "${environment_dir}/cargo-version.txt"
+          bun --version > "${environment_dir}/bun-version.txt"
+          uname -a > "${environment_dir}/uname.txt"
+          lscpu > "${environment_dir}/lscpu.txt"
+          cat /proc/meminfo > "${environment_dir}/meminfo.txt"
+          printf '%s\n' 'postgres:16-alpine' > "${environment_dir}/postgres-image.txt"
+
+          cat > "${bundle_dir}/commands.txt" <<EOF
+          Workflow: Benchmarks
+          Evidence family: vscode-editor-latency
+          Scenario input: ${scenario}
+          Repeat count: ${repeat_count}
+          Setup command: cd editors/vscode && bun install --frozen-lockfile
+          EOF
+
+          cat > "${bundle_dir}/corpus-notes.md" <<EOF
+          # R23.4 Editor Corpus Notes
+
+          The VS Code evidence uses the existing editor smoke workspace under examples/editor-smoke/vscode with generated metadata, source-map, snapshot, canonical generated reads, alias cases, missing snapshot diagnostics, unsupported alias diagnostics, copy SQL, and PostgreSQL EXPLAIN command coverage.
+
+          Scenario families:
+          - hover
+          - code-action
+          - definition
+          - diagnostics
+          - copy-sql-command
+          - explain-command
+
+          This is client-visible VS Code extension-host evidence. It is not Rust Criterion timing and not Java runtime or PostgreSQL throughput evidence.
+          EOF
+
+          cat > "${bundle_dir}/review-notes.md" <<EOF
+          # Review Notes
+
+          Reviewer sign-off: pending.
+
+          Required checks:
+          - trace JSON, test output, commands, commit, clean-worktree-before-run state, toolchain metadata, corpus notes, limitations, and summary are present;
+          - hover, code action, definition, diagnostics, copy SQL, and EXPLAIN command boundaries are represented where the scenario supports them;
+          - evidence remains VS Code editor-latency only;
+          - no Rust Criterion, Java runtime, PostgreSQL throughput, public performance claim, or optimization authorization is inferred.
+          EOF
+
+          pushd editors/vscode
+          bun install --frozen-lockfile
+          for run_index in $(seq 1 "$repeat_count"); do
+            trace_file="${results_dir}/editor-latency-trace-run-${run_index}-${short_sha}.json"
+            if [[ "$scenario" == "smoke" ]]; then
+              printf 'Run %s command: cd editors/vscode && MORTAR_VSCODE_LATENCY_TRACE=%s MORTAR_VSCODE_EXPLAIN_CONNECTION=postgres://postgres:postgres@localhost:5432/postgres xvfb-run -a bun run test\n' "$run_index" "$trace_file" >> "${bundle_dir}/commands.txt"
+              MORTAR_VSCODE_LATENCY_TRACE="${trace_file}" \
+              MORTAR_VSCODE_EXPLAIN_CONNECTION="postgres://postgres:postgres@localhost:5432/postgres" \
+              xvfb-run -a bun run test 2>&1 | tee "${results_dir}/vscode-smoke-run-${run_index}-${short_sha}.txt"
+            elif [[ "$scenario" == "screenshots" ]]; then
+              screenshot_dir="${results_dir}/editor-smoke-screenshots-run-${run_index}-${short_sha}"
+              rm -rf "$screenshot_dir"
+              mkdir -p "$screenshot_dir"
+              printf 'Run %s command: cd editors/vscode && MORTAR_CAPTURE_SCREENSHOTS=1 MORTAR_VSCODE_SCREENSHOT_PORT=9333 MORTAR_VSCODE_LATENCY_TRACE=%s MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR=%s MORTAR_VSCODE_EXPLAIN_CONNECTION=postgres://postgres:postgres@localhost:5432/postgres xvfb-run -a bun run test:screenshots\n' "$run_index" "$trace_file" "$screenshot_dir" >> "${bundle_dir}/commands.txt"
+              MORTAR_CAPTURE_SCREENSHOTS=1 \
+              MORTAR_VSCODE_SCREENSHOT_PORT=9333 \
+              MORTAR_VSCODE_LATENCY_TRACE="${trace_file}" \
+              MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR="${screenshot_dir}" \
+              MORTAR_VSCODE_EXPLAIN_CONNECTION="postgres://postgres:postgres@localhost:5432/postgres" \
+              xvfb-run -a bun run test:screenshots 2>&1 | tee "${results_dir}/vscode-screenshots-run-${run_index}-${short_sha}.txt"
+            else
+              echo "Unsupported editor scenario: ${scenario}" >&2
+              exit 1
+            fi
+          done
+          popd
+
+          python - <<'PY'
+          import datetime
+          import json
+          import os
+          import pathlib
+          import platform
+          import subprocess
+
+          bundle_dir = pathlib.Path("editors/vscode/build/r23.4-vscode-editor-latency")
+          results = sorted(
+              str(path.relative_to(bundle_dir)).replace("\\", "/")
+              for path in (bundle_dir / "results").glob("*")
+          )
+
+          def output(command):
+              return subprocess.check_output(command, text=True).strip()
+
+          before_status = (bundle_dir / "environment" / "git-status-before.txt").read_text(encoding="utf-8").strip()
+          manifest = {
+              "schema": "mortar-r23-vscode-editor-latency-manifest-v1",
+              "benchmarkId": "r23.4-vscode-editor-latency",
+              "evidenceFamily": "vscode-editor-latency",
+              "scenarioFamilies": [
+                  "hover",
+                  "code-action",
+                  "definition",
+                  "diagnostics",
+                  "copy-sql-command",
+                  "explain-command",
+              ],
+              "origin": "github-actions",
+              "status": "internal-measurement-only",
+              "publicClaimsAllowed": False,
+              "optimizationAuthorized": False,
+              "commit": output(["git", "rev-parse", "HEAD"]),
+              "branch": os.environ.get("GITHUB_REF_NAME", "unknown"),
+              "cleanWorktreeBeforeRun": before_status == "",
+              "worktreeState": {
+                  "gitStatusBeforeRunFile": "environment/git-status-before.txt",
+              },
+              "runDateUtc": datetime.datetime.now(datetime.UTC).isoformat(),
+              "workflow": {
+                  "name": "Benchmarks",
+                  "runId": os.environ.get("GITHUB_RUN_ID", "unknown"),
+                  "runAttempt": os.environ.get("GITHUB_RUN_ATTEMPT", "unknown"),
+                  "runner": os.environ.get("RUNNER_OS", "unknown"),
+                  "scenario": os.environ["R23_EDITOR_SCENARIO"],
+                  "repeatCount": int(os.environ["R23_REPEAT_COUNT"]),
+              },
+              "environment": {
+                  "os": platform.platform(),
+                  "rustcVersionFile": "environment/rustc-version.txt",
+                  "cargoVersionFile": "environment/cargo-version.txt",
+                  "bunVersionFile": "environment/bun-version.txt",
+                  "cpuFile": "environment/lscpu.txt",
+                  "memoryFile": "environment/meminfo.txt",
+                  "postgresImageFile": "environment/postgres-image.txt",
+                  "powerPolicy": "unknown",
+              },
+              "corpus": {
+                  "notes": "corpus-notes.md",
+                  "workspace": "examples/editor-smoke/vscode",
+                  "operations": [
+                      "vscode.executeHoverProvider",
+                      "vscode.executeCodeActionProvider",
+                      "vscode.executeDefinitionProvider",
+                      "vscode.languages.getDiagnostics",
+                      "mortar.copySql",
+                      "mortar.explainSql",
+                  ],
+              },
+              "limitations": [
+                  "Internal VS Code extension-host evidence only; no Rust Criterion, Java runtime, PostgreSQL throughput, or JDBC claim.",
+                  "Timing includes VS Code extension-host and test-harness scheduling noise on a GitHub-hosted runner.",
+                  "Screenshot scenario includes screenshot capture overhead and should be interpreted as functional evidence plus coarse trace only.",
+                  "EXPLAIN command timing includes Mortar CLI and PostgreSQL service behavior and must be interpreted separately from hover, code-action, definition, and diagnostics.",
+                  "No profiler or allocation evidence is retained in this bundle, so optimization remains blocked.",
+              ],
+              "artifactPaths": {
+                  "commands": "commands.txt",
+                  "summary": "summary.md",
+                  "reviewNotes": "review-notes.md",
+                  "corpusNotes": "corpus-notes.md",
+                  "environmentDirectory": "environment/",
+                  "results": results,
+              },
+              "interpretationBoundary": "Internal client-visible VS Code editor-latency evidence only; not Rust Criterion timing and not Java runtime evidence.",
+          }
+          (bundle_dir / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+          trace_entries = []
+          for trace_file in (bundle_dir / "results").glob("editor-latency-trace-run-*.json"):
+              trace = json.loads(trace_file.read_text(encoding="utf-8"))
+              trace_entries.extend(trace.get("entries", []))
+          operations = sorted({f"{entry.get('scenario')}:{entry.get('operation')}" for entry in trace_entries})
+          summary = [
+              "# R23.4 Retained VS Code Editor-Latency Bundle",
+              "",
+              "This summary is derived from retained VS Code smoke trace files.",
+              "It is measurement-only and does not authorize optimization or public performance claims.",
+              "",
+              f"Scenario input: {os.environ['R23_EDITOR_SCENARIO']}",
+              f"Repeat count: {os.environ['R23_REPEAT_COUNT']}",
+              "",
+              "Trace operations:",
+              *[f"- {operation}" for operation in operations],
+              "",
+              "Result files:",
+              *[f"- {result}" for result in results],
+              "",
+              "Interpretation boundary: internal client-visible VS Code editor-latency evidence only.",
+          ]
+          (bundle_dir / "summary.md").write_text("\n".join(summary) + "\n", encoding="utf-8")
+          PY
+        env:
+          R23_REPEAT_COUNT: ${{ inputs.repeatCount }}
+          R23_EDITOR_SCENARIO: ${{ inputs.editorScenario }}
+
+      - name: Upload R23.4 retained VS Code editor-latency bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mortar-r23.4-vscode-editor-latency-${{ inputs.editorScenario }}-${{ github.sha }}
+          path: editors/vscode/build/r23.4-vscode-editor-latency/**
           if-no-files-found: error
           retention-days: 90
