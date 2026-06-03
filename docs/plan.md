@@ -2377,8 +2377,7 @@ Canonical slices:
 - R20.2: Canonical performance plan and public-claim policy. Status: Done.
 - R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
   Status: Done.
-- R20.4: Generated fixed-read overhead and allocation profiling. Status:
-  Planned.
+- R20.4: Generated fixed-read overhead and allocation profiling. Status: Done.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
   shapes. Status: Planned.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
@@ -2427,11 +2426,71 @@ Verification passed on 2026-06-02:
 
 ### R20.4 Generated Fixed-Read Profiling
 
-Status: Planned.
+Status: Done.
 
-Profile generated `findById` fixed-read overhead and allocation against the
-named JDBC baselines. Do not optimize binder, mapper, renderer, or prepared
-query code until retained artifacts identify the dominant cost.
+R20.4 profiles generated `findById` fixed-read overhead against matched JDBC
+baselines without changing runtime behavior. The required xhigh debate
+concluded that R20.4 must isolate six live PostgreSQL/Testcontainers rows:
+ordinary JDBC `findById`, reusable prepared JDBC `findById`, tuned PgJDBC
+reusable JDBC `findById`, Mortar processor-generated `findById`, Mortar
+prepared processor-generated `findById`, and Mortar tuned processor-generated
+`findById`.
+
+`java/benchmarks` now exposes focused R20.4 JMH presets for throughput,
+allocation, and sample-time latency:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead --no-daemon
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadAllocation --no-daemon
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadLatency --no-daemon
+```
+
+Canonical include regex:
+
+```text
+PostgresExecutionBenchmark\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$
+```
+
+Optional variants, handwritten generated-style Mortar rows, join/page rows,
+update-batch rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC rows are
+excluded from R20.4 interpretation. They remain available benchmark methods,
+but R20.4 does not use them for generated fixed-read overhead conclusions.
+
+R20.4 records local/internal evidence only. Local smoke JSON under
+`java/benchmarks/build` proves task and regex wiring but is not public
+performance evidence and must not be committed. Retained local or CI artifacts
+still need raw JSON, manifest, commands, environment metadata, dataset notes,
+limitations, review notes, and repeated runs before any optimization candidate
+is proposed.
+
+R20.4 `Done` means the generated fixed-read profiling harness, grouping guard,
+local instructions, and local smoke proof are complete. It does not mean the
+retained evidence gate for optimization proposals or public performance
+reporting is satisfied.
+
+Changed files/docs: `java/benchmarks/build.gradle.kts`,
+`java/benchmarks/src/test/java/dev/mortar/benchmarks/PostgresExecutionBenchmarkTest.java`,
+`docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+`docs/performance.md`, this plan, and `docs/roadmap.md`.
+
+Migration note: no Java public API, runtime behavior, generated Java API, Rust
+tooling behavior, benchmark threshold, release, publication, migration,
+optimization, or public performance claim changed.
+
+Verification passed on 2026-06-02:
+
+- `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`;
+- focused R20.4 live PostgreSQL JMH smoke generated
+  `java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-smoke.json` as
+  build output;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/project scrub excluding build, cache, dependency, and generated
+  outputs.
 
 ### R20.5 DSL Render/Execute Profiling
 

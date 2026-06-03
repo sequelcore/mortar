@@ -1575,8 +1575,7 @@ Slices:
 - R20.2: Canonical performance plan and public-claim policy. Status: Done.
 - R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
   Status: Done.
-- R20.4: Generated fixed-read overhead and allocation profiling. Status:
-  Planned.
+- R20.4: Generated fixed-read overhead and allocation profiling. Status: Done.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
   shapes. Status: Planned.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
@@ -1650,6 +1649,51 @@ R20.3 completion record:
   JMH smoke that generated
   `java/benchmarks/build/reports/jmh/r20.3-smoke.json` as build output,
   `gradlew.bat check --no-daemon`, `cd rust && cargo fmt --all --check`,
+  `cd rust && cargo clippy --all-targets --all-features -- -D warnings`,
+  `cd rust && cargo test`, `cd editors/vscode && bun run typecheck`,
+  `git diff --check`, and private path/project scrub excluding build, cache,
+  dependency, and generated outputs.
+
+R20.4 completion record:
+
+- The required xhigh generated fixed-read debate concluded that R20.4 should be
+  a narrow Java runtime evidence slice, not an optimization slice and not a
+  docs-only slice.
+- The canonical R20.4 scope is exactly six live PostgreSQL/Testcontainers rows:
+  ordinary JDBC `findById`, reusable prepared JDBC `findById`, tuned PgJDBC
+  reusable JDBC `findById`, Mortar processor-generated `findById`, Mortar
+  prepared processor-generated `findById`, and Mortar tuned
+  processor-generated `findById`.
+- `java/benchmarks/build.gradle.kts` now provides
+  `jmhR20GeneratedFixedRead`, `jmhR20GeneratedFixedReadAllocation`, and
+  `jmhR20GeneratedFixedReadLatency` presets. The canonical include regex is
+  `PostgresExecutionBenchmark\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$`.
+- `PostgresExecutionBenchmarkTest` guards the R20.4 matrix names and excludes
+  optional variants, handwritten generated-style Mortar rows, join/page rows,
+  update-batch rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC rows from the
+  R20.4 interpretation boundary.
+- Local smoke JSON under `java/benchmarks/build` is internal build output only.
+  R20.4 does not create public performance evidence; repeated retained raw
+  artifacts, manifest, commands, environment metadata, dataset notes,
+  limitations, and review notes are still required before optimization
+  proposals or public reporting.
+- R20.4 `Done` means the generated fixed-read profiling harness, grouping
+  guard, local instructions, and local smoke proof are complete. It does not
+  mean the retained evidence gate for optimization proposals or public
+  performance reporting is satisfied.
+- Changed files/docs: `java/benchmarks/build.gradle.kts`,
+  `java/benchmarks/src/test/java/dev/mortar/benchmarks/PostgresExecutionBenchmarkTest.java`,
+  `docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+  `docs/performance.md`, `docs/plan.md`, and this roadmap.
+- Migration note: no Java public API, runtime behavior, generated Java API,
+  Rust tooling behavior, benchmark threshold, release, publication, migration,
+  optimization, or public performance claim changed.
+- Verification passed on 2026-06-02:
+  `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`,
+  a focused R20.4 live PostgreSQL JMH smoke that generated
+  `java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-smoke.json` as
+  build output, `gradlew.bat check --no-daemon`,
+  `cd rust && cargo fmt --all --check`,
   `cd rust && cargo clippy --all-targets --all-features -- -D warnings`,
   `cd rust && cargo test`, `cd editors/vscode && bun run typecheck`,
   `git diff --check`, and private path/project scrub excluding build, cache,

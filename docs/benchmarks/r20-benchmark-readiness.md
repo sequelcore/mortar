@@ -147,11 +147,35 @@ The R20.3 artifact-readiness debate concluded:
   summary, reviewer notes, and environment files without committing generated
   benchmark output.
 
+The R20.4 generated fixed-read debate concluded:
+
+- R20.4 isolates generated `findById` overhead instead of reinterpreting the
+  full R20.3 matrix.
+- The canonical R20.4 group is limited to ordinary JDBC `findById`, reusable
+  prepared JDBC `findById`, tuned PgJDBC reusable JDBC `findById`, Mortar
+  processor-generated `findById`, Mortar prepared processor-generated
+  `findById`, and Mortar tuned processor-generated `findById`.
+- Throughput, allocation, and sample-time latency are the only R20.4 profiles.
+- Optional variants, handwritten generated-style Mortar rows, join/page rows,
+  update-batch rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC rows remain
+  outside the R20.4 interpretation boundary.
+- "Near-zero overhead" is an internal engineering target: the matched Mortar
+  generated fixed-read path should not show a durable material regression
+  versus the matched JDBC baseline on repeated retained runs with the same SQL
+  shape, row shape, driver settings, and dataset. It is not public claim text.
+- No optimization candidate can be proposed from R20.4 until retained raw JSON,
+  manifest, commands, environment metadata, dataset notes, reviewer notes, and
+  at least two repeated runs per selected profile exist.
+- R20.4 `Done` means the generated fixed-read profiling harness, grouping
+  guard, local instructions, and local smoke proof exist. It does not mean the
+  retained evidence gate for optimization proposals or public performance
+  reporting is satisfied.
+
 ## Current Benchmark Inventory
 
 | Artifact | Purpose | Readiness |
 | --- | --- | --- |
-| `java/benchmarks/build.gradle.kts` | JMH dependencies, throughput, allocation, latency, and PostgreSQL benchmark tasks | Trustworthy as harness source; public reports still need retained raw artifacts |
+| `java/benchmarks/build.gradle.kts` | JMH dependencies, throughput, allocation, latency, PostgreSQL benchmark tasks, and R20.4 generated fixed-read presets | Trustworthy as harness source; public reports still need retained raw artifacts |
 | `PostgresRenderingBenchmark` | PostgreSQL SQL rendering microbenchmark | Internal-only; cannot imply database throughput |
 | `ReferenceRenderingBenchmark` | jOOQ and QueryDSL rendering reference scenarios | Internal-only; comparable only for documented rendering shape |
 | `JdbcExecutionBenchmark` | Controlled JDBC-double adapter overhead | Internal-only; fake JDBC doubles must never support real database claims |
@@ -283,8 +307,7 @@ Invalid or misleading claims include:
 - R20.2: Canonical performance plan and public-claim policy. Status: Done.
 - R20.3: Java runtime JMH/PostgreSQL baseline matrix with retained artifacts.
   Status: Done.
-- R20.4: Generated fixed-read overhead and allocation profiling. Status:
-  Planned.
+- R20.4: Generated fixed-read overhead and allocation profiling. Status: Done.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
   shapes. Status: Planned.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.

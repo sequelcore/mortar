@@ -27,6 +27,21 @@ final class PostgresExecutionBenchmarkTest {
         Map.entry("jooq-reference", "jooqFetch"),
         Map.entry("querydsl-sql-reference", "querydslFetch")
     );
+    private static final Map<String, String> R20_4_GENERATED_FIXED_READ_MATRIX = Map.ofEntries(
+        Map.entry("ordinary-jdbc-find-by-id", "plainJdbcFindByIdFetch"),
+        Map.entry("reusable-prepared-jdbc-find-by-id", "plainJdbcReusableFindByIdFetch"),
+        Map.entry("tuned-pgjdbc-reusable-jdbc-find-by-id", "plainJdbcTunedReusableFindByIdFetch"),
+        Map.entry("mortar-processor-generated-find-by-id", "mortarProcessorGeneratedFindByIdFetch"),
+        Map.entry(
+            "mortar-prepared-processor-generated-find-by-id",
+            "mortarPreparedProcessorGeneratedFindByIdFetch"
+        ),
+        Map.entry("mortar-tuned-processor-generated-find-by-id", "mortarTunedProcessorGeneratedFindByIdFetch")
+    );
+    private static final String R20_4_GENERATED_FIXED_READ_INCLUDE_REGEX =
+        "PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|"
+            + "plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|"
+            + "mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$";
 
     @Test
     void fixtureDefinesDeterministicIndexedLookupDataset() {
@@ -111,6 +126,51 @@ final class PostgresExecutionBenchmarkTest {
             "mortarJoinPageFetch",
             "mortarUpdateBatch"
         );
+    }
+
+    @Test
+    void r20GeneratedFixedReadMatrixUsesOnlyMatchedFindByIdScenarioNames() {
+        Set<String> methodNames = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .collect(Collectors.toSet());
+
+        assertThat(R20_4_GENERATED_FIXED_READ_MATRIX)
+            .containsKeys(
+                "ordinary-jdbc-find-by-id",
+                "reusable-prepared-jdbc-find-by-id",
+                "tuned-pgjdbc-reusable-jdbc-find-by-id",
+                "mortar-processor-generated-find-by-id",
+                "mortar-prepared-processor-generated-find-by-id",
+                "mortar-tuned-processor-generated-find-by-id"
+            );
+        assertThat(methodNames).containsAll(R20_4_GENERATED_FIXED_READ_MATRIX.values());
+        assertThat(R20_4_GENERATED_FIXED_READ_MATRIX.values()).doesNotContain(
+            "plainJdbcFindByIdFetchOptional",
+            "plainJdbcReusableFindByIdFetchOptional",
+            "mortarProcessorGeneratedFindByIdFetchOptional",
+            "mortarPreparedProcessorGeneratedFindByIdFetchOptional",
+            "mortarGeneratedJdbcFetch",
+            "mortarPreparedGeneratedJdbcFetch",
+            "mortarJdbcFetch",
+            "mortarPreRenderedJdbcFetch",
+            "plainJdbcJoinPageFetch",
+            "mortarJoinPageFetch",
+            "plainJdbcUpdateBatch",
+            "mortarUpdateBatch",
+            "jooqFetch",
+            "querydslFetch"
+        );
+    }
+
+    @Test
+    void r20GeneratedFixedReadIncludeRegexSelectsOnlyMatchedFindByIdScenarioNames() {
+        Set<String> selectedMethods = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .filter(methodName -> ("PostgresExecutionBenchmark." + methodName)
+                .matches(R20_4_GENERATED_FIXED_READ_INCLUDE_REGEX))
+            .collect(Collectors.toSet());
+
+        assertThat(selectedMethods).containsExactlyInAnyOrderElementsOf(R20_4_GENERATED_FIXED_READ_MATRIX.values());
     }
 
     @Test

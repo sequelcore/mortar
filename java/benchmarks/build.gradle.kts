@@ -1,5 +1,8 @@
 description = "JMH benchmarks for Mortar performance measurement."
 
+val r20GeneratedFixedReadIncludes =
+    "PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$"
+
 dependencies {
     implementation(project(":java:core"))
     implementation(project(":java:dialect-postgres"))
@@ -152,6 +155,66 @@ tasks.register<JavaExec>("jmhPostgresExecutionAllocation") {
         "-prof", "gc",
         "-rf", "json",
         "-rff", layout.buildDirectory.file("reports/jmh/postgres-execution-allocation.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR20GeneratedFixedRead") {
+    group = "verification"
+    description = "Runs the R20.4 generated fixed-read PostgreSQL throughput profile."
+    configureJmhMain(r20GeneratedFixedReadIncludes)
+    addDefaultJmhProfile(
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r20.4-generated-fixed-read-throughput.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR20GeneratedFixedReadAllocation") {
+    group = "verification"
+    description = "Runs the R20.4 generated fixed-read PostgreSQL allocation profile."
+    configureJmhMain(r20GeneratedFixedReadIncludes)
+    addDefaultJmhProfile(
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-prof", "gc",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r20.4-generated-fixed-read-allocation.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR20GeneratedFixedReadLatency") {
+    group = "verification"
+    description = "Runs the R20.4 generated fixed-read PostgreSQL sample-time latency profile."
+    configureJmhMain(r20GeneratedFixedReadIncludes)
+    addDefaultJmhProfile(
+        "-bm", "sample",
+        "-tu", "ms",
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r20.4-generated-fixed-read-latency.json").get().asFile.absolutePath
     )
     addConfiguredJmhExtraArgs()
     doFirst {
