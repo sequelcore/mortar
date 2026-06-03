@@ -41,6 +41,17 @@ manual `Benchmarks` workflow. The bundle path inside the workflow is
 `review-notes.md`, and environment files. Local smoke JSON under
 `java/benchmarks/build` remains build output and is not public evidence.
 
+R20.4 generated fixed-read profiling uses local JMH presets in
+`java:benchmarks`: `jmhR20GeneratedFixedRead`,
+`jmhR20GeneratedFixedReadAllocation`, and
+`jmhR20GeneratedFixedReadLatency`. These presets isolate ordinary JDBC
+`findById`, reusable prepared JDBC `findById`, tuned PgJDBC reusable JDBC
+`findById`, Mortar processor-generated `findById`, Mortar prepared
+processor-generated `findById`, and Mortar tuned processor-generated
+`findById`. Local JSON remains internal engineering evidence unless it is
+retained with manifest, commands, environment metadata, limitations, and review
+notes.
+
 Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`
@@ -64,3 +75,6 @@ Current performance strategy research:
   Mortar does not change PgJDBC defaults.
 - Keep Java runtime and Rust tooling performance reports separate. Rust LSP
   parser/resolver measurements do not support Java runtime claims.
+- Do not propose generated fixed-read optimizations from a single local smoke
+  or unbundled build-output JSON. R20.4 evidence must be repeated and retained
+  before optimization candidates are ranked.

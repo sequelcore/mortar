@@ -72,6 +72,33 @@ gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation
 This writes JSON results to
 `java/benchmarks/build/reports/jmh/postgres-execution-allocation.json`.
 
+Run the R20.4 generated fixed-read throughput profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-throughput.json`.
+
+Run the R20.4 generated fixed-read allocation profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadAllocation
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-allocation.json`.
+
+Run the R20.4 generated fixed-read latency profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadLatency
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-latency.json`.
+
 Run a short harness smoke test:
 
 ```bash
@@ -158,6 +185,66 @@ R20.3 matrix rows:
 Optional variants, handwritten generated-style Mortar rows, join/page rows, and
 update-batch rows are not R20.3 baseline rows. They remain available benchmark
 methods, but their interpretation belongs to R20.4 or R20.5.
+
+## R20.4 Generated Fixed-Read Profiling
+
+R20.4 is measurement-only. It isolates generated `findById` fixed-read overhead
+against matched JDBC baselines and does not authorize runtime optimization,
+public performance claims, Java public API changes, or runtime behavior
+changes.
+
+Canonical include regex:
+
+```text
+PostgresExecutionBenchmark\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$
+```
+
+R20.4 matrix rows:
+
+- ordinary JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcFindByIdFetch`;
+- reusable prepared JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetch`;
+- tuned PgJDBC reusable JDBC `findById`: `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`;
+- Mortar processor-generated executor: `PostgresExecutionBenchmark.mortarProcessorGeneratedFindByIdFetch`;
+- Mortar prepared processor-generated executor: `PostgresExecutionBenchmark.mortarPreparedProcessorGeneratedFindByIdFetch`;
+- Mortar tuned processor-generated executor: `PostgresExecutionBenchmark.mortarTunedProcessorGeneratedFindByIdFetch`.
+
+Local full-profile commands:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead --no-daemon
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadAllocation --no-daemon
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadLatency --no-daemon
+```
+
+Equivalent commands using the generic PostgreSQL tasks:
+
+```bash
+gradlew.bat :java:benchmarks:jmhPostgresExecution "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$" --no-daemon
+gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$" --no-daemon
+gradlew.bat :java:benchmarks:jmhPostgresExecutionLatency "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$" --no-daemon
+```
+
+Local smoke command for proving the R20.4 preset and JSON output:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20GeneratedFixedRead "-PjmhIncludes=PostgresExecutionBenchmark[.]mortarProcessorGeneratedFindByIdFetch$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r20.4-generated-fixed-read-smoke.json" --no-daemon
+```
+
+The smoke command intentionally uses one generated R20.4 method so it is quick
+enough to prove the local task, include override, Testcontainers startup, and
+JMH JSON writing. The JSON remains build output and must not be committed.
+
+Local retained R20.4 bundles are internal-only unless a later benchmark
+readiness review signs off. A local bundle must include raw JSON for
+throughput, allocation, and latency, exact commands, commit SHA, clean-worktree
+state, date, JDK/Gradle/Docker/PostgreSQL/Testcontainers/PgJDBC versions,
+tuned PgJDBC parameters, dataset notes, a derived summary, limitations, and
+review notes. Build-directory JSON without that bundle metadata is local
+engineering evidence only.
+
+Optional variants, handwritten generated-style Mortar rows, join/page rows,
+update-batch rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC rows remain out
+of the R20.4 interpretation boundary.
 
 ## Current Scenarios
 
