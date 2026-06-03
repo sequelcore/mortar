@@ -1828,7 +1828,7 @@ R20.7/R20.8 completion record:
   `docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
   `docs/performance.md`, `docs/plan.md`, and this roadmap.
 - R21 AI/agent-friendly work was deferred by R20 and is completed below. R22
-  pre-release readiness remains deferred.
+  scalar/mutation contract work and R23 pre-release readiness remain deferred.
 
 ### R21: AI-Friendly Authoring And Query Recipes
 
@@ -1909,6 +1909,78 @@ Review result:
 - Remaining risk: snippets are excerpts from existing compiling examples rather
   than a new standalone recipe module. This is intentional to avoid duplicate
   fixture drift.
+
+### R22: Scalar And Mutation Contracts
+
+Status: Planned
+
+Goal: Make Mortar cover the minimum real repository persistence cycle before
+pre-release readiness is evaluated: read, count, check existence, create,
+update, delete, and optionally batch writes where the existing API can support
+them without surface explosion.
+
+Planned scope:
+
+- scalar query contracts for `count` and `exists`;
+- mutation contracts for insert, update, delete, and bounded batch writes;
+- visible SQL, parameters, parameter types, metadata, snapshots, and testkit
+  assertions for scalar and mutation paths;
+- JDBC execution contracts that preserve runtime boundaries;
+- Spring repository and Clean Architecture examples for scalar and mutation
+  repository methods;
+- query recipe and troubleshooting updates;
+- diagnostics for unsupported scalar/mutation shapes;
+- ADR if public scalar or mutation contracts change architecture or API shape.
+
+Non-goals:
+
+- ORM behavior, dirty checking, managed entity state, lazy loading, aggregate
+  graph loading, or implicit relation persistence;
+- generated repositories or Spring Data-style method-name derivation;
+- self-executing generated query or mutation objects;
+- generated optional-filter matrices or generated write method explosion;
+- raw SQL as the primary write path;
+- runtime performance optimization or public benchmark claims;
+- private application migration;
+- release, tag, publish, PR, push, or announcement work.
+
+Exit criteria:
+
+- scalar and mutation API boundaries are documented and tested;
+- existing mutation foundations are reviewed before new repository-facing API is
+  added;
+- Java compile/tests, PostgreSQL behavior, Rust tooling checks, VS Code
+  typecheck, whitespace, scrub, and review gates pass;
+- examples compile and keep Mortar inside infrastructure adapters;
+- docs state that Mortar remains explicit persistence, not an ORM;
+- no performance, release, migration, or replacement claims are added.
+
+### R23: Pre-Release Readiness
+
+Status: Planned
+
+Goal: Decide whether Mortar is ready for a first public alpha after R22 closes
+the repository persistence-cycle surface.
+
+Planned scope:
+
+- public API and Javadocs review;
+- README, getting started, recipes, troubleshooting, comparison, release policy,
+  and changelog review;
+- Maven Central and GitHub release dry-run verification;
+- Rust crate dry-run verification where applicable;
+- CI status and branch protection review;
+- public docs scrub for private paths, usernames, local build-output claims,
+  and unsupported performance statements;
+- benchmark-report go/no-go only if retained evidence exists;
+- explicit `0.1.0-alpha` go/no-go decision.
+
+Non-goals:
+
+- release, tag, publish, or announcement execution;
+- private application migration;
+- new product feature implementation;
+- public performance report without retained benchmark evidence.
 
 ## Canonical Update Protocol
 

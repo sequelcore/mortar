@@ -2699,7 +2699,8 @@ public claim, not a known performance regression.
 R20 is Done as a measurement and decision-gate phase. Follow-up work is
 deferred to a later retained-artifact review or optimization slice. R21
 AI/agent-friendly work is a later authoring-guidance slice and is not
-implemented by R20. R22 pre-release readiness remains deferred.
+implemented by R20. R22 scalar/mutation contract work and R23 pre-release
+readiness remain deferred.
 
 ## R21 Canonical Plan: AI-Friendly Authoring And Query Recipes
 
@@ -2834,13 +2835,98 @@ decision gate. R21 completed the AI/agent-friendly authoring guidance gate.
 
 Deferred future maturity work remains out of scope here:
 
-- R22 pre-release readiness.
+- R22 scalar and mutation contracts for real repository persistence flows.
+- R23 pre-release readiness.
 - Retained-artifact benchmark review or optimization slices that may follow
   R20 only when retained evidence authorizes the exact claim or change.
 
 No private application migration, generated repository expansion, release,
 publication, public performance report, or public demo claim is authorized by
 this handoff.
+
+## R22 Planned Gate: Scalar And Mutation Contracts
+
+Status: Planned.
+
+R22 should make Mortar cover the minimum real repository persistence cycle
+before pre-release readiness is evaluated: read, count, check existence, create,
+update, delete, and optionally batch writes where the existing API can support
+them without surface explosion.
+
+R22 exists because Mortar is not merely a read-query helper. Its product
+identity is Java-first, refactor-safe, SQL-transparent persistence code for
+Spring/PostgreSQL applications. A first public alpha should not imply ORM
+behavior, but it should have clear contracts for common repository reads,
+scalar reads, and mutations.
+
+### R22 Scope Decision
+
+R22 must start with xhigh architecture debate before implementation. The debate
+should challenge whether scalar reads and mutations belong in one gate or need
+to be split, but the planning default is one persistence-cycle gate because
+repositories usually need these operations together.
+
+Accepted planning scope:
+
+- scalar query contracts: `count` and `exists`;
+- mutation contracts: insert, update, delete, and batch writes only if existing
+  mutation foundations can support them cleanly;
+- visible SQL, parameters, parameter types, metadata, snapshots, and testkit
+  assertions for scalar and mutation paths;
+- JDBC execution contracts that preserve existing runtime boundaries;
+- Spring repository and Clean Architecture examples for create/update/delete,
+  `count`, and `exists`;
+- query recipe updates for scalar and mutation authoring;
+- diagnostics for unsupported scalar/mutation shapes;
+- ADR if public scalar or mutation contracts change architecture or API shape.
+
+Rejected planning scope:
+
+- ORM behavior, dirty checking, managed entity state, lazy loading, aggregate
+  graph loading, or implicit relation persistence;
+- generated repositories or Spring Data-style method-name derivation;
+- self-executing generated query or mutation objects;
+- generated optional-filter matrices or generated write method explosion;
+- raw SQL as the primary write path;
+- runtime performance optimization or public benchmark claims;
+- private application migration;
+- release, tag, publish, PR, push, or announcement work.
+
+### R22 Exit Criteria
+
+R22 must not be marked Done until:
+
+- scalar and mutation API boundaries are documented and tested;
+- existing mutation foundations are reviewed against the new repository-facing
+  contracts before new API is added;
+- Java compile/tests, Testcontainers-backed PostgreSQL behavior, Rust tooling
+  checks, VS Code typecheck, whitespace, scrub, and review gates pass;
+- examples compile and prove Mortar stays inside infrastructure adapters;
+- docs state that Mortar remains explicit persistence, not an ORM;
+- no performance, release, migration, or replacement claims are added.
+
+## R23 Planned Gate: Pre-Release Readiness
+
+Status: Planned.
+
+R23 should evaluate whether Mortar is ready for a first public alpha after R22
+has closed the repository persistence-cycle surface.
+
+Planned scope:
+
+- public API review and Javadocs review;
+- README, getting started, recipes, troubleshooting, comparison, release policy,
+  and changelog review;
+- Maven Central and GitHub release dry-run verification;
+- Rust crate dry-run verification where applicable;
+- CI status and branch protection review;
+- public docs scrub for private paths, usernames, local build-output claims,
+  and unsupported performance statements;
+- benchmark-report go/no-go remains blocked unless retained evidence exists;
+- explicit `0.1.0-alpha` go/no-go decision.
+
+R23 does not authorize release, tag, publish, or announcement by itself. It only
+produces the readiness decision and any remaining blocker list.
 
 ## Completed Slice: R15 Public API Readiness Hardening
 
