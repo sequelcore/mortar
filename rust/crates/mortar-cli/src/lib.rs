@@ -497,14 +497,12 @@ mod tests {
         use testcontainers_modules::postgres;
         use testcontainers_modules::testcontainers::runners::SyncRunner;
 
-        let node = match postgres::Postgres::default().with_host_auth().start() {
-            Ok(node) => node,
-            Err(error) => {
-                eprintln!(
-                    "skipping PostgreSQL explain test because Docker is unavailable: {error}"
-                );
-                return Ok(());
-            }
+        let Some(node) = start_postgres_or_skip_locally(
+            postgres::Postgres::default().with_host_auth().start(),
+            "PostgreSQL explain test",
+        )?
+        else {
+            return Ok(());
         };
         let connection = format!(
             "postgres://postgres@{}:{}/postgres",
@@ -524,20 +522,19 @@ mod tests {
         use testcontainers_modules::postgres;
         use testcontainers_modules::testcontainers::runners::SyncRunner;
 
-        let node = match postgres::Postgres::default()
-            .with_host_auth()
-            .with_init_sql(
-                "create table clients (id bigint primary key, name text);"
-                    .to_string()
-                    .into_bytes(),
-            )
-            .start()
-        {
-            Ok(node) => node,
-            Err(error) => {
-                eprintln!("skipping PostgreSQL schema test because Docker is unavailable: {error}");
-                return Ok(());
-            }
+        let Some(node) = start_postgres_or_skip_locally(
+            postgres::Postgres::default()
+                .with_host_auth()
+                .with_init_sql(
+                    "create table clients (id bigint primary key, name text);"
+                        .to_string()
+                        .into_bytes(),
+                )
+                .start(),
+            "PostgreSQL schema test",
+        )?
+        else {
+            return Ok(());
         };
         let connection = format!(
             "postgres://postgres@{}:{}/postgres",
@@ -572,5 +569,24 @@ mod tests {
 
         assert_eq!(output, "Schema OK");
         Ok(())
+    }
+
+    fn start_postgres_or_skip_locally<T, E>(
+        result: Result<T, E>,
+        test_name: &str,
+    ) -> Result<Option<T>, Box<dyn std::error::Error>>
+    where
+        E: std::error::Error + 'static,
+    {
+        match result {
+            Ok(node) => Ok(Some(node)),
+            Err(error) if std::env::var("CI").is_ok_and(|value| value == "true") => {
+                Err(Box::new(error))
+            }
+            Err(error) => {
+                eprintln!("skipping {test_name} because Docker is unavailable: {error}");
+                Ok(None)
+            }
+        }
     }
 }
