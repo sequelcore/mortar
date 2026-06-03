@@ -12,10 +12,16 @@ public final class MortarExplainPlanAssertions extends AbstractAssert<MortarExpl
         super(explainPlan, MortarExplainPlanAssertions.class);
     }
 
+    /**
+     * Starts assertions for PostgreSQL EXPLAIN text.
+     */
     public static MortarExplainPlanAssertions assertThatExplainPlan(String explainPlan) {
         return new MortarExplainPlanAssertions(explainPlan);
     }
 
+    /**
+     * Verifies that the plan contains a node name or fragment.
+     */
     public MortarExplainPlanAssertions containsNode(String expectedNode) {
         Objects.requireNonNull(expectedNode, "expectedNode cannot be null");
         isNotNull();
@@ -29,6 +35,9 @@ public final class MortarExplainPlanAssertions extends AbstractAssert<MortarExpl
         return this;
     }
 
+    /**
+     * Verifies that the plan mentions the expected index.
+     */
     public MortarExplainPlanAssertions usesIndex(String indexName) {
         Objects.requireNonNull(indexName, "indexName cannot be null");
         isNotNull();
@@ -42,6 +51,9 @@ public final class MortarExplainPlanAssertions extends AbstractAssert<MortarExpl
         return this;
     }
 
+    /**
+     * Verifies that the plan does not contain a sequential scan for the table.
+     */
     public MortarExplainPlanAssertions doesNotUseSequentialScan(String tableName) {
         Objects.requireNonNull(tableName, "tableName cannot be null");
         isNotNull();

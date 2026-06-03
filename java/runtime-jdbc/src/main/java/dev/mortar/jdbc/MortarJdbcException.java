@@ -16,6 +16,9 @@ public final class MortarJdbcException extends RuntimeException {
     private final transient List<Parameter> parameters;
     private final transient QueryMetadata metadata;
 
+    /**
+     * Creates an exception without rendered SQL context.
+     */
     public MortarJdbcException(String message, Throwable cause) {
         super(message, cause);
         this.sql = "";
@@ -23,6 +26,10 @@ public final class MortarJdbcException extends RuntimeException {
         this.metadata = QueryMetadata.empty();
     }
 
+    /**
+     * Creates an exception that retains rendered SQL, parameters, and metadata
+     * for diagnostics.
+     */
     public MortarJdbcException(String message, RenderedQuery renderedQuery, Throwable cause) {
         super(message, cause);
         Objects.requireNonNull(renderedQuery, "renderedQuery cannot be null");
@@ -31,14 +38,23 @@ public final class MortarJdbcException extends RuntimeException {
         this.metadata = renderedQuery.metadata();
     }
 
+    /**
+     * Returns the SQL that failed, or an empty string when unavailable.
+     */
     public String sql() {
         return sql;
     }
 
+    /**
+     * Returns rendered parameters associated with the failed SQL.
+     */
     public List<Parameter> parameters() {
         return parameters;
     }
 
+    /**
+     * Returns metadata associated with the failed SQL.
+     */
     public QueryMetadata metadata() {
         return metadata;
     }

@@ -29,12 +29,25 @@ public final class QueryBuilder<T> {
         this.model = model;
     }
 
+    /**
+     * Selects explicit columns for the query.
+     *
+     * @param first first column to select
+     * @param rest additional columns to select
+     * @return this builder
+     */
     public QueryBuilder<T> select(ColumnRef<?> first, ColumnRef<?>... rest) {
         selectColumns.add(first);
         selectColumns.addAll(List.of(rest));
         return this;
     }
 
+    /**
+     * Selects columns through generated table-model accessors.
+     *
+     * @throws IllegalStateException when this builder was created from a plain
+     * table reference instead of a Mortar table model
+     */
     @SafeVarargs
     public final QueryBuilder<T> select(
         Function<T, ColumnRef<?>> first,
@@ -48,6 +61,12 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /**
+     * Replaces the current select list with a projection.
+     *
+     * <p>Projection metadata is later used by runtime adapters that map JDBC
+     * rows into records or DTOs.</p>
+     */
     public QueryBuilder<T> project(Projection value) {
         projection = value;
         selectColumns.clear();
@@ -55,11 +74,21 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /**
+     * Builds a projection through a generated table-model accessor.
+     *
+     * @throws IllegalStateException when this builder was created from a plain
+     * table reference instead of a Mortar table model
+     */
     public QueryBuilder<T> project(Function<T, Projection> factory) {
         requireModel();
         return project(factory.apply(model));
     }
 
+    /**
+     * Projects selected columns into a Java record using its canonical
+     * constructor.
+     */
     @SafeVarargs
     public final <R> QueryBuilder<T> projectRecord(
         Class<R> targetType,
@@ -69,6 +98,9 @@ public final class QueryBuilder<T> {
         return project(Projection.record(targetType, projectedColumns(first, rest)));
     }
 
+    /**
+     * Projects selected columns into a DTO constructor.
+     */
     @SafeVarargs
     public final <R> QueryBuilder<T> projectDto(
         Class<R> targetType,
@@ -78,16 +110,32 @@ public final class QueryBuilder<T> {
         return project(Projection.dto(targetType, projectedColumns(first, rest)));
     }
 
+    /**
+     * Adds a predicate to the query.
+     */
     public QueryBuilder<T> where(Predicate predicate) {
         predicates.add(predicate);
         return this;
     }
 
+    /**
+     * Adds a predicate through a generated table-model accessor.
+     *
+     * @throws IllegalStateException when this builder was created from a plain
+     * table reference instead of a Mortar table model
+     */
     public QueryBuilder<T> where(Function<T, Predicate> factory) {
         requireModel();
         return where(factory.apply(model));
     }
 
+    /**
+     * Adds a caller-supplied SQL fragment to the predicate list.
+     *
+     * <p>This is intentionally marked unsafe because Mortar does not parse,
+     * validate, or escape the SQL fragment. Parameters should be supplied
+     * separately so runtime adapters can still bind them.</p>
+     */
     public QueryBuilder<T> unsafeWhereRaw(String sql, Parameter... parameters) {
         return where(Predicate.unsafeRaw(sql, List.of(parameters)));
     }
@@ -124,6 +172,11 @@ public final class QueryBuilder<T> {
         return orderBy(factory.apply(model));
     }
 
+    /**
+     * Applies a positive row limit.
+     *
+     * @throws IllegalArgumentException when {@code value} is less than one
+     */
     public QueryBuilder<T> limit(int value) {
         if (value < 1) {
             throw new IllegalArgumentException("limit must be greater than zero");
@@ -132,6 +185,11 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /**
+     * Applies a zero-based row offset.
+     *
+     * @throws IllegalArgumentException when {@code value} is negative
+     */
     public QueryBuilder<T> offset(int value) {
         if (value < 0) {
             throw new IllegalArgumentException("offset cannot be negative");
@@ -140,6 +198,9 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /**
+     * Applies page size and offset from a Mortar page value.
+     */
     public QueryBuilder<T> page(MortarPage page) {
         Objects.requireNonNull(page, "page cannot be null");
         limit = page.size();
@@ -147,6 +208,12 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /**
+     * Assigns an optional inspection name to the query specification.
+     *
+     * <p>Names are used by testkit assertions, snapshots, diagnostics, and
+     * editor tooling. They do not affect rendered SQL.</p>
+     */
     public QueryBuilder<T> named(String value) {
         Objects.requireNonNull(value, "name cannot be null");
         if (value.isBlank()) {
@@ -156,6 +223,10 @@ public final class QueryBuilder<T> {
         return this;
     }
 
+    /**
+     * Builds an immutable query specification without rendering or executing
+     * SQL.
+     */
     public QuerySpec build() {
         return new QuerySpec(
             java.util.Optional.ofNullable(name),
@@ -170,20 +241,40 @@ public final class QueryBuilder<T> {
         );
     }
 
+    /**
+     * Builds a scalar {@code count(*)} specification.
+     *
+     * @throws IllegalStateException when the current builder already has
+     * select, projection, sort, limit, or offset state
+     */
     public CountSpec count() {
         requireScalarShape();
         return new CountSpec(table, joins, predicates);
     }
 
+    /**
+     * Renders a scalar {@code count(*)} query through the supplied renderer and
+     * returns an inspectable bound value.
+     */
     public MortarBoundScalar<Long> count(QueryRenderer renderer) {
         return MortarBoundScalar.unnamed(count(), renderer);
     }
 
+    /**
+     * Builds a scalar {@code exists} specification.
+     *
+     * @throws IllegalStateException when the current builder already has
+     * select, projection, sort, limit, or offset state
+     */
     public ExistsSpec exists() {
         requireScalarShape();
         return new ExistsSpec(table, joins, predicates);
     }
 
+    /**
+     * Renders a scalar {@code exists} query through the supplied renderer and
+     * returns an inspectable bound value.
+     */
     public MortarBoundScalar<Boolean> exists(QueryRenderer renderer) {
         return MortarBoundScalar.unnamed(exists(), renderer);
     }

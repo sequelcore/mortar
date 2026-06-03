@@ -29,6 +29,9 @@ public final class MortarPreparedQuery<P, T> implements AutoCloseable {
         this.loggingEnabled = loggingEnabled;
     }
 
+    /**
+     * Executes the prepared generated query with the supplied parameters.
+     */
     public List<T> fetch(P parameters) {
         Objects.requireNonNull(parameters, "parameters cannot be null");
         log();
@@ -51,6 +54,11 @@ public final class MortarPreparedQuery<P, T> implements AutoCloseable {
         }
     }
 
+    /**
+     * Executes the prepared generated query and expects at most one row.
+     *
+     * @throws IllegalStateException when more than one row is returned
+     */
     public Optional<T> fetchOptional(P parameters) {
         Objects.requireNonNull(parameters, "parameters cannot be null");
         log();
@@ -76,6 +84,10 @@ public final class MortarPreparedQuery<P, T> implements AutoCloseable {
         }
     }
 
+    /**
+     * Closes the underlying prepared statement. The caller-owned connection is
+     * not closed.
+     */
     @Override
     public void close() throws SQLException {
         statement.close();

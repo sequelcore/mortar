@@ -33,30 +33,49 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
         this.rowType = rowType;
     }
 
+    /**
+     * Starts assertions for already rendered SQL.
+     */
     public static MortarSqlAssertions assertThatSql(RenderedQuery renderedQuery) {
         return new MortarSqlAssertions(renderedQuery);
     }
 
+    /**
+     * Starts assertions for a bound read query, including its optional name and
+     * row type context.
+     */
     public static MortarSqlAssertions assertThatSql(MortarBoundQuery<?> query) {
         Objects.requireNonNull(query, "query cannot be null");
         return new MortarSqlAssertions(query.rendered(), query.queryName().orElse("<unnamed>"), query.rowType());
     }
 
+    /**
+     * Starts assertions for a bound scalar query.
+     */
     public static MortarSqlAssertions assertThatSql(MortarBoundScalar<?> scalar) {
         Objects.requireNonNull(scalar, "scalar cannot be null");
         return new MortarSqlAssertions(scalar.rendered(), scalar.queryName().orElse("<unnamed>"), scalar.scalarType());
     }
 
+    /**
+     * Starts assertions for a row-count mutation.
+     */
     public static MortarSqlAssertions assertThatSql(MortarBoundMutation mutation) {
         Objects.requireNonNull(mutation, "mutation cannot be null");
         return new MortarSqlAssertions(mutation.rendered(), mutation.mutationName().orElse("<unnamed>"), null);
     }
 
+    /**
+     * Starts assertions for a returning mutation.
+     */
     public static MortarSqlAssertions assertThatSql(MortarReturningMutation<?> mutation) {
         Objects.requireNonNull(mutation, "mutation cannot be null");
         return new MortarSqlAssertions(mutation.rendered(), mutation.mutationName().orElse("<unnamed>"), mutation.rowType());
     }
 
+    /**
+     * Verifies the exact rendered SQL string.
+     */
     public MortarSqlAssertions hasSql(String expectedSql) {
         Objects.requireNonNull(expectedSql, "expectedSql cannot be null");
         isNotNull();
@@ -70,10 +89,16 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
         return this;
     }
 
+    /**
+     * Alias for {@link #hasSql(String)}.
+     */
     public MortarSqlAssertions renders(String expectedSql) {
         return hasSql(expectedSql);
     }
 
+    /**
+     * Verifies the query or mutation inspection name.
+     */
     public MortarSqlAssertions hasName(String expectedName) {
         Objects.requireNonNull(expectedName, "expectedName cannot be null");
         if (queryName == null || !queryName.equals(expectedName)) {
@@ -86,6 +111,9 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
         return this;
     }
 
+    /**
+     * Verifies ordered rendered parameter values.
+     */
     public MortarSqlAssertions hasParameters(Object... expectedValues) {
         Objects.requireNonNull(expectedValues, "expectedValues cannot be null");
         isNotNull();
@@ -107,6 +135,9 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
         return this;
     }
 
+    /**
+     * Verifies ordered rendered Java parameter types.
+     */
     public MortarSqlAssertions hasParameterTypes(Class<?>... expectedTypes) {
         Objects.requireNonNull(expectedTypes, "expectedTypes cannot be null");
         isNotNull();
@@ -132,18 +163,27 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
         return this;
     }
 
+    /**
+     * Verifies rendered table metadata.
+     */
     public MortarSqlAssertions hasTables(TableRef... expectedTables) {
         Objects.requireNonNull(expectedTables, "expectedTables cannot be null");
         isNotNull();
         return hasMetadata("tables", Arrays.asList(expectedTables), actual.metadata().tables());
     }
 
+    /**
+     * Verifies rendered column metadata.
+     */
     public MortarSqlAssertions hasColumns(ColumnRef<?>... expectedColumns) {
         Objects.requireNonNull(expectedColumns, "expectedColumns cannot be null");
         isNotNull();
         return hasMetadata("columns", Arrays.asList(expectedColumns), actual.metadata().columns());
     }
 
+    /**
+     * Verifies rendered join metadata.
+     */
     public MortarSqlAssertions hasJoins(Join... expectedJoins) {
         Objects.requireNonNull(expectedJoins, "expectedJoins cannot be null");
         isNotNull();

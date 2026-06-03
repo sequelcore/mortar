@@ -13,64 +13,73 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Command {
+    #[command(about = "Check local Mortar tooling status.")]
     Doctor {
-        #[arg(long)]
+        #[arg(long, help = "Print machine-readable JSON output.")]
         json: bool,
     },
+    #[command(about = "Inspect SQL text or generated Mortar metadata.")]
     Inspect {
-        #[arg(long)]
+        #[arg(long, help = "SQL text to normalize and inspect.")]
         sql: Option<String>,
-        #[arg(long)]
+        #[arg(long, help = "Path to a generated Mortar metadata JSON file.")]
         metadata_file: Option<PathBuf>,
-        #[arg(long)]
+        #[arg(long, help = "Print machine-readable JSON output.")]
         json: bool,
     },
+    #[command(about = "Manage Mortar SQL snapshot files.")]
     Snapshot {
         #[command(subcommand)]
         command: SnapshotCommand,
     },
+    #[command(about = "Check generated metadata against database schema.")]
     Schema {
         #[command(subcommand)]
         command: SchemaCommand,
     },
+    #[command(about = "Run PostgreSQL EXPLAIN for visible SQL.")]
     Explain {
-        #[arg(long)]
+        #[arg(long, help = "PostgreSQL connection string.")]
         connection: String,
-        #[arg(long)]
+        #[arg(long, help = "SQL text to explain.")]
         sql: String,
     },
+    #[command(about = "Summarize generated Mortar metadata.")]
     Report {
-        #[arg(long)]
+        #[arg(long, help = "Path to a generated Mortar metadata JSON file.")]
         metadata_file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = "Print machine-readable JSON output.")]
         json: bool,
     },
 }
 
 #[derive(Debug, Subcommand)]
 enum SnapshotCommand {
+    #[command(about = "Validate that a SQL snapshot file is canonical.")]
     Check {
-        #[arg(long)]
+        #[arg(long, help = "Path to the SQL snapshot JSON file.")]
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = "Print machine-readable JSON output.")]
         json: bool,
     },
+    #[command(about = "Add or replace one SQL snapshot entry.")]
     Update {
-        #[arg(long)]
+        #[arg(long, help = "Path to the SQL snapshot JSON file.")]
         file: PathBuf,
-        #[arg(long)]
+        #[arg(long, help = "Snapshot name to add or replace.")]
         name: String,
-        #[arg(long)]
+        #[arg(long, help = "Rendered SQL text for the snapshot.")]
         sql: String,
     },
 }
 
 #[derive(Debug, Subcommand)]
 enum SchemaCommand {
+    #[command(about = "Compare generated metadata with PostgreSQL information_schema.")]
     Check {
-        #[arg(long)]
+        #[arg(long, help = "PostgreSQL connection string.")]
         connection: String,
-        #[arg(long)]
+        #[arg(long, help = "Path to a generated Mortar metadata JSON file.")]
         metadata_file: PathBuf,
     },
 }
@@ -241,4 +250,20 @@ fn update_snapshot_file(
     fs::write(file, updated)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Cli;
+    use clap::CommandFactory;
+
+    #[test]
+    fn command_help_describes_existing_public_commands() {
+        let help = Cli::command().render_long_help().to_string();
+
+        assert!(help.contains("Check local Mortar tooling status."));
+        assert!(help.contains("Inspect SQL text or generated Mortar metadata."));
+        assert!(help.contains("Manage Mortar SQL snapshot files."));
+        assert!(help.contains("Run PostgreSQL EXPLAIN for visible SQL."));
+    }
 }

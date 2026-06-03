@@ -28,7 +28,7 @@ mortar inspect --sql " select 1 " --json
 ```
 
 `inspect --sql` validates non-blank SQL input and prints the normalized SQL text.
-Future R8 slices will attach CI-friendly JSON output.
+Use `--json` when CI or editor tooling needs machine-readable output.
 
 ## Inspect Metadata
 

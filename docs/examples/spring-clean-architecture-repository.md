@@ -4,8 +4,8 @@ This example shows how a Spring Boot application should use Mortar from an infra
 
 The compiled fixture is `java/spring-boot-starter/src/test/java/dev/mortar/spring/MortarCleanArchitectureRepositoryExampleTest.java`.
 It demonstrates Spring auto-configuration and port wiring with a lower-level
-DSL query. For the canonical R16 generated `Read` facade flow, use the
-CI-compiling `examples/clean-architecture-postgres` module.
+DSL query. For the canonical generated `Read` facade flow, use the CI-compiling
+`examples/clean-architecture-postgres` module.
 
 For copyable repository recipes, use [`../query-recipes.md`](../query-recipes.md).
 
