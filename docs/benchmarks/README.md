@@ -53,8 +53,8 @@ derived summary, and review notes.
 
 ## Retained Evidence
 
-The manual `Benchmarks` GitHub Actions workflow is the canonical retained
-artifact path. It separates evidence families:
+The benchmark evidence package format is the canonical retained artifact path.
+It separates evidence families:
 
 - `java-runtime-postgres`
 - `rust-tooling-lsp`
@@ -72,19 +72,15 @@ Retained VS Code editor-latency artifacts must include trace JSON, test output,
 Bun/VS Code metadata, scenario notes, limitations, derived summaries, and
 review notes.
 
-R23 retained artifacts reviewed for current evidence boundaries:
-
-- Java scalar count:
-  https://github.com/sequelcore/mortar/actions/runs/26887593414
-- Java DML `RETURNING`:
-  https://github.com/sequelcore/mortar/actions/runs/26887593463
-- Rust tooling/LSP:
-  https://github.com/sequelcore/mortar/actions/runs/26887800615
-- VS Code editor latency:
-  https://github.com/sequelcore/mortar/actions/runs/26885861833
+R23 retained evidence packages cover Java scalar/runtime mutation scenarios,
+Rust tooling/LSP scenarios, and VS Code editor-latency scenarios. The durable
+evidence reference is the package structure itself: manifest, commands,
+environment metadata, raw artifacts, summary, limitations, and review notes
+retained with each evidence family. Public docs should not depend on temporary
+CI run links.
 
 R23 closed with optimization no-go and public performance claims blocked. That
-decision means the retained workflows are useful evidence, but they do not
+decision means the retained artifacts are useful evidence, but they do not
 prove broad speed superiority over any named baseline.
 
 ## Current Java Scenarios
@@ -108,8 +104,8 @@ support PostgreSQL, driver, or product performance claims.
 
 Public performance claims require:
 
-- retained raw artifacts from the manual benchmark workflow or an equivalent
-  retained evidence bundle;
+- retained raw artifacts from the benchmark evidence package or an equivalent
+  retained evidence package;
 - exact commit, commands, environment, dataset/corpus, warmup, measurement,
   forks, and benchmark source links;
 - exact baseline naming;
@@ -119,9 +115,9 @@ Public performance claims require:
 
 Allowed current wording:
 
-> Mortar keeps benchmark discipline for supported scenarios; public performance
-> claims require retained raw artifacts, disclosed methodology, exact baselines,
-> and readiness review.
+> Mortar has retained benchmark evidence and disciplined measurement. Public
+> performance claims require retained raw artifacts, disclosed methodology,
+> exact baselines, limitations, and readiness review.
 
 Blocked wording includes unqualified speed claims against JDBC, PostgreSQL,
 jOOQ, QueryDSL, or application workloads without workload-specific retained

@@ -22,10 +22,11 @@ readiness decision authorizes them.
 | R24.5 Examples and first-user path readiness | Done |
 | R24.6 Packaging and publishing dry-runs | Done |
 | R24.7 CI, repository health, and security readiness | Done |
-| R24.8 Performance wording and benchmark evidence review | Planned |
-| R24.9 `0.1.0-alpha` go/no-go decision | Planned |
+| R24.8 Performance wording and benchmark evidence review | Done |
+| R24.9 `0.1.0-alpha` go/no-go decision | Done |
 
-R23 remains Done. R24 remains In Progress until R24.9 closes.
+R23 remains Done. R24 is Done. R24 closes with a conditional go for the
+`0.1.0-alpha` publication decision.
 
 ## Canonical Documentation Ownership
 
@@ -69,7 +70,7 @@ Supporting docs:
 - `SECURITY.md`
 - `CODE_OF_CONDUCT.md`
 
-## R24.2 Audit Outcome
+## R24.2 Documentation Audit Outcome
 
 | File or group | Classification | Decision |
 | --- | --- | --- |
@@ -119,7 +120,7 @@ Supporting docs:
 - Release policy remains at `docs/release.md`, with current readiness wording.
 - ADRs remain decision records, not logs.
 
-## Architecture Review Outcome
+## Documentation Architecture Outcome
 
 The R24.2/R24.3 review accepted a compact public canon:
 
@@ -132,7 +133,7 @@ The R24.2/R24.3 review accepted a compact public canon:
 - Use official publishing, package, security, and starter documentation as
   readiness criteria, not as proof that Mortar has released.
 
-## R24.4/R24.5 Readiness Decision
+## R24.4/R24.5 Readiness Scope
 
 The API and examples readiness review remains a bounded pre-release hardening
 step. It does not remove public APIs, add query families, generate
@@ -174,7 +175,7 @@ Risks accepted and mitigated:
 - CLI documentation and `mortar --help` must stay aligned for the existing
   command set.
 
-## R24.4/R24.5 Implementation Plan
+## R24.4/R24.5 Readiness Criteria
 
 R24.4 API and Javadocs readiness:
 
@@ -254,7 +255,7 @@ Verification evidence:
 - public API review, DDD/Clean Architecture boundary review, and focused code
   review
 
-Review outcome:
+Quality outcome:
 
 - Public API review found no accidental API expansion and no justified API
   removals.
@@ -271,17 +272,17 @@ Residual risks:
   fixture names where they identify durable history or test fixtures. They were
   removed from current first-user prose.
 
-## R24.6/R24.7 Readiness Decision
+## R24.6/R24.7 Readiness Scope
 
 R24.6 and R24.7 use a dry-run-only, fail-closed release-readiness posture.
-Active workflows validate package shape and repository readiness without
+Active release checks validate package shape and repository readiness without
 publishing, tagging, creating releases, opening pull requests, merging, pushing,
 or migrating an application.
 
 Publishing remains a later decision. The previous tag-triggered publication
-workflow was converted to a manual release-readiness workflow, and the Gradle
-build now verifies that active workflows and Java publishing configuration do
-not contain remote upload paths.
+automation was converted to a manual release-readiness check, and the Gradle
+build now verifies that active release checks and Java publishing configuration
+do not contain remote upload paths.
 
 ## R24.6/R24.7 Outcome
 
@@ -305,11 +306,11 @@ R24.6 packaging readiness:
 
 R24.7 CI, repository health, and security readiness:
 
-- CI and release-readiness workflows use explicit minimal permissions.
-- The active release-readiness workflow has no tag trigger, repository write
+- CI and release-readiness automation uses explicit minimal permissions.
+- The active release-readiness check has no tag trigger, repository write
   permission, publishing secret fetch, Maven Central upload, crates.io upload,
   Marketplace publish, or GitHub release creation.
-- Benchmark workflows remain manual and evidence-oriented.
+- Benchmark evidence generation remains manual and evidence-oriented.
 - Dependabot monitors GitHub Actions, Gradle, Cargo, and VS Code npm
   dependencies.
 - CodeQL runs for Java and TypeScript with job-scoped security upload
@@ -326,12 +327,98 @@ Accepted residual risks:
 - Rust dependent crate publish dry-runs cannot fully verify registry dependency
   resolution until `mortar-compiler` is published or a later release process
   uses a registry staging strategy.
-- Java, Rust, and VS Code version alignment remains a later R24.9 decision:
-  Java is `0.1.0-alpha.1`, while Rust crates and the VS Code extension remain
-  `0.1.0`.
+- Version alignment is recorded by R24.9: Java is `0.1.0-alpha.1`, while Rust
+  crates and the VS Code extension remain `0.1.0` for this alpha train.
 - Branch protection, protected environments, publisher ownership, Central
   credentials, crates.io ownership, and Marketplace credentials are external
   release prerequisites and are not completed by R24.6/R24.7.
+
+## R24.8 Performance Wording And Evidence Outcome
+
+R24.8 reviewed the public-facing performance surface:
+
+- `README.md`
+- `docs/performance.md`
+- `docs/benchmarks/README.md`
+- `docs/comparison.md`
+- `docs/roadmap.md`
+- `docs/release.md`
+- Java, Rust, and VS Code package metadata descriptions
+
+Outcome:
+
+- Public wording is limited to this claim boundary: Mortar has retained
+  benchmark evidence and disciplined measurement.
+- R23 did not authorize public performance superiority claims.
+- Mortar does not claim speed superiority over JDBC, PostgreSQL, jOOQ,
+  QueryDSL, Hibernate, Spring Data, or application workloads.
+- Mortar does not turn benchmark evidence into deployment guarantees.
+- Local-only smoke output remains harness evidence only and is not public proof.
+- Retained benchmark evidence is described by durable bundle requirements:
+  manifest, commands, environment metadata, raw artifacts, summaries,
+  limitations, and review notes. Public docs no longer depend on temporary CI
+  run links.
+
+## R24.9 Alpha Publication Decision
+
+Decision: conditional go for the `0.1.0-alpha` publication decision.
+
+This is not an authorization to publish. It means package/readiness work is
+ready for a later alpha publication action after external publication
+prerequisites are completed.
+
+R24 closes with conditional go, not full go and not no-go. The repository-side
+package, documentation, automation, and evidence posture is sufficient to close
+R24. Actual publication remains blocked by external ownership, credential,
+protected release-control, and guarded automation prerequisites.
+
+Readiness review outcome:
+
+- Java coordinates are `io.github.sequelcore:*:0.1.0-alpha.1`.
+- Publishable Java modules remain limited to `mortar-core`,
+  `mortar-dialect-postgres`, `mortar-runtime-jdbc`,
+  `mortar-spring-boot-starter`, `mortar-processor`, and `mortar-testkit`.
+- Maven local publication, generated POM metadata, sources jars, and Javadoc
+  jars are part of the verified dry-run path.
+- Rust package contents are inspectable for `mortar-compiler`, `mortar-cli`,
+  and `mortar-lsp`; `mortar-cli` and `mortar-lsp` remain fail-closed for full
+  crates.io dependency resolution until `mortar-compiler` exists in the target
+  registry.
+- VS Code packaging creates a local VSIX and does not publish. The known
+  file-count warning is accepted for alpha readiness and should be resolved by
+  bundling before a broader extension release.
+- Active release-readiness automation is manual and dry-run only with scoped
+  read permissions. No active release check performs a registry upload, tag,
+  GitHub release, PR, merge, push, or application migration.
+- Repository health files are present: `LICENSE`, `NOTICE`,
+  `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md`, `CHANGELOG.md`, and
+  `docs/release.md`.
+- Public docs are scoped to pre-release usage and do not claim production
+  readiness.
+- Examples and first-user docs remain the Spring Boot PostgreSQL path and the
+  Clean Architecture path.
+- Version alignment is acceptable for the alpha train: Java uses
+  `0.1.0-alpha.1`; Rust crates and the VS Code extension use `0.1.0` while
+  docs describe the release as pre-release/alpha. VS Code pre-release channel
+  handling must be an explicit release step if the extension is published as a
+  pre-release extension.
+
+External prerequisites before publication:
+
+1. Sonatype Central namespace ownership for `io.github.sequelcore`, Central
+   Portal token, and signing credentials.
+2. crates.io owner access and dependency-order publication for
+   `mortar-compiler`, `mortar-cli`, and `mortar-lsp`.
+3. VS Code Marketplace publisher ownership for `sequel` and a Marketplace PAT
+   if the extension is published.
+4. Protected release environment or equivalent approval gate for publication
+   credentials, plus branch protection or rulesets.
+5. A later automation change that restores guarded publication/upload steps and
+   an explicit release action.
+
+R24 performed no actual release, tag, Maven Central publication, GitHub
+Packages publication, crates.io publication, VS Code Marketplace publication,
+GitHub release, PR, merge, push, or application migration.
 
 ## Research Basis
 
@@ -407,14 +494,33 @@ Additional R24.6/R24.7 research basis:
 - Spring Boot auto-configuration and starter guidance:
   https://docs.spring.io/spring-boot/reference/features/developing-auto-configuration.html
 
+Additional R24.8/R24.9 research basis:
+
+- Central Portal registration and immutability:
+  https://central.sonatype.org/register/central-portal/
+- Central Portal publishing token guidance:
+  https://central.sonatype.org/publish/generate-portal-token/
+- Central Portal Gradle publishing status:
+  https://central.sonatype.org/publish/publish-portal-gradle/
+- Gradle Maven Publish current documentation:
+  https://docs.gradle.org/current/userguide/publishing_maven.html
+- Gradle Java plugin source and Javadoc jar guidance:
+  https://docs.gradle.org/current/userguide/java_plugin.html
+- GitHub Actions permission syntax:
+  https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax#permissions
+- SemVer 2.0.0:
+  https://semver.org/
+- Oracle JDK 24 standard doclet specification:
+  https://docs.oracle.com/en/java/javase/24/docs/specs/javadoc/doc-comment-spec.html
+
 ## Remaining R24 Work
 
-R24.8-R24.9 remain Planned:
+R24 is Done. The next phase is an explicit alpha publication preparation step,
+separate from R24 readiness. It should complete external ownership and
+credential setup, restore guarded release automation, draft release notes from
+`CHANGELOG.md`, and then make a separate publication action decision.
 
-1. Performance wording and benchmark evidence review.
-2. `0.1.0-alpha` go/no-go decision.
-
-## Verification Plan
+## Verification Requirements
 
 R24 documentation changes require:
 
@@ -428,6 +534,6 @@ R24 documentation changes require:
   generated, and target outputs
 - documentation residue scan for non-public process wording
 - link/reference sanity check
-- documentation review for no archive/log clutter, no construction diary, no
-  public overclaims, no broken references, R23 Done, R24 In Progress, and only
-  R24.6/R24.7 newly Done in this change
+- documentation review for no archive/log clutter, no public overclaims, no
+  broken references, R23 Done, R24 Done, R24.8/R24.9 Done in this change, and
+  a clear next phase after R24
