@@ -1,5 +1,6 @@
 src/**
 dist/test/**
+node_modules/**
 tsconfig.json
 bun.lock
 build/**

@@ -53,7 +53,8 @@
     }
   },
   "scripts": {
-    "compile": "tsc -p .",
+    "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --minify --outfile=dist/extension.js",
+    "compile": "tsc -p . && bun run bundle",
     "package:vsix": "bun run compile && vsce package --out build/mortar-vscode-0.1.0.vsix",
     "test": "bun run compile && cargo build -p mortar-lsp -p mortar-cli --manifest-path ../../rust/Cargo.toml && node ./dist/test/runTest.js",
     "test:screenshots": "bun run compile && cargo build -p mortar-lsp -p mortar-cli --manifest-path ../../rust/Cargo.toml && node ./dist/test/runTest.js",
@@ -69,6 +70,7 @@
     "@types/ws": "8.18.1",
     "@vscode/test-electron": "2.5.2",
     "@vscode/vsce": "3.9.2",
+    "esbuild": "0.27.2",
     "mocha": "11.7.6",
     "typescript": "5.6.3",
     "ws": "8.21.0"
