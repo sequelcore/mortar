@@ -1,4 +1,5 @@
 import { execFile } from "child_process";
+import * as fs from "fs";
 import { promisify } from "util";
 import * as vscode from "vscode";
 import {
@@ -18,7 +19,7 @@ export interface ExplainSqlResult {
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const configuration = vscode.workspace.getConfiguration("mortar");
-  const command = resolveWorkspacePath(configuration.get<string>("lsp.path", "mortar-lsp"));
+  const command = resolveExecutablePath(configuration.get<string>("lsp.path", "mortar-lsp"));
   const outputChannel = vscode.window.createOutputChannel("Mortar");
   const serverOptions: ServerOptions = {
     command,
@@ -63,7 +64,7 @@ async function explainSql(
   outputChannel: vscode.OutputChannel,
 ): Promise<ExplainSqlResult> {
   const configuration = vscode.workspace.getConfiguration("mortar");
-  const cliPath = resolveWorkspacePath(configuration.get<string>("cli.path", "mortar"));
+  const cliPath = resolveExecutablePath(configuration.get<string>("cli.path", "mortar"));
   const connection = configuration.get<string>("postgres.connection", "");
 
   if (connection.trim() === "") {
@@ -123,6 +124,20 @@ function resolveWorkspacePath(value: string): string {
   }
 
   return value.replace(/\$\{workspaceFolder\}/g, workspaceFolder.uri.fsPath);
+}
+
+function resolveExecutablePath(value: string): string {
+  const resolved = resolveWorkspacePath(value);
+  if (process.platform === "win32" || !resolved.endsWith(".exe") || fs.existsSync(resolved)) {
+    return resolved;
+  }
+
+  const platformPath = resolved.slice(0, -".exe".length);
+  if (fs.existsSync(platformPath)) {
+    return platformPath;
+  }
+
+  return resolved;
 }
 
 function errorOutput(error: unknown): string {
