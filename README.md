@@ -8,8 +8,12 @@ executes. It is not an ORM: it does not provide managed entity state, lazy
 loading, identity maps, implicit graph traversal, or repository method-name
 query derivation.
 
-Status: pre-release. The first planned public version is `0.1.0-alpha.1`; it
-has not been published to Maven Central or crates.io yet.
+Status: pre-release. The first planned Java artifact version is
+`0.1.0-alpha.1`; it has not been published to Maven Central yet. Rust crates
+and the VS Code extension remain on their own `0.1.0` package versions. R24
+recorded a conditional alpha publication decision; publication still requires
+external publisher ownership, credentials, protected release controls, and a
+later explicit release action.
 
 ## Current Scope
 

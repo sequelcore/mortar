@@ -2,6 +2,12 @@
 
 Mortar is pre-1.0 and has not published a public release.
 
+R24 recorded a conditional go for the `0.1.0-alpha` publication decision. That
+decision means the repository package/readiness posture is ready for a later
+alpha publication action, but no artifact may be published until the external
+publisher ownership, credentials, protected release controls, and release
+automation changes in this policy are completed.
+
 ## Versioning
 
 Before `1.0.0`:
@@ -92,7 +98,7 @@ Before a public release:
 7. VS Code typecheck passes when the extension is included.
 8. Examples compile and tests pass.
 9. Maven local publication evidence exists.
-10. Central Portal validation or publish-workflow dry-run evidence exists for
+10. Central Portal validation or publication dry-run evidence exists for
     Java artifacts before any Maven Central publication.
 11. Cargo package inspection and dry-run evidence exists for publishable
     crates.
@@ -100,8 +106,8 @@ Before a public release:
     until their internal dependencies are published have package-inspection
     evidence and a documented fail-closed reason.
 13. VS Code package dry-run evidence exists if the extension is included.
-14. GitHub Actions release-readiness workflows use scoped permissions and
-    dry-run jobs only until publication is explicitly authorized.
+14. Release-readiness automation uses scoped permissions and dry-run jobs only
+    until publication is explicitly authorized.
 15. Release notes are drafted from `CHANGELOG.md`.
 
 ## Dry-Run Commands
@@ -140,9 +146,9 @@ does not publish to the VS Code Marketplace.
 
 ## Publication Policy
 
-Active workflows are release-readiness only and do not publish artifacts.
-Publication requires a later explicit go/no-go decision and a separate workflow
-change that restores a guarded release path.
+Active release automation is readiness-only and does not publish artifacts.
+Publication requires a later explicit go/no-go decision and a separate
+automation change that restores a guarded release path.
 
 Future publication should be tag-gated and protected by scoped permissions,
 protected secrets, and validation jobs before any upload step. Dry-runs do not
@@ -158,6 +164,19 @@ crate versions are permanent and cannot be overwritten.
 VS Code extension publication requires Marketplace publisher credentials and
 packaging constraints for README/CHANGELOG assets. Packaging a VSIX is not the
 same as publishing it.
+
+Before an alpha publication action, complete these external prerequisites:
+
+1. Confirm Sonatype Central namespace ownership for `io.github.sequelcore`,
+   Central Portal token access, and signing credentials.
+2. Confirm crates.io owner access for `mortar-compiler`, `mortar-cli`, and
+   `mortar-lsp`, and publish in dependency order.
+3. Confirm VS Code Marketplace publisher ownership for `sequel` and a
+   Marketplace PAT if the extension is included.
+4. Add protected release controls for publication credentials, including branch
+   protection or rulesets and a protected environment or equivalent approval
+   gate.
+5. Restore guarded upload steps only in a later release automation change.
 
 No release, tag, Maven Central publication, crates.io publication, VS Code
 Marketplace publication, GitHub release, PR, merge, or application migration is

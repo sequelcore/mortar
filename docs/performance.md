@@ -2,9 +2,10 @@
 
 Mortar treats performance as a measured property, not a marketing claim.
 
-Current public wording is limited to this: Mortar keeps benchmark discipline for
-supported scenarios; public performance claims require retained raw artifacts,
-disclosed methodology, exact baselines, limitations, and readiness review.
+Current public wording is limited to this: Mortar has retained benchmark
+evidence and disciplined measurement. Public performance claims require retained
+raw artifacts, disclosed methodology, exact baselines, limitations, and
+readiness review.
 
 Mortar does not currently claim speed superiority over JDBC, PostgreSQL, jOOQ,
 QueryDSL, Hibernate, Spring Data, or application-specific persistence code.
@@ -27,25 +28,19 @@ database performance claims.
 
 R23 retained evidence exists for three separate families:
 
-- Java runtime PostgreSQL benchmark workflow artifacts for current scalar and
-  mutation scenarios.
-- Rust tooling/LSP Criterion workflow artifacts.
-- VS Code editor-latency trace workflow artifacts.
+- Java runtime PostgreSQL benchmark artifacts for current scalar and mutation
+  scenarios.
+- Rust tooling/LSP Criterion artifacts.
+- VS Code editor-latency trace artifacts.
 
-Reviewed R23 artifacts:
+The retained evidence is available as evidence packages with manifests,
+commands, environment metadata, raw artifacts, summaries, limitations, and
+review notes. Public docs should refer to the evidence families and retention
+requirements, not to temporary CI run links.
 
-- Java scalar count:
-  https://github.com/sequelcore/mortar/actions/runs/26887593414
-- Java DML `RETURNING`:
-  https://github.com/sequelcore/mortar/actions/runs/26887593463
-- Rust tooling/LSP:
-  https://github.com/sequelcore/mortar/actions/runs/26887800615
-- VS Code editor latency:
-  https://github.com/sequelcore/mortar/actions/runs/26885861833
-
-The R23 review accepted these artifacts as retained internal evidence for the
-measured families. It did not authorize optimization, threshold tightening, or
-public performance superiority claims.
+The R23 review accepted these artifacts as retained project evidence for the
+measured families. R23 did not authorize public performance superiority claims,
+optimization, or threshold tightening.
 
 ## Evidence Boundaries
 
