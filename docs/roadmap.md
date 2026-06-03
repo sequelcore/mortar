@@ -1913,7 +1913,7 @@ Review result:
 
 ### R22: Scalar And Mutation Contracts
 
-Status: Planned
+Status: Done
 
 Goal: Make Mortar cover the minimum real repository persistence cycle before
 pre-release readiness is evaluated: read, count, check existence, create,
@@ -1955,6 +1955,72 @@ Exit criteria:
 - examples compile and keep Mortar inside infrastructure adapters;
 - docs state that Mortar remains explicit persistence, not an ORM;
 - no performance, release, migration, or replacement claims are added.
+
+Evidence:
+
+- Required xhigh architecture debate completed on 2026-06-03. Outcome: keep R22
+  as one persistence-cycle gate, but split public contracts into row reads,
+  scalar reads, and mutations. `count` and `exists` are DSL-only; no generated
+  scalar or write facades were added.
+- `java/core` adds `CountSpec`, `ExistsSpec`, `ScalarSpec<T>`,
+  `MortarBoundScalar<T>`, `MortarBoundMutation`,
+  `MortarReturningMutation<T>`, and `MutationResultMode`.
+- `java/dialect-postgres` renders PostgreSQL `count`, `exists`, insert,
+  update, delete, and `RETURNING` SQL with visible ordered parameters and
+  metadata.
+- `java/runtime-jdbc` executes scalar reads, row-count mutations, returning
+  mutations, and same-SQL non-returning batches without adding execution
+  methods to scalar or mutation values.
+- `java/testkit` asserts bound scalar and mutation SQL contracts.
+- Spring Boot and Clean Architecture examples include `count`, `exists`,
+  create, update, and delete repository/adapter methods while keeping Mortar in
+  infrastructure.
+- `docs/adr/0009-r22-scalar-and-mutation-contracts.md` records the public
+  contract decision.
+- Processor metadata/source-map and Rust LSP contracts did not change because
+  R22 deliberately avoided generated scalar/write facades.
+
+Changed modules/docs:
+
+- `java/core`, `java/dialect-postgres`, `java/runtime-jdbc`, `java/testkit`;
+- `examples/spring-boot-postgres`;
+- `examples/clean-architecture-postgres`;
+- `rust/crates/mortar-cli`;
+- `docs/adr/0009-r22-scalar-and-mutation-contracts.md`;
+- `docs/adr/index.md`;
+- `docs/api-reference.md`;
+- `docs/query-recipes.md`;
+- `docs/spec/architecture.md`;
+- `docs/sql-snapshots.md`;
+- `docs/testkit.md`;
+- `docs/troubleshooting.md`;
+- `docs/usage-guide.md`;
+- `docs/plan.md` and this roadmap.
+
+Verification passed on 2026-06-03:
+
+- initial focused core gate failed before implementation because new scalar and
+  bound mutation contracts did not exist;
+- `gradlew.bat :java:core:test --no-daemon`;
+- focused scalar/mutation gate:
+  `gradlew.bat :java:dialect-postgres:test :java:runtime-jdbc:test :java:testkit:test :examples:spring-boot-postgres:test :examples:clean-architecture-postgres:test --no-daemon`;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/user/project scrub excluding build, cache, dependency,
+  generated, and target outputs.
+
+Migration note: R22 adds public scalar and bound mutation contracts. Existing
+row-read, generated fixed-read, PostgreSQL mutation spec/rendering, JDBC
+batch, processor metadata/source-map, Rust compiler, LSP, VS Code, IntelliJ,
+and Spring wiring contracts remain compatible.
+
+Release/performance note: R22 performs no release, tag, publish, PR, push,
+announcement, private application migration, runtime optimization, benchmark
+threshold change, public benchmark report, or performance claim.
 
 ### R23: Retained Performance Evidence And Optimization
 

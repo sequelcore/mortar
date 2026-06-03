@@ -170,9 +170,33 @@ public final class QueryBuilder<T> {
         );
     }
 
+    public CountSpec count() {
+        requireScalarShape();
+        return new CountSpec(table, joins, predicates);
+    }
+
+    public MortarBoundScalar<Long> count(QueryRenderer renderer) {
+        return MortarBoundScalar.unnamed(count(), renderer);
+    }
+
+    public ExistsSpec exists() {
+        requireScalarShape();
+        return new ExistsSpec(table, joins, predicates);
+    }
+
+    public MortarBoundScalar<Boolean> exists(QueryRenderer renderer) {
+        return MortarBoundScalar.unnamed(exists(), renderer);
+    }
+
     private void requireModel() {
         if (model == null) {
             throw new IllegalStateException("Lambda-based query operations require a MortarTable model");
+        }
+    }
+
+    private void requireScalarShape() {
+        if (!selectColumns.isEmpty() || projection != null || !sorts.isEmpty() || limit != null || offset != null) {
+            throw new IllegalStateException("scalar queries cannot select columns, project rows, sort, limit, or offset");
         }
     }
 

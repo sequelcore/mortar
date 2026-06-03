@@ -34,9 +34,10 @@ need the `MortarGeneratedQuery` contract, but the fixed `Read` facade is the
 canonical R16.2 repository shape.
 
 The generated `Read` facade is deliberately small. It does not generate
-execution methods, writes, joins, optional filters, `count`, `exists`,
-projections, or repository classes. Repositories still own method names, row to
-DTO mapping, transaction placement, and tests.
+execution methods, writes, joins, optional filters, scalar methods,
+projections, or repository classes. R22 `count` and `exists` are DSL scalar
+contracts, not generated facade methods. Repositories still own method names,
+row to DTO mapping, transaction placement, and tests.
 
 Use the Java DSL when the query has application-specific predicates, joins,
 projection shape, sorting, or pagination:
@@ -50,6 +51,44 @@ QuerySpec query = db.from(CLIENT)
     .named("PostgresClientReader.findActivePage")
     .build();
 ```
+
+Use scalar DSL terminals for `count` and `exists` when a repository needs a
+single value without loading rows:
+
+```java
+MortarBoundScalar<Long> count = db.from(CLIENT)
+    .where(client -> client.active.eq(true))
+    .count(renderer)
+    .named("ClientRepository.countActive");
+
+long activeClients = jdbcClient.fetchOne(count);
+```
+
+Use explicit mutation specs and bound mutation values for writes:
+
+```java
+MortarBoundMutation deactivate = MortarBoundMutation.unnamed(
+        new UpdateSpec(
+            CLIENT.table,
+            List.of(Assignment.of(CLIENT.active, false)),
+            List.of(CLIENT.id.eq(id)),
+            List.of()
+        ),
+        renderer
+    )
+    .named("ClientRepository.deactivate");
+
+int changedRows = jdbcClient.execute(deactivate);
+```
+
+Use `MortarReturningMutation<T>` only when the PostgreSQL mutation declares
+`RETURNING` columns and the repository maps those returned columns into a row or
+DTO type.
+
+For create paths that expect one returned row, fetch the returning mutation as a
+list and fail fast unless exactly one row is returned. Do not turn a missing
+`RETURNING` row into `Optional.empty()` unless the business operation explicitly
+allows no returned row.
 
 Use pre-rendered `RenderedQuery` only when a caller has already rendered and
 verified SQL. Keep raw SQL fragments behind `unsafeWhereRaw(...)` and test them
@@ -89,7 +128,8 @@ Keep Mortar in infrastructure adapters:
 - domain types do not import Mortar;
 - application ports expose business methods;
 - infrastructure repositories build `QuerySpec` values or generated
-  `MortarBoundQuery<?>` read facade values;
+  `MortarBoundQuery<?>` read facade values, scalar values, or explicit mutation
+  values;
 - tests assert SQL at the adapter boundary.
 
 See `examples/clean-architecture-postgres` for a CI-compiling example.
@@ -116,6 +156,16 @@ boundary:
 MortarSqlAssertions.assertThatSql(renderer.render(query))
     .hasSql("select c.id, c.name from clients c where c.active = ? order by c.id asc limit ? offset ?")
     .hasParameters(true, 20, 20);
+```
+
+Scalar and mutation values use the same assertion entry point:
+
+```java
+MortarSqlAssertions.assertThatSql(count)
+    .hasName("ClientRepository.countActive")
+    .hasSql("select count(*) from clients c where c.active = ?")
+    .hasParameters(true)
+    .hasParameterTypes(Boolean.class);
 ```
 
 Use Testcontainers when claiming PostgreSQL syntax or execution compatibility.

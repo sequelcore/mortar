@@ -32,6 +32,20 @@ MortarSqlAssertions.assertThatSql(new PostgresQueryRenderer().render(query))
 
 Then update or check SQL snapshots with the CLI described in `docs/cli.md`.
 
+For scalar or mutation contracts, assert the bound value before changing
+repository behavior:
+
+```java
+MortarSqlAssertions.assertThatSql(repository.deactivateMutation(7L))
+    .hasSql("update clients set active = ? where id = ?")
+    .hasParameters(false, 7L);
+```
+
+If a returning mutation maps columns in the wrong order, check the mutation's
+`returning` list. Row mapping follows the PostgreSQL `RETURNING` column order,
+while metadata still includes assigned, filtered, and returned columns for
+inspection.
+
 ## IntelliJ Or VS Code Shows No SQL
 
 For generated fixed reads such as `QClient.CLIENT.read(renderer).findById(id)`,

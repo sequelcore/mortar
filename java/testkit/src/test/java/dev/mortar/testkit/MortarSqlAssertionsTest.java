@@ -6,7 +6,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.Join;
 import dev.mortar.core.JoinType;
+import dev.mortar.core.MortarBoundMutation;
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.MortarBoundScalar;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.QueryMetadata;
 import dev.mortar.core.RenderedQuery;
@@ -44,6 +46,35 @@ final class MortarSqlAssertionsTest {
             .hasParameterTypes(Long.class)
             .hasTables(clients)
             .hasColumns(id);
+    }
+
+    @Test
+    void assertsBoundScalarSqlAndName() {
+        MortarBoundScalar<Long> scalar = MortarBoundScalar.of(
+            "ClientRepository.countActive",
+            new RenderedQuery("select count(*) from clients c where c.active = ?", List.of(Parameter.of(true))),
+            Long.class
+        );
+
+        assertThatSql(scalar)
+            .hasName("ClientRepository.countActive")
+            .hasSql("select count(*) from clients c where c.active = ?")
+            .hasParameters(true)
+            .hasParameterTypes(Boolean.class);
+    }
+
+    @Test
+    void assertsBoundMutationSqlAndName() {
+        MortarBoundMutation mutation = MortarBoundMutation.of(
+            "ClientRepository.deactivate",
+            new RenderedQuery("update clients set active = ? where id = ?", List.of(Parameter.of(false), Parameter.of(7L)))
+        );
+
+        assertThatSql(mutation)
+            .hasName("ClientRepository.deactivate")
+            .hasSql("update clients set active = ? where id = ?")
+            .hasParameters(false, 7L)
+            .hasParameterTypes(Boolean.class, Long.class);
     }
 
     @Test

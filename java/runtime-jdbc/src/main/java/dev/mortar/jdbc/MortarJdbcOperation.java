@@ -5,5 +5,6 @@ package dev.mortar.jdbc;
  */
 public enum MortarJdbcOperation {
     QUERY,
+    MUTATION,
     BATCH
 }

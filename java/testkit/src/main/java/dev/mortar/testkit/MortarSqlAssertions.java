@@ -2,7 +2,10 @@ package dev.mortar.testkit;
 
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.Join;
+import dev.mortar.core.MortarBoundMutation;
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.MortarBoundScalar;
+import dev.mortar.core.MortarReturningMutation;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.RenderedQuery;
 import dev.mortar.core.TableRef;
@@ -39,6 +42,21 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
         return new MortarSqlAssertions(query.rendered(), query.queryName().orElse("<unnamed>"), query.rowType());
     }
 
+    public static MortarSqlAssertions assertThatSql(MortarBoundScalar<?> scalar) {
+        Objects.requireNonNull(scalar, "scalar cannot be null");
+        return new MortarSqlAssertions(scalar.rendered(), scalar.queryName().orElse("<unnamed>"), scalar.scalarType());
+    }
+
+    public static MortarSqlAssertions assertThatSql(MortarBoundMutation mutation) {
+        Objects.requireNonNull(mutation, "mutation cannot be null");
+        return new MortarSqlAssertions(mutation.rendered(), mutation.mutationName().orElse("<unnamed>"), null);
+    }
+
+    public static MortarSqlAssertions assertThatSql(MortarReturningMutation<?> mutation) {
+        Objects.requireNonNull(mutation, "mutation cannot be null");
+        return new MortarSqlAssertions(mutation.rendered(), mutation.mutationName().orElse("<unnamed>"), mutation.rowType());
+    }
+
     public MortarSqlAssertions hasSql(String expectedSql) {
         Objects.requireNonNull(expectedSql, "expectedSql cannot be null");
         isNotNull();
@@ -54,6 +72,18 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
 
     public MortarSqlAssertions renders(String expectedSql) {
         return hasSql(expectedSql);
+    }
+
+    public MortarSqlAssertions hasName(String expectedName) {
+        Objects.requireNonNull(expectedName, "expectedName cannot be null");
+        if (queryName == null || !queryName.equals(expectedName)) {
+            failWithMessage("""
+                Expected SQL contract name to be:
+                  <%s>
+                but was:
+                  <%s>""", expectedName, queryName);
+        }
+        return this;
     }
 
     public MortarSqlAssertions hasParameters(Object... expectedValues) {
@@ -134,8 +164,14 @@ public final class MortarSqlAssertions extends AbstractAssert<MortarSqlAssertion
     }
 
     private String queryContext() {
-        if (queryName == null || rowType == null) {
+        if (queryName == null) {
             return "";
+        }
+        if (rowType == null) {
+            return """
+
+                Query:
+                  <%s>""".formatted(queryName);
         }
         return """
 

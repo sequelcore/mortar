@@ -9,9 +9,14 @@ import dev.mortar.core.Parameter;
 import dev.mortar.core.Projection;
 import dev.mortar.core.ProjectionKind;
 import dev.mortar.core.Assignment;
+import dev.mortar.core.CountSpec;
 import dev.mortar.core.InsertSpec;
+import dev.mortar.core.MortarBoundMutation;
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.MortarBoundScalar;
+import dev.mortar.core.MortarReturningMutation;
 import dev.mortar.core.QueryMetadata;
+import dev.mortar.core.UpdateSpec;
 
 import org.junit.jupiter.api.Test;
 
@@ -66,7 +71,7 @@ final class MortarJdbcClientTest {
             resultSet -> resultSet.getString("name")
         );
 
-        assertThat(rows).containsExactly("Ricardo");
+        assertThat(rows).containsExactly("Ada");
         assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
     }
@@ -86,7 +91,7 @@ final class MortarJdbcClientTest {
             resultSet -> resultSet.getString("name")
         );
 
-        assertThat(rows).containsExactly("Ricardo");
+        assertThat(rows).containsExactly("Ada");
         assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
     }
@@ -106,7 +111,7 @@ final class MortarJdbcClientTest {
             resultSet -> resultSet.getString("name")
         );
 
-        assertThat(row).contains("Ricardo");
+        assertThat(row).contains("Ada");
         assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
     }
@@ -135,7 +140,7 @@ final class MortarJdbcClientTest {
 
         Optional<ClientRow> row = client.fetchOptional(query);
 
-        assertThat(row).contains(new ClientRow(7L, "Ricardo"));
+        assertThat(row).contains(new ClientRow(7L, "Ada"));
         assertThat(statement.sql).isEqualTo("select id, name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
     }
@@ -160,7 +165,7 @@ final class MortarJdbcClientTest {
 
         List<String> rows = client.fetch(query);
 
-        assertThat(rows).containsExactly("Ricardo");
+        assertThat(rows).containsExactly("Ada");
         assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
     }
@@ -185,7 +190,7 @@ final class MortarJdbcClientTest {
 
         Optional<String> row = client.fetchOptional(query);
 
-        assertThat(row).contains("Ricardo");
+        assertThat(row).contains("Ada");
         assertThat(statement.sql).isEqualTo("select name from clients where id = ?");
         assertThat(statement.boundValues).containsExactly(7L);
     }
@@ -214,7 +219,7 @@ final class MortarJdbcClientTest {
 
         List<ClientRow> rows = client.fetch(query);
 
-        assertThat(rows).containsExactly(new ClientRow(7L, "Ricardo"));
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ada"));
         assertThat(statement.sql).isEqualTo("select id, name from clients");
     }
 
@@ -261,7 +266,7 @@ final class MortarJdbcClientTest {
 
         List<ClientRow> rows = client.fetch(new ClientLookupQuery(), new ClientLookup(true, 7L));
 
-        assertThat(rows).containsExactly(new ClientRow(7L, "Ricardo"));
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ada"));
         assertThat(statement.sql).isEqualTo("select id, name from clients where active = ? and id = ?");
         assertThat(statement.boundCalls).containsExactly("setBoolean:1:true", "setLong:2:7");
     }
@@ -278,7 +283,7 @@ final class MortarJdbcClientTest {
 
         List<ClientRow> rows = client.fetch(new ClientFindAllQuery());
 
-        assertThat(rows).containsExactly(new ClientRow(7L, "Ricardo"));
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ada"));
         assertThat(statement.sql).isEqualTo("select id, name from clients");
         assertThat(statement.boundCalls).isEmpty();
     }
@@ -320,8 +325,8 @@ final class MortarJdbcClientTest {
         MortarJdbcClient client = new MortarJdbcClient(connection(statement), queryRenderer());
 
         try (MortarPreparedQuery<ClientLookup, ClientRow> prepared = client.prepare(new ClientLookupQuery())) {
-            assertThat(prepared.fetchOptional(new ClientLookup(true, 7L))).contains(new ClientRow(7L, "Ricardo"));
-            assertThat(prepared.fetchOptional(new ClientLookup(true, 7L))).contains(new ClientRow(7L, "Ricardo"));
+            assertThat(prepared.fetchOptional(new ClientLookup(true, 7L))).contains(new ClientRow(7L, "Ada"));
+            assertThat(prepared.fetchOptional(new ClientLookup(true, 7L))).contains(new ClientRow(7L, "Ada"));
         }
 
         assertThat(statement.prepareStatementCalls).isEqualTo(1);
@@ -425,6 +430,179 @@ final class MortarJdbcClientTest {
     }
 
     @Test
+    void fetchOneExecutesBoundScalarWithoutCallingRenderer() {
+        CapturingStatement statement = new CapturingStatement();
+        statement.rowValues.put(1, 2L);
+        MortarJdbcClient client = new MortarJdbcClient(
+            dataSource(statement),
+            query -> {
+                throw new AssertionError("renderer should not run for bound scalars");
+            }
+        );
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Boolean> active = clients.column("active", "active", Boolean.class);
+        MortarBoundScalar<Long> scalar = MortarBoundScalar.of(
+            "ClientRepository.countActive",
+            new RenderedQuery(
+                "select count(*) from clients c where c.active = ?",
+                List.of(Parameter.of(true)),
+                new QueryMetadata(List.of(clients), List.of(active), List.of())
+            ),
+            Long.class
+        );
+
+        Long count = client.fetchOne(scalar);
+
+        assertThat(count).isEqualTo(2L);
+        assertThat(statement.sql).isEqualTo("select count(*) from clients c where c.active = ?");
+        assertThat(statement.boundValues).containsExactly(true);
+    }
+
+    @Test
+    void fetchOneRequiresExactlyOneScalarRow() {
+        CapturingStatement empty = new CapturingStatement();
+        empty.rowCount = 0;
+        MortarJdbcClient emptyClient = new MortarJdbcClient(dataSource(empty), queryRenderer());
+        CapturingStatement multiple = new CapturingStatement();
+        multiple.rowCount = 2;
+        MortarJdbcClient multipleClient = new MortarJdbcClient(dataSource(multiple), queryRenderer());
+        MortarBoundScalar<Long> scalar = MortarBoundScalar.of(
+            "ClientRepository.count",
+            new RenderedQuery("select count(*) from clients c", List.of()),
+            Long.class
+        );
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> emptyClient.fetchOne(scalar))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("expected exactly one row");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> multipleClient.fetchOne(scalar))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("expected exactly one row");
+    }
+
+    @Test
+    void executeBoundMutationReturnsJdbcUpdateCount() {
+        CapturingStatement statement = new CapturingStatement();
+        statement.updateCount = 1;
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(statement), queryRenderer());
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarBoundMutation mutation = MortarBoundMutation.unnamed(
+            new UpdateSpec(clients, List.of(Assignment.of(name, "Ada")), List.of(id.eq(7L)), List.of()),
+            queryRenderer()
+        ).named("ClientRepository.rename");
+
+        int count = client.execute(mutation);
+
+        assertThat(count).isEqualTo(1);
+        assertThat(statement.sql).isEqualTo("update clients set name = ? where id = ?");
+        assertThat(statement.boundValues).containsExactly("Ada", 7L);
+        assertThat(statement.executeUpdateCalls).isEqualTo(1);
+    }
+
+    @Test
+    void logsBoundMutationWithRedactedParameters() {
+        CapturingStatement statement = new CapturingStatement();
+        CapturingJdbcLogger logger = new CapturingJdbcLogger();
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(statement), queryRenderer(), logger);
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarBoundMutation mutation = MortarBoundMutation.unnamed(
+            new UpdateSpec(clients, List.of(Assignment.of(name, "Ada")), List.of(id.eq(7L)), List.of()),
+            queryRenderer()
+        ).named("ClientRepository.rename");
+
+        client.execute(mutation);
+
+        assertThat(logger.events).containsExactly(
+            new MortarJdbcLogEvent(
+                MortarJdbcOperation.MUTATION,
+                "update clients set name = ? where id = ?",
+                List.of(MortarJdbcParameter.redacted(String.class), MortarJdbcParameter.redacted(Long.class)),
+                mutation.metadata()
+            )
+        );
+    }
+
+    @Test
+    void wrapsMutationSqlExceptionsWithRenderedContext() {
+        CapturingStatement statement = new CapturingStatement();
+        statement.failExecuteUpdate = true;
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(statement), queryRenderer());
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarBoundMutation mutation = MortarBoundMutation.unnamed(
+            new UpdateSpec(clients, List.of(Assignment.of(name, "Ada")), List.of(id.eq(7L)), List.of()),
+            queryRenderer()
+        ).named("ClientRepository.rename");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> client.execute(mutation))
+            .isInstanceOf(MortarJdbcException.class)
+            .hasMessage("Failed to execute Mortar mutation")
+            .hasCauseInstanceOf(SQLException.class)
+            .satisfies(exception -> {
+                MortarJdbcException jdbcException = (MortarJdbcException) exception;
+                assertThat(jdbcException.sql()).isEqualTo("update clients set name = ? where id = ?");
+                assertThat(jdbcException.parameters()).extracting(Parameter::value).containsExactly("Ada", 7L);
+            });
+    }
+
+    @Test
+    void fetchReturningMutationMapsRowsWithoutUsingReadQueryContract() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(statement), queryRenderer());
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarReturningMutation<ClientRow> mutation = MortarReturningMutation.unnamed(
+            new InsertSpec(clients, List.of(Assignment.of(name, "Ada")), List.of(id, name)),
+            queryRenderer(),
+            ClientRow.class
+        ).named("ClientRepository.create");
+
+        Optional<ClientRow> row = client.fetchOptional(mutation);
+
+        assertThat(row).contains(new ClientRow(7L, "Ada"));
+        assertThat(statement.sql).isEqualTo("insert into clients (name) values (?) returning id, name");
+        assertThat(statement.boundValues).containsExactly("Ada");
+    }
+
+    @Test
+    void fetchReturningMutationMapsAllRows() {
+        CapturingStatement statement = new CapturingStatement();
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(statement), queryRenderer());
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        dev.mortar.core.ColumnRef<String> name = clients.column("name", "name", String.class);
+        MortarReturningMutation<ClientRow> mutation = MortarReturningMutation.unnamed(
+            new InsertSpec(clients, List.of(Assignment.of(name, "Ada")), List.of(id, name)),
+            queryRenderer(),
+            ClientRow.class
+        ).named("ClientRepository.create");
+
+        List<ClientRow> rows = client.fetch(mutation);
+
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ada"));
+        assertThat(statement.executeQueryCalls).isEqualTo(1);
+    }
+
+    @Test
+    void executeBatchRejectsReturningMutations() {
+        TableRef clients = new TableRef("clients", "c");
+        dev.mortar.core.ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        MortarJdbcClient client = new MortarJdbcClient(dataSource(new CapturingStatement()), queryRenderer());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(
+                () -> client.executeBatch(List.of(new InsertSpec(clients, List.of(Assignment.of(id, 1L)), List.of(id))))
+            )
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("batch mutations cannot declare returning columns");
+    }
+
+    @Test
     void participatesInCallerOwnedConnectionWithoutClosingOrCommitting() throws Exception {
         CapturingStatement statement = new CapturingStatement();
         Connection connection = connection(statement);
@@ -439,7 +617,7 @@ final class MortarJdbcClientTest {
             resultSet -> resultSet.getString("name")
         );
 
-        assertThat(rows).containsExactly("Ricardo");
+        assertThat(rows).containsExactly("Ada");
         assertThat(statement.connectionCloseCalls).isZero();
         assertThat(statement.connectionCommitCalls).isZero();
         assertThat(statement.connectionRollbackCalls).isZero();
@@ -465,7 +643,7 @@ final class MortarJdbcClientTest {
             ClientRow.class
         );
 
-        assertThat(rows).containsExactly(new ClientRow(7L, "Ricardo"));
+        assertThat(rows).containsExactly(new ClientRow(7L, "Ada"));
     }
 
     @Test
@@ -535,7 +713,7 @@ final class MortarJdbcClientTest {
             ClientDto.class
         );
 
-        assertThat(rows).containsExactly(new ClientDto(7L, "Ricardo"));
+        assertThat(rows).containsExactly(new ClientDto(7L, "Ada"));
     }
 
     @Test
@@ -876,6 +1054,13 @@ final class MortarJdbcClientTest {
                 statement.executeBatchCalls++;
                 return new int[] { 1, 1 };
             }
+            if (method.getName().equals("executeUpdate")) {
+                if (statement.failExecuteUpdate) {
+                    throw new SQLException("update failed");
+                }
+                statement.executeUpdateCalls++;
+                return statement.updateCount;
+            }
             return defaultValue(method.getReturnType());
         };
     }
@@ -885,6 +1070,11 @@ final class MortarJdbcClientTest {
             @Override
             public RenderedQuery render(dev.mortar.core.QuerySpec query) {
                 return new RenderedQuery("select 1", List.of());
+            }
+
+            @Override
+            public RenderedQuery render(CountSpec count) {
+                return new RenderedQuery("select count(*) from clients c", List.of(), QueryMetadata.from(count));
             }
 
             @Override
@@ -898,10 +1088,26 @@ final class MortarJdbcClientTest {
                         + insert.assignments().stream()
                             .map(assignment -> "?")
                             .collect(java.util.stream.Collectors.joining(", "))
-                        + ")",
+                        + ")"
+                        + (insert.returning().isEmpty()
+                            ? ""
+                            : " returning "
+                                + insert.returning().stream()
+                                    .map(dev.mortar.core.ColumnRef::columnName)
+                                    .collect(java.util.stream.Collectors.joining(", "))),
                     insert.assignments().stream()
                         .map(Assignment::value)
-                        .toList()
+                        .toList(),
+                    QueryMetadata.from(insert)
+                );
+            }
+
+            @Override
+            public RenderedQuery render(UpdateSpec update) {
+                return new RenderedQuery(
+                    "update clients set name = ? where id = ?",
+                    List.of(Parameter.of("Ada"), Parameter.of(7L)),
+                    QueryMetadata.from(update)
                 );
             }
         };
@@ -921,7 +1127,7 @@ final class MortarJdbcClientTest {
                         return cursor <= statement.rowCount;
                     }
                     if (method.getName().equals("getString")) {
-                        return "Ricardo";
+                        return "Ada";
                     }
                     if (method.getName().equals("getLong")) {
                         return 7L;
@@ -953,19 +1159,22 @@ final class MortarJdbcClientTest {
         private final java.util.ArrayList<Object> boundValues = new java.util.ArrayList<>();
         private final java.util.ArrayList<String> boundCalls = new java.util.ArrayList<>();
         private final java.util.ArrayList<String> boundMethods = new java.util.ArrayList<>();
-        private final java.util.Map<String, Object> rowValues = new java.util.HashMap<>(
-            java.util.Map.of("id", 7L, "name", "Ricardo")
+        private final java.util.Map<Object, Object> rowValues = new java.util.HashMap<>(
+            java.util.Map.of("id", 7L, "name", "Ada", 1, 7L)
         );
         private int addBatchCalls;
         private int executeBatchCalls;
         private int executeQueryCalls;
+        private int executeUpdateCalls;
         private int prepareStatementCalls;
         private int preparedStatementCloseCalls;
         private int connectionCloseCalls;
         private int connectionCommitCalls;
         private int connectionRollbackCalls;
         private int rowCount = 1;
+        private int updateCount = 1;
         private boolean failExecuteBatch;
+        private boolean failExecuteUpdate;
     }
 
     private record ClientLookup(boolean active, long id) {

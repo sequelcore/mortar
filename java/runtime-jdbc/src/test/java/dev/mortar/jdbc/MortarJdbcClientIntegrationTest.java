@@ -6,8 +6,11 @@ import dev.mortar.core.ColumnRef;
 import dev.mortar.core.Projection;
 import dev.mortar.core.Assignment;
 import dev.mortar.core.InsertSpec;
+import dev.mortar.core.MortarBoundMutation;
+import dev.mortar.core.MortarReturningMutation;
 import dev.mortar.core.SimpleMortarDb;
 import dev.mortar.core.TableRef;
+import dev.mortar.core.UpdateSpec;
 import dev.mortar.postgres.PostgresQueryRenderer;
 
 import org.junit.jupiter.api.Test;
@@ -134,6 +137,60 @@ final class MortarJdbcClientIntegrationTest {
             assertThat(resultSet.next()).isTrue();
             assertThat(resultSet.getInt(1)).isEqualTo(2);
         }
+    }
+
+    @Test
+    void executesScalarAndMutationContractsAgainstPostgreSQL() throws Exception {
+        DataSource dataSource = dataSource();
+        try (Connection connection = dataSource.getConnection()) {
+            createSchema(connection);
+            seedClients(connection);
+        }
+
+        TableRef clients = new TableRef("clients", "c");
+        ColumnRef<Long> id = clients.column("id", "id", Long.class);
+        ColumnRef<String> name = clients.column("name", "name", String.class);
+        ColumnRef<Boolean> active = clients.column("active", "active", Boolean.class);
+        ColumnRef<java.time.LocalDate> createdOn = clients.column("createdOn", "created_on", java.time.LocalDate.class);
+        PostgresQueryRenderer renderer = new PostgresQueryRenderer();
+        MortarJdbcClient client = new MortarJdbcClient(dataSource, renderer);
+
+        Long activeCount = client.fetchOne(new SimpleMortarDb()
+            .from(clients)
+            .where(active.eq(true))
+            .count(renderer)
+            .named("ClientRepository.countActive"));
+        Boolean exists = client.fetchOne(new SimpleMortarDb()
+            .from(clients)
+            .where(id.eq(7L))
+            .where(active.eq(true))
+            .exists(renderer)
+            .named("ClientRepository.existsActive"));
+        int updated = client.execute(MortarBoundMutation.unnamed(
+            new UpdateSpec(clients, List.of(Assignment.of(active, false)), List.of(id.eq(7L)), List.of()),
+            renderer
+        ).named("ClientRepository.deactivate"));
+        ClientRow created = client.fetchOptional(MortarReturningMutation.unnamed(
+                new InsertSpec(
+                    clients,
+                    List.of(
+                        Assignment.of(id, 12L),
+                        Assignment.of(name, "Mary"),
+                        Assignment.of(active, true),
+                        Assignment.of(createdOn, java.time.LocalDate.of(2026, 5, 31))
+                    ),
+                    List.of(id, name)
+                ),
+                renderer,
+                ClientRow.class
+            )
+            .named("ClientRepository.create"))
+            .orElseThrow();
+
+        assertThat(activeCount).isEqualTo(2L);
+        assertThat(exists).isTrue();
+        assertThat(updated).isEqualTo(1);
+        assertThat(created).isEqualTo(new ClientRow(12L, "Mary"));
     }
 
     @Test

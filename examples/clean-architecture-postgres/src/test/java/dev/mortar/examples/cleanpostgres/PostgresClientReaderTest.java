@@ -6,10 +6,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.MortarBoundScalar;
 import dev.mortar.core.QuerySpec;
 import dev.mortar.jdbc.MortarJdbcClient;
 import dev.mortar.postgres.PostgresQueryRenderer;
@@ -64,8 +66,44 @@ final class PostgresClientReaderTest {
             .hasParameters(true, 20, 20);
     }
 
+    @Test
+    void scalarReadsStayInsideInfrastructureAdapter() {
+        MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
+        when(jdbcClient.fetchOne(anyScalar()))
+            .thenAnswer(invocation -> {
+                MortarBoundScalar<?> scalar = invocation.getArgument(0);
+                if (scalar.scalarType().equals(Long.class)) {
+                    return 2L;
+                }
+                return true;
+            });
+        ClientReader reader = new PostgresClientReader(jdbcClient, renderer);
+
+        assertThat(reader.countActive()).isEqualTo(2L);
+        assertThat(reader.existsActive(7L)).isTrue();
+        verify(jdbcClient, times(2)).fetchOne(anyScalar());
+    }
+
+    @Test
+    void scalarSqlIsVisibleAtAdapterBoundary() {
+        PostgresClientReader reader = new PostgresClientReader(mock(MortarJdbcClient.class), renderer);
+
+        assertThatSql(reader.countActiveQuery())
+            .hasName("PostgresClientReader.countActive")
+            .hasSql("select count(*) from clients c where c.active = ?")
+            .hasParameters(true);
+        assertThatSql(reader.existsActiveQuery(7L))
+            .hasName("PostgresClientReader.existsActive")
+            .hasSql("select exists (select 1 from clients c where c.id = ? and c.active = ?)")
+            .hasParameters(7L, true);
+    }
+
     @SuppressWarnings("unchecked")
     private MortarBoundQuery<QClient.FindByIdRow> anyFindByIdQuery() {
         return any(MortarBoundQuery.class);
+    }
+
+    private <T> MortarBoundScalar<T> anyScalar() {
+        return any();
     }
 }

@@ -6,6 +6,14 @@ package dev.mortar.core;
 public interface QueryRenderer {
     RenderedQuery render(QuerySpec query);
 
+    default RenderedQuery render(CountSpec count) {
+        throw new UnsupportedOperationException("Count rendering is not supported");
+    }
+
+    default RenderedQuery render(ExistsSpec exists) {
+        throw new UnsupportedOperationException("Exists rendering is not supported");
+    }
+
     default RenderedQuery render(InsertSpec insert) {
         throw new UnsupportedOperationException("Insert rendering is not supported");
     }
