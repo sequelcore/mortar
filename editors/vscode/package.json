@@ -3,7 +3,7 @@
   "displayName": "Mortar",
   "description": "VS Code client for Mortar SQL transparency tooling.",
   "version": "0.1.0",
-  "publisher": "sequel",
+  "publisher": "sequelcore",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

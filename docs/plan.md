@@ -409,7 +409,7 @@ External prerequisites before publication:
    Portal token, and signing credentials.
 2. crates.io owner access and dependency-order publication for
    `mortar-compiler`, `mortar-cli`, and `mortar-lsp`.
-3. VS Code Marketplace publisher ownership for `sequel` and a Marketplace PAT
+3. VS Code Marketplace publisher ownership for `sequelcore` and a Marketplace PAT
    if the extension is published.
 4. Protected release environment or equivalent approval gate for publication
    credentials, plus branch protection or rulesets.
