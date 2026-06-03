@@ -22,3 +22,10 @@ serde_json.workspace = true
 thiserror.workspace = true
 tree-sitter.workspace = true
 tree-sitter-java.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "r20_lsp_resolver"
+harness = false

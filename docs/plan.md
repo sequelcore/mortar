@@ -2381,7 +2381,7 @@ Canonical slices:
 - R20.5: DSL query render/execute overhead profiling for broader read and write
   shapes. Status: Done.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
-  Status: Planned.
+  Status: Done.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
   Planned.
 - R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
@@ -2566,12 +2566,74 @@ Verification passed on 2026-06-02:
 
 ### R20.6 Rust LSP Resolver Benchmarking
 
-Status: Planned.
+Status: Done.
 
-Design Rust tooling benchmarks for parser/resolver/diagnostic latency,
-allocation, large-document behavior, source-map lookup, and incremental edit
-behavior. Criterion is the preferred candidate, but R20.6 must choose the
-lowest-maintenance harness that produces retained, comparable artifacts.
+R20.6 adds an internal Criterion benchmark harness for current Rust LSP
+tooling/editor behavior without changing R19 semantics. The required xhigh
+performance debate concluded that R20.6 must measure the existing
+source-map-backed resolver path only, keep Rust tooling metrics separate from
+Java runtime metrics, and block optimization candidates until repeated retained
+artifacts plus profiler/allocation evidence isolate a dominant cost.
+
+Harness:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver
+```
+
+Smoke:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+```
+
+R20.6 uses Criterion `0.7.0`, because Mortar declares Rust `1.85` and
+Criterion `0.8.2` requires Rust `1.86`. The benchmark groups are:
+
+- tree-sitter parser latency for canonical generated reads, supported local
+  metamodel aliases, supported read-namespace aliases, unsupported alias
+  fail-closed syntax, and deterministic large Java documents;
+- editor features for hover, copy SQL, PostgreSQL EXPLAIN code actions,
+  definition, metadata/source-map/snapshot reads, supported aliases,
+  unsupported aliases, stale source maps, and missing snapshots;
+- diagnostics and current full-buffer change behavior, including malformed
+  buffers, large documents, and success-to-failure-to-recovery edit scripts.
+
+R20.6 records local/internal tooling evidence only. Criterion output under
+`rust/target/criterion` must not be committed and cannot support JDBC,
+database, Java runtime, or public product performance claims. Allocation
+interpretation remains blocked until retained profiler/allocation artifacts are
+captured with exact command, commit, corpus, toolchain, OS/CPU, limitations,
+and review notes.
+
+Changed files/docs: `rust/Cargo.toml`, `rust/Cargo.lock`,
+`rust/crates/mortar-lsp/Cargo.toml`,
+`rust/crates/mortar-lsp/src/lib.rs`,
+`rust/crates/mortar-lsp/benches/r20_lsp_resolver.rs`,
+`rust/crates/mortar-lsp/tests/r20_lsp_benchmark_harness.rs`,
+`rust/crates/mortar-lsp/tests/support/r20_lsp_benchmark.rs`,
+`docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+`docs/performance.md`, this plan, and `docs/roadmap.md`.
+
+Migration note: no Java public API, runtime behavior, generated Java API,
+metadata format, source-map format, VS Code command contract, R19 editor
+semantics, runtime optimization, release, publication, migration, or public
+performance claim changed.
+
+Verification passed on 2026-06-03:
+
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- focused R20.6 Criterion smoke generated local `rust/target/criterion` output
+  as uncommitted build output;
+- `gradlew.bat check --no-daemon`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/project scrub excluding build, cache, dependency, generated, and
+  target outputs.
 
 ### R20.7 Evidence-Ranked Optimizations
 

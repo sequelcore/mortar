@@ -202,6 +202,35 @@ The R20.5 DSL render/execute debate concluded:
   evidence gate for optimization proposals or public performance reporting is
   satisfied.
 
+The R20.6 Rust LSP resolver debate concluded:
+
+- R20.6 measures the current Rust tooling/editor path only: source-map-backed
+  generated-call resolution for hover, code actions, definition, diagnostics,
+  metadata/source-map/snapshot reads, large-document scans, and current
+  full-buffer change behavior.
+- Criterion should be added now as an internal Rust harness, pinned to
+  Criterion `0.7.0` because Mortar declares Rust `1.85` and Criterion `0.8.2`
+  requires Rust `1.86`.
+- The canonical scenario set covers canonical generated reads, supported local
+  metamodel aliases, supported read-namespace aliases, unsupported alias
+  fail-closed diagnostics, stale source-map fail-closed behavior, missing
+  snapshot fail-closed behavior, malformed-buffer diagnostics, deterministic
+  large-document scanning, and success-to-failure-to-recovery full-buffer edit
+  scripts.
+- Parser latency is measured separately from editor-feature resolution. Hover,
+  code actions, definition, and diagnostics remain the current public LSP
+  behavior surface; no benchmark-only resolver API or R19 semantic broadening
+  is introduced.
+- Incremental behavior is measured as current full-buffer replacement because
+  the LSP advertises full text sync. R20.6 does not benchmark tree reuse,
+  parser caching, or partial-sync behavior as if it already existed.
+- R20.7 optimization candidates remain blocked until repeated retained
+  artifacts, scenario metadata, raw Criterion output, profiler/allocation
+  evidence, and benchmark-readiness review identify a dominant tooling cost.
+- Rust tooling metrics stay in a separate interpretation boundary from Java
+  JMH/PostgreSQL runtime metrics and do not support JDBC, database, or runtime
+  performance claims.
+
 ## Current Benchmark Inventory
 
 | Artifact | Purpose | Readiness |
@@ -216,7 +245,9 @@ The R20.5 DSL render/execute debate concluded:
 | `docs/benchmarks/postgres-execution-2026-06-01.md` | Local real-PostgreSQL throughput, allocation, latency notes | Internal-only; not public-ready |
 | `docs/benchmarks/performance-report-2026-06-01.md` | Public-readiness draft | Blocked for public claims until retained artifacts and commit metadata exist |
 | `docs/benchmarks/thresholds.json` | Bootstrap threshold shape check | Not a real regression threshold |
-| `rust/crates/mortar-lsp/src/lib.rs` | Current LSP parser/resolver implementation and tests | Correctness evidence only; no R20 performance harness yet |
+| `rust/crates/mortar-lsp/src/lib.rs` | Current LSP parser/resolver implementation and tests | Correctness evidence; no benchmark-only public API |
+| `rust/crates/mortar-lsp/benches/r20_lsp_resolver.rs` | Criterion harness for R20.6 Rust LSP resolver/editor-feature scenarios | Internal-only tooling benchmark source; public claims blocked |
+| `rust/crates/mortar-lsp/tests/r20_lsp_benchmark_harness.rs` | Fixture coverage for R20.6 benchmark scenarios | Trustworthy as harness guard, not performance evidence |
 | `docs/lsp.md` | LSP behavior and Java/Rust boundary docs | Trustworthy for semantic boundary; not performance evidence |
 
 ## Required Environment Metadata
@@ -342,7 +373,7 @@ Invalid or misleading claims include:
 - R20.5: DSL query render/execute overhead profiling for broader read and write
   shapes. Status: Done.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
-  Status: Planned.
+  Status: Done.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
   Planned.
 - R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
