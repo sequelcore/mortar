@@ -1903,6 +1903,9 @@ Review result:
   push, or merge changed.
 - No unsupported performance, replacement, release, or migration claim was
   introduced.
+- Review follow-up: the R21 recipe authoring rules were corrected to keep
+  deferred `count` and `exists` scalar-query contracts out of the current
+  supported authoring path.
 - Remaining risk: snippets are excerpts from existing compiling examples rather
   than a new standalone recipe module. This is intentional to avoid duplicate
   fixture drift.
