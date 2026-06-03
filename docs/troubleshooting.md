@@ -1,5 +1,8 @@
 # Troubleshooting
 
+For canonical repository recipes and AI-agent authoring rules, see
+[`query-recipes.md`](query-recipes.md).
+
 ## Generated Q Type Is Missing
 
 Run:
@@ -31,7 +34,13 @@ Then update or check SQL snapshots with the CLI described in `docs/cli.md`.
 
 ## IntelliJ Or VS Code Shows No SQL
 
-Editor tooling currently needs a canonical snapshot file and a marker:
+For generated fixed reads such as `QClient.CLIENT.read(renderer).findById(id)`,
+editor tooling expects fresh generated metadata, source maps, and a matching
+`mortar.sql.snap.json` snapshot. If hover, copy SQL, EXPLAIN, or definition
+returns no result, first check that annotation processing regenerated
+`META-INF/mortar` outputs and that the snapshot key still exists.
+
+Explicit markers are the legacy/manual path:
 
 ```java
 // mortar:snapshot=ClientRepository.findActiveById

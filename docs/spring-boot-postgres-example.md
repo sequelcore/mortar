@@ -1,6 +1,8 @@
 # Spring Boot PostgreSQL Example
 
 The canonical Spring Boot example lives in `examples/spring-boot-postgres`.
+For the R21 copyable recipe view of the same patterns, see
+[`query-recipes.md`](query-recipes.md).
 
 ## What It Shows
 

@@ -4,6 +4,10 @@ Mortar is for Java/Spring applications that want refactor-safe query code and
 visible SQL. It is not an ORM and does not own aggregate loading, lazy loading,
 identity maps, or transaction policy.
 
+For copyable repository recipes and AI-agent authoring invariants, start with
+[`query-recipes.md`](query-recipes.md). This guide explains the broader query
+path selection.
+
 ## Choosing The Query Path
 
 Use generated fixed read facades for common stable reads:

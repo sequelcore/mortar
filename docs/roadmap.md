@@ -1827,8 +1827,85 @@ R20.7/R20.8 completion record:
 - Changed docs: `docs/benchmarks/r20-performance-gate.md`,
   `docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
   `docs/performance.md`, `docs/plan.md`, and this roadmap.
-- R21 AI/agent-friendly work and R22 pre-release readiness remain deferred and
-  are not implemented by R20.
+- R21 AI/agent-friendly work was deferred by R20 and is completed below. R22
+  pre-release readiness remains deferred.
+
+### R21: AI-Friendly Authoring And Query Recipes
+
+Status: Done
+
+Goal: Make Mortar easier for Java developers and AI coding agents to use
+correctly on the first try without expanding the public API, changing runtime
+behavior, making performance claims, or starting release/migration work.
+
+Planned scope:
+
+- canonical AI-friendly query authoring and recipe guide;
+- generated `findById` and `findAll` recipes backed by compiling examples;
+- explicit `.named(...)` and testkit SQL assertion recipes;
+- Spring repository adapter and Clean Architecture placement guidance;
+- AI-agent invariants for generated fixed reads, raw SQL avoidance, SQL
+  visibility, source-map/snapshot contracts, self-executing query rejection,
+  and performance-claim restraint;
+- concise troubleshooting and comparison updates.
+
+Non-goals:
+
+- runtime optimization or public benchmark claims;
+- broad DSL redesign;
+- generated repositories, ORM behavior, generated writes, optional-filter
+  method matrices, generated joins, `count`, or `exists`;
+- app migration, release, tag, publish, PR, push, or announcement work.
+
+Evidence:
+
+- Required xhigh architecture debate completed on 2026-06-03. Outcome: R21
+  should be a narrow docs-and-existing-examples convergence slice. Existing
+  `examples/spring-boot-postgres` and `examples/clean-architecture-postgres`
+  fixtures are enough compile-backed evidence; adding a duplicate fixture would
+  increase drift risk.
+- `docs/query-recipes.md` is the canonical R21 authoring guide and is linked
+  from `README.md`, `docs/getting-started.md`, `docs/usage-guide.md`,
+  `docs/spring-boot-postgres-example.md`,
+  `docs/ddd-clean-architecture-example.md`,
+  `docs/examples/spring-clean-architecture-repository.md`,
+  `docs/comparison.md`, and `docs/troubleshooting.md`.
+- The guide documents generated `findById`, generated `findAll`, explicit
+  `.named(...)`, testkit SQL assertions, Spring repository adapters, Clean
+  Architecture placement, AI-agent invariants, common mistakes, troubleshooting,
+  and Mortar/jOOQ/QueryDSL/JPA selection guidance.
+- Changed docs: `docs/query-recipes.md`, `README.md`,
+  `docs/getting-started.md`, `docs/usage-guide.md`,
+  `docs/spring-boot-postgres-example.md`,
+  `docs/ddd-clean-architecture-example.md`,
+  `docs/examples/spring-clean-architecture-repository.md`,
+  `docs/comparison.md`, `docs/troubleshooting.md`, `docs/plan.md`, and this
+  roadmap.
+
+Verification passed on 2026-06-03:
+
+- `gradlew.bat :examples:spring-boot-postgres:test --no-daemon`;
+- `gradlew.bat :examples:clean-architecture-postgres:check --no-daemon`;
+- `gradlew.bat :java:testkit:test --no-daemon`;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- changed-doc private path/project scrub excluding build, cache, dependency,
+  generated, and target outputs.
+
+Review result:
+
+- No Java public API, generated API, runtime behavior, editor semantic,
+  performance, benchmark threshold, release, publication, migration, tag, PR,
+  push, or merge changed.
+- No unsupported performance, replacement, release, or migration claim was
+  introduced.
+- Remaining risk: snippets are excerpts from existing compiling examples rather
+  than a new standalone recipe module. This is intentional to avoid duplicate
+  fixture drift.
 
 ## Canonical Update Protocol
 
