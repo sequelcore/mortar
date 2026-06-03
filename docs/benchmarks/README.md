@@ -126,6 +126,33 @@ gradlew.bat :java:benchmarks:jmhR20DslShapesLatency
 This writes JSON results to
 `java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-latency.json`.
 
+Run the R23.2 post-R22 Java runtime throughput profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntime
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime-throughput.json`.
+
+Run the R23.2 post-R22 Java runtime allocation profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntimeAllocation
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime-allocation.json`.
+
+Run the R23.2 post-R22 Java runtime latency profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntimeLatency
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime-latency.json`.
+
 Run the R20.6 Rust LSP resolver benchmark:
 
 ```bash
@@ -166,30 +193,25 @@ R23 adds the post-R22 retained-evidence plan in
 When an R23 scenario or optimization/public-claim decision is involved, the R23
 plan is the stricter rule.
 
-Workflow inputs:
+Current R23.2 workflow inputs:
 
 - `jmhIncludes`: JMH include regex. Default:
-  `PostgresExecutionBenchmark\\.(plainJdbcFetch|plainJdbcReusableStatementFetch|plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch|jooqFetch|querydslFetch)$`.
+  `PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|plainJdbcUpdateBatch|mortarUpdateBatch)$`.
 - `profile`: `throughput`, `allocation`, `latency`, or `all`.
 - `repeatCount`: integer greater than or equal to `2`.
 
 The current workflow runs PostgreSQL benchmarks on `ubuntu-latest`, confirms
 Docker is available, writes JMH JSON under
-`java/benchmarks/build/reports/jmh`, copies each repeated run into an R20.3
-bundle, writes a retained `manifest.json`, `commands.txt`, `summary.md`,
-`review-notes.md`, and environment files, then uploads the bundle with 90-day
-retention.
+`java/benchmarks/build/reports/jmh`, copies each repeated run into
+`java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime`, writes a
+retained `manifest.json`, `commands.txt`, `summary.md`, `review-notes.md`, and
+environment files, then uploads `mortar-r23.2-post-r22-java-runtime-*` with
+90-day retention.
 
-R23 planning keeps the manual retained-workflow model but requires future R23
-bundles to stop using R20.3 names. Java runtime, Rust tooling, and editor
-latency evidence must use separate bundle ids, manifests, and artifact paths.
-This README documents that requirement only; it does not implement a workflow
-change.
+## R23 Retained Evidence
 
-## R23 Retained Evidence Planning
-
-R23 is design and evidence policy until later slices implement benchmark or
-workflow changes. It does not authorize optimization, public performance
+R23 is in progress. R23.2 implements the post-R22 Java runtime matrix and
+retained workflow. It does not authorize optimization, public performance
 claims, benchmark threshold tightening, API changes, release readiness work, or
 R24 implementation.
 
@@ -197,21 +219,28 @@ Canonical R23 plan:
 
 - [`r23-retained-performance-evidence.md`](r23-retained-performance-evidence.md)
 
-R23 must cover the post-R22 public executable surface:
+R23.2 covers the post-R22 public executable Java runtime surface:
 
-- generated fixed-read rows from R20.4;
-- DSL simple read, join/page read, and same-SQL non-returning batch rows from
-  R20.5;
 - R22 scalar reads: `count` and `exists`;
 - R22 row-count mutations: insert, update, and delete;
-- R22 PostgreSQL `RETURNING` mutations;
-- Rust LSP/tooling Criterion evidence retained separately;
-- editor-latency traces retained separately.
+- R22 PostgreSQL insert `RETURNING` fetch and fetchOptional behavior;
+- same-SQL non-returning update batch writes.
 
-Local smoke output remains harness proof only. Retained R23 evidence requires
+R23.3 Rust tooling and R23.4 editor-latency evidence remain planned and must be
+retained separately from Java runtime bundles.
+
+Local smoke output remains harness proof only. Retained R23.2 evidence requires
 raw result files, exact commands, clean commit metadata, environment metadata,
 dataset or corpus notes, derived summaries, limitations, profiler/allocation
 evidence where needed, and reviewer notes.
+
+Local smoke command for proving the R23.2 preset and JSON output:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR23PostR22JavaRuntime "-PjmhIncludes=PostgresExecutionBenchmark[.]mortarCountActive$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r23.2-post-r22-java-runtime-smoke.json" --no-daemon
+```
+
+The JSON remains build output and must not be committed.
 
 ## R20.3 PostgreSQL Baseline Matrix
 
@@ -503,6 +532,35 @@ performance claims.
 - `PostgresExecutionBenchmark.plainJdbcReusableFindByIdFetchOptional`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement` with at-most-one-row mapping.
 - `PostgresExecutionBenchmark.plainJdbcJoinPageFetch`: real PostgreSQL joined, ordered, paginated read through a reused plain JDBC `PreparedStatement`.
 - `PostgresExecutionBenchmark.mortarJoinPageFetch`: real PostgreSQL joined, ordered, paginated read through the Mortar DSL/JDBC path.
+- `PostgresExecutionBenchmark.plainJdbcCountActive`: real PostgreSQL `count`
+  scalar through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarCountActive`: real PostgreSQL `count`
+  scalar through Mortar `MortarBoundScalar`.
+- `PostgresExecutionBenchmark.plainJdbcExistsActive`: real PostgreSQL
+  `exists` scalar through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarExistsActive`: real PostgreSQL `exists`
+  scalar through Mortar `MortarBoundScalar`.
+- `PostgresExecutionBenchmark.plainJdbcInsertRowCount`: real PostgreSQL insert
+  row-count mutation through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarInsertRowCount`: real PostgreSQL insert
+  row-count mutation through Mortar `MortarBoundMutation`.
+- `PostgresExecutionBenchmark.plainJdbcUpdateRowCount`: real PostgreSQL update
+  row-count mutation through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarUpdateRowCount`: real PostgreSQL update
+  row-count mutation through Mortar `MortarBoundMutation`.
+- `PostgresExecutionBenchmark.plainJdbcDeleteRowCount`: real PostgreSQL delete
+  row-count mutation through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarDeleteRowCount`: real PostgreSQL delete
+  row-count mutation through Mortar `MortarBoundMutation`.
+- `PostgresExecutionBenchmark.plainJdbcInsertReturningFetch`: real PostgreSQL
+  insert `RETURNING` row fetch through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarInsertReturningFetch`: real PostgreSQL
+  insert `RETURNING` row fetch through Mortar `MortarReturningMutation`.
+- `PostgresExecutionBenchmark.plainJdbcInsertReturningFetchOptional`: real
+  PostgreSQL insert `RETURNING` optional row fetch through ordinary JDBC.
+- `PostgresExecutionBenchmark.mortarInsertReturningFetchOptional`: real
+  PostgreSQL insert `RETURNING` optional row fetch through Mortar
+  `MortarReturningMutation`.
 - `PostgresExecutionBenchmark.plainJdbcUpdateBatch`: real PostgreSQL update batch through plain JDBC.
 - `PostgresExecutionBenchmark.mortarUpdateBatch`: real PostgreSQL update batch through Mortar mutation rendering and JDBC batch execution.
 - `PostgresExecutionBenchmark.plainJdbcTunedReusableFindByIdFetch`: real PostgreSQL generated-entity `findById` shape through a reused plain JDBC `PreparedStatement` on a PgJDBC connection configured with `prepareThreshold=1`, `preparedStatementCacheQueries=256`, and `binaryTransfer=true`.

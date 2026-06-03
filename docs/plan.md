@@ -3066,9 +3066,9 @@ Research basis:
   generated metadata contracts unchanged when R22 adds no generated scalar or
   write facade methods.
 
-## R23 Planned Gate: Retained Performance Evidence And Optimization
+## R23 Gate: Retained Performance Evidence And Optimization
 
-Status: Planned.
+Status: In Progress.
 
 R23 should finish the performance program properly before pre-release readiness
 is evaluated. R20 created the measurement discipline, benchmark harnesses, and
@@ -3106,10 +3106,10 @@ adding benchmark-only APIs:
 | Generated fixed read | processor-generated `findById`, prepared generated `findById`, tuned generated `findById` | ordinary JDBC, reusable prepared JDBC, tuned PgJDBC for the same `findById` SQL and mapper | R20.4 harness exists; retained R23 bundle needed |
 | DSL read | render-per-call simple read, pre-rendered simple read | ordinary JDBC simple read; reusable JDBC only when lifecycle matches | R20.5 harness exists; retained R23 bundle needed |
 | Join/page read | DSL joined ordered page | reusable prepared JDBC with same SQL, bind order, page size, offset, and mapper | R20.5 harness exists; retained R23 bundle needed |
-| Scalar read | DSL `count`, DSL `exists` | plain JDBC scalar rows with same SQL, bind order, scalar type, and lifecycle | Gap after R22; plan only in R23.2 |
-| Row-count mutation | insert/update/delete row-count mutations | plain JDBC update rows with same SQL, bind order, and update-count interpretation | Gap after R22; plan only in R23.2 |
-| Returning mutation | PostgreSQL `RETURNING` insert/update/delete where supported by public API | plain JDBC `RETURNING` rows with same returning columns and mapper | Gap after R22; plan only in R23.2 |
-| Batch write | same-SQL non-returning batch writes | reusable prepared JDBC batch with same SQL, bind order, batch size, and update counts | Existing update-batch row plus R22 batch contract review |
+| Scalar read | DSL `count`, DSL `exists` | ordinary JDBC scalar rows with same SQL, bind order, scalar type, and lifecycle | R23.2 Done |
+| Row-count mutation | insert/update/delete row-count mutations | ordinary JDBC update rows with same SQL, bind order, and update-count interpretation | R23.2 Done |
+| Returning mutation | representative PostgreSQL insert `RETURNING` fetch and fetchOptional rows | ordinary JDBC `RETURNING` rows with same returning columns and mapper | R23.2 Done |
+| Batch write | same-SQL non-returning batch writes | reusable prepared JDBC batch with same SQL, bind order, fixed batch size, and update counts | R23.2 Done |
 
 Generated scalar facades, generated write namespaces, generated repositories,
 and self-executing query values remain excluded because R22 rejected them.
@@ -3241,7 +3241,7 @@ R23 forbids:
 
 - R23.1 Benchmark planning, research, and xhigh debate. Status: Planned.
 - R23.2 Post-R22 Java runtime benchmark matrix and retained artifact workflow.
-  Status: Planned.
+  Status: Done.
 - R23.3 Rust tooling benchmark retained evidence. Status: Planned.
 - R23.4 Editor-latency evidence boundary and retained trace format. Status:
   Planned.
@@ -3254,6 +3254,44 @@ R23 forbids:
 
 R23.6 and R23.7 may close as "not authorized" if retained evidence does not
 identify a dominant cost. R24 depends on that explicit go/no-go.
+
+### R23.2 Completion Record
+
+R23.2 implements the post-R22 Java runtime benchmark matrix and retained
+artifact workflow without changing product APIs or runtime boundaries.
+
+Implemented scope:
+
+- live PostgreSQL/Testcontainers benchmark rows for `count`, `exists`,
+  insert/update/delete row-count mutations, representative insert `RETURNING`
+  fetch and fetchOptional behavior, and same-SQL non-returning update batch
+  writes;
+- ordinary JDBC peers for scalar and single-mutation rows;
+- reusable prepared JDBC only for the same-SQL batch baseline where the
+  statement lifecycle matches Mortar's public batch contract;
+- R23.2 Gradle presets:
+  `:java:benchmarks:jmhR23PostR22JavaRuntime`,
+  `:java:benchmarks:jmhR23PostR22JavaRuntimeAllocation`, and
+  `:java:benchmarks:jmhR23PostR22JavaRuntimeLatency`;
+- manual `Benchmarks` workflow bundle path
+  `java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime`;
+- retained artifact name
+  `mortar-r23.2-post-r22-java-runtime-${profile}-${sha}`;
+- manifest schema `mortar-r23-java-runtime-postgres-manifest-v1`;
+- retained metadata for raw JMH JSON, exact commands, commit SHA, clean/dirty
+  worktree state, Java/JVM/Gradle/OS/Docker metadata,
+  PostgreSQL/Testcontainers/PgJDBC/Hikari-applicability settings, dataset
+  notes, derived summary, limitations, unsupported rows, and reviewer notes.
+
+Xhigh debate outcome:
+
+- keep R23.2 as Java-runtime evidence only;
+- do not add benchmark-only reusable scalar or mutation APIs;
+- treat ordinary JDBC as the fair peer for scalar and single mutations;
+- treat reusable prepared JDBC as fair only for batch writes;
+- keep fake JDBC, Rust tooling, editor latency, jOOQ/QueryDSL, render-only
+  rows, optimizations, public claims, threshold tightening, release, tag,
+  publish, PR, push, merge, migration, and announcement work out of scope.
 
 ### Risks
 

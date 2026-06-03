@@ -4,6 +4,8 @@ val r20GeneratedFixedReadIncludes =
     "PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$"
 val r20DslShapesIncludes =
     "PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$"
+val r23PostR22JavaRuntimeIncludes =
+    "PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|plainJdbcUpdateBatch|mortarUpdateBatch)$"
 
 dependencies {
     implementation(project(":java:core"))
@@ -277,6 +279,69 @@ tasks.register<JavaExec>("jmhR20DslShapesLatency") {
         "-w", "1s",
         "-rf", "json",
         "-rff", layout.buildDirectory.file("reports/jmh/r20.5-dsl-shapes-latency.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR23PostR22JavaRuntime") {
+    group = "verification"
+    description = "Runs the R23.2 post-R22 Java runtime PostgreSQL throughput profile."
+    configureJmhMain(r23PostR22JavaRuntimeIncludes)
+    addDefaultJmhProfile(
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r23.2-post-r22-java-runtime-throughput.json").get()
+            .asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR23PostR22JavaRuntimeAllocation") {
+    group = "verification"
+    description = "Runs the R23.2 post-R22 Java runtime PostgreSQL allocation profile."
+    configureJmhMain(r23PostR22JavaRuntimeIncludes)
+    addDefaultJmhProfile(
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-prof", "gc",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r23.2-post-r22-java-runtime-allocation.json").get()
+            .asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR23PostR22JavaRuntimeLatency") {
+    group = "verification"
+    description = "Runs the R23.2 post-R22 Java runtime PostgreSQL sample-time latency profile."
+    configureJmhMain(r23PostR22JavaRuntimeIncludes)
+    addDefaultJmhProfile(
+        "-bm", "sample",
+        "-tu", "ms",
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r23.2-post-r22-java-runtime-latency.json").get()
+            .asFile.absolutePath
     )
     addConfiguredJmhExtraArgs()
     doFirst {

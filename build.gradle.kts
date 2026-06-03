@@ -55,24 +55,47 @@ tasks.register("verifyBenchmarkWorkflow") {
             "workflow_dispatch:",
             "repeatCount",
             "default: \"2\"",
-            "jmhPostgresExecution",
-            "jmhPostgresExecutionAllocation",
-            "jmhPostgresExecutionLatency",
+            "jmhR23PostR22JavaRuntime",
+            "jmhR23PostR22JavaRuntimeAllocation",
+            "jmhR23PostR22JavaRuntimeLatency",
             "jmhIncludes",
-            "R20.3",
+            "R23.2",
             "manifest.json",
             "commands.txt",
             "environment",
             "meminfo.txt",
             "review-notes.md",
+            "mortar-r23-java-runtime-postgres-manifest-v1",
+            "r23.2-post-r22-java-runtime",
+            "evidenceFamily",
+            "java-runtime-postgres",
+            "scenarioFamilies",
+            "scalar-read",
+            "row-count-mutation",
+            "returning-mutation",
+            "batch-write",
+            "worktreeState",
+            "untrackedClean",
+            "gitStatusFile",
+            "limitations",
+            "unsupportedRows",
             "actions/upload-artifact",
-            "java/benchmarks/build/reports/jmh/r20.3",
+            "java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime",
             "retention-days: 90"
         )
         val missingFragments = requiredFragments.filterNot(content::contains)
         if (missingFragments.isNotEmpty()) {
             throw GradleException(
                 "Benchmark workflow is missing required fragments: ${missingFragments.joinToString(", ")}"
+            )
+        }
+
+        val forbiddenFragments = listOf("r20.3", "R20.3", "mortar-r20.3")
+        val presentForbiddenFragments = forbiddenFragments.filter(content::contains)
+        if (presentForbiddenFragments.isNotEmpty()) {
+            throw GradleException(
+                "Benchmark workflow still contains stale R20.3 fragments: "
+                    + presentForbiddenFragments.joinToString(", ")
             )
         }
     }

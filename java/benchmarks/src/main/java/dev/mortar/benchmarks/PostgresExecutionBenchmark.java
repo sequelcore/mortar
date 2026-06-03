@@ -11,6 +11,11 @@ import com.querydsl.sql.SQLQuery;
 
 import dev.mortar.core.Assignment;
 import dev.mortar.core.ColumnRef;
+import dev.mortar.core.DeleteSpec;
+import dev.mortar.core.InsertSpec;
+import dev.mortar.core.MortarBoundMutation;
+import dev.mortar.core.MortarBoundScalar;
+import dev.mortar.core.MortarReturningMutation;
 import dev.mortar.core.QueryMetadata;
 import dev.mortar.core.QuerySpec;
 import dev.mortar.core.RenderedQuery;
@@ -39,6 +44,7 @@ import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.BenchmarkParams;
 import org.openjdk.jmh.infra.Blackhole;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -66,6 +72,12 @@ public class PostgresExecutionBenchmark {
     static final int PAGE_SIZE = 20;
     static final int PAGE_OFFSET = 40;
     static final boolean QUERY_ACTIVE = true;
+    static final long R23_ROW_COUNT_INSERT_ID = 10_001L;
+    static final long R23_ROW_COUNT_UPDATE_ID = 10_002L;
+    static final long R23_ROW_COUNT_DELETE_ID = 10_003L;
+    static final long R23_RETURNING_INSERT_ID = 10_004L;
+    static final long R23_RETURNING_OPTIONAL_INSERT_ID = 10_005L;
+    static final long R23_MUTATION_ROUTE_ID = 1L;
     static final String TUNED_PGJDBC_PARAMETERS =
         "prepareThreshold=1&preparedStatementCacheQueries=256&binaryTransfer=true";
     static final String CREATE_SCHEMA_SQL = """
@@ -85,6 +97,9 @@ public class PostgresExecutionBenchmark {
     private static final DockerImageName POSTGRES_IMAGE = DockerImageName.parse("postgres:16-alpine");
     private static final String SELECT_SQL = "select id, name from clients where active = ? and id = ?";
     private static final String SELECT_BY_ID_SQL = "select c.id, c.name, c.active from clients c where c.id = ?";
+    private static final String COUNT_ACTIVE_SQL = "select count(*) from clients c where c.active = ?";
+    private static final String EXISTS_ACTIVE_SQL =
+        "select exists (select 1 from clients c where c.id = ? and c.active = ?)";
     private static final String SELECT_JOIN_PAGE_SQL = """
         select c.id, c.name, r.name
         from clients c
@@ -94,6 +109,11 @@ public class PostgresExecutionBenchmark {
         limit ? offset ?
         """.replace("\n", " ").replaceAll(" +", " ").trim();
     private static final String UPDATE_SQL = "update clients set active = ? where id = ?";
+    private static final String INSERT_ROW_COUNT_SQL =
+        "insert into clients (id, route_id, name, active) values (?, ?, ?, ?)";
+    private static final String DELETE_ROW_COUNT_SQL = "delete from clients where id = ?";
+    private static final String INSERT_RETURNING_SQL =
+        "insert into clients (id, route_id, name, active) values (?, ?, ?, ?) returning id, name";
 
     private PostgreSQLContainer postgres;
     private Connection connection;
@@ -107,6 +127,13 @@ public class PostgresExecutionBenchmark {
     private MortarJdbcClient tunedMortarClient;
     private QuerySpec mortarQuery;
     private QuerySpec mortarJoinPageQuery;
+    private MortarBoundScalar<Long> mortarCountActiveQuery;
+    private MortarBoundScalar<Boolean> mortarExistsActiveQuery;
+    private MortarBoundMutation mortarInsertRowCountMutation;
+    private MortarBoundMutation mortarUpdateRowCountMutation;
+    private MortarBoundMutation mortarDeleteRowCountMutation;
+    private MortarReturningMutation<ClientRow> mortarInsertReturningMutation;
+    private MortarReturningMutation<ClientRow> mortarInsertReturningOptionalMutation;
     private RenderedQuery mortarRenderedQuery;
     private List<UpdateSpec> mortarUpdateBatch;
     private MortarGeneratedQuery<ClientLookupParameters, ClientRow> mortarGeneratedQuery;
@@ -147,6 +174,34 @@ public class PostgresExecutionBenchmark {
         configureMortar();
         configureJooq();
         configureQuerydsl();
+    }
+
+    @Setup(Level.Invocation)
+    public void resetR23MutableRows(BenchmarkParams benchmarkParams) throws Exception {
+        if (connection == null || connection.isClosed()) {
+            return;
+        }
+        if (!requiresR23MutableRowReset(benchmarkParams.getBenchmark())) {
+            return;
+        }
+
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                "delete from clients where id in ("
+                    + R23_ROW_COUNT_INSERT_ID + ", "
+                    + R23_ROW_COUNT_UPDATE_ID + ", "
+                    + R23_ROW_COUNT_DELETE_ID + ", "
+                    + R23_RETURNING_INSERT_ID + ", "
+                    + R23_RETURNING_OPTIONAL_INSERT_ID + ")"
+            );
+            statement.executeUpdate(
+                "insert into clients (id, route_id, name, active) values "
+                    + "(" + R23_ROW_COUNT_UPDATE_ID + ", " + R23_MUTATION_ROUTE_ID
+                    + ", 'r23-update-target', true), "
+                    + "(" + R23_ROW_COUNT_DELETE_ID + ", " + R23_MUTATION_ROUTE_ID
+                    + ", 'r23-delete-target', true)"
+            );
+        }
     }
 
     @TearDown(Level.Trial)
@@ -345,6 +400,133 @@ public class PostgresExecutionBenchmark {
         );
 
         blackhole.consume(rows);
+    }
+
+    @Benchmark
+    public void plainJdbcCountActive(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(COUNT_ACTIVE_SQL)) {
+            statement.setBoolean(1, QUERY_ACTIVE);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new IllegalStateException("count query returned no row");
+                }
+                blackhole.consume(resultSet.getLong(1));
+            }
+        }
+    }
+
+    @Benchmark
+    public void mortarCountActive(Blackhole blackhole) {
+        blackhole.consume(mortarClient.fetchOne(mortarCountActiveQuery));
+    }
+
+    @Benchmark
+    public void plainJdbcExistsActive(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(EXISTS_ACTIVE_SQL)) {
+            statement.setLong(1, QUERY_CLIENT_ID);
+            statement.setBoolean(2, QUERY_ACTIVE);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new IllegalStateException("exists query returned no row");
+                }
+                blackhole.consume(resultSet.getBoolean(1));
+            }
+        }
+    }
+
+    @Benchmark
+    public void mortarExistsActive(Blackhole blackhole) {
+        blackhole.consume(mortarClient.fetchOne(mortarExistsActiveQuery));
+    }
+
+    @Benchmark
+    public void plainJdbcInsertRowCount(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_ROW_COUNT_SQL)) {
+            statement.setLong(1, R23_ROW_COUNT_INSERT_ID);
+            statement.setLong(2, R23_MUTATION_ROUTE_ID);
+            statement.setString(3, "r23-insert-row-count");
+            statement.setBoolean(4, true);
+            blackhole.consume(statement.executeUpdate());
+        }
+    }
+
+    @Benchmark
+    public void mortarInsertRowCount(Blackhole blackhole) {
+        blackhole.consume(mortarClient.execute(mortarInsertRowCountMutation));
+    }
+
+    @Benchmark
+    public void plainJdbcUpdateRowCount(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(UPDATE_SQL)) {
+            statement.setBoolean(1, false);
+            statement.setLong(2, R23_ROW_COUNT_UPDATE_ID);
+            blackhole.consume(statement.executeUpdate());
+        }
+    }
+
+    @Benchmark
+    public void mortarUpdateRowCount(Blackhole blackhole) {
+        blackhole.consume(mortarClient.execute(mortarUpdateRowCountMutation));
+    }
+
+    @Benchmark
+    public void plainJdbcDeleteRowCount(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(DELETE_ROW_COUNT_SQL)) {
+            statement.setLong(1, R23_ROW_COUNT_DELETE_ID);
+            blackhole.consume(statement.executeUpdate());
+        }
+    }
+
+    @Benchmark
+    public void mortarDeleteRowCount(Blackhole blackhole) {
+        blackhole.consume(mortarClient.execute(mortarDeleteRowCountMutation));
+    }
+
+    @Benchmark
+    public void plainJdbcInsertReturningFetch(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_RETURNING_SQL)) {
+            statement.setLong(1, R23_RETURNING_INSERT_ID);
+            statement.setLong(2, R23_MUTATION_ROUTE_ID);
+            statement.setString(3, "r23-returning-fetch");
+            statement.setBoolean(4, true);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<ClientRow> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(new ClientRow(resultSet.getLong(1), resultSet.getString(2)));
+                }
+                blackhole.consume(List.copyOf(rows));
+            }
+        }
+    }
+
+    @Benchmark
+    public void mortarInsertReturningFetch(Blackhole blackhole) {
+        blackhole.consume(mortarClient.fetch(mortarInsertReturningMutation));
+    }
+
+    @Benchmark
+    public void plainJdbcInsertReturningFetchOptional(Blackhole blackhole) throws Exception {
+        try (PreparedStatement statement = connection.prepareStatement(INSERT_RETURNING_SQL)) {
+            statement.setLong(1, R23_RETURNING_OPTIONAL_INSERT_ID);
+            statement.setLong(2, R23_MUTATION_ROUTE_ID);
+            statement.setString(3, "r23-returning-optional");
+            statement.setBoolean(4, true);
+            try (ResultSet resultSet = statement.executeQuery()) {
+                Optional<ClientRow> row = Optional.empty();
+                if (resultSet.next()) {
+                    row = Optional.of(new ClientRow(resultSet.getLong(1), resultSet.getString(2)));
+                    if (resultSet.next()) {
+                        throw new IllegalStateException("expected at most one returning row");
+                    }
+                }
+                blackhole.consume(row);
+            }
+        }
+    }
+
+    @Benchmark
+    public void mortarInsertReturningFetchOptional(Blackhole blackhole) {
+        blackhole.consume(mortarClient.fetchOptional(mortarInsertReturningOptionalMutation));
     }
 
     @Benchmark
@@ -560,6 +742,7 @@ public class PostgresExecutionBenchmark {
         ColumnRef<Long> routeId = clients.column("routeId", "route_id", Long.class);
         ColumnRef<Long> routeTableId = routes.column("id", "id", Long.class);
         ColumnRef<String> routeName = routes.column("name", "name", String.class);
+        PostgresQueryRenderer renderer = new PostgresQueryRenderer();
         mortarQuery = new SimpleMortarDb()
             .from(clients)
             .select(id, name)
@@ -575,11 +758,75 @@ public class PostgresExecutionBenchmark {
             .limit(PAGE_SIZE)
             .offset(PAGE_OFFSET)
             .build();
+        mortarCountActiveQuery = new SimpleMortarDb()
+            .from(clients)
+            .where(active.eq(QUERY_ACTIVE))
+            .count(renderer)
+            .named("BenchmarkClient.countActive");
+        mortarExistsActiveQuery = new SimpleMortarDb()
+            .from(clients)
+            .where(id.eq(QUERY_CLIENT_ID))
+            .where(active.eq(QUERY_ACTIVE))
+            .exists(renderer)
+            .named("BenchmarkClient.existsActive");
+        mortarInsertRowCountMutation = MortarBoundMutation.unnamed(
+            new InsertSpec(
+                clients,
+                List.of(
+                    Assignment.of(id, R23_ROW_COUNT_INSERT_ID),
+                    Assignment.of(routeId, R23_MUTATION_ROUTE_ID),
+                    Assignment.of(name, "r23-insert-row-count"),
+                    Assignment.of(active, true)
+                ),
+                List.of()
+            ),
+            renderer
+        ).named("BenchmarkClient.insertRowCount");
+        mortarUpdateRowCountMutation = MortarBoundMutation.unnamed(
+            new UpdateSpec(
+                clients,
+                List.of(Assignment.of(active, false)),
+                List.of(id.eq(R23_ROW_COUNT_UPDATE_ID)),
+                List.of()
+            ),
+            renderer
+        ).named("BenchmarkClient.updateRowCount");
+        mortarDeleteRowCountMutation = MortarBoundMutation.unnamed(
+            new DeleteSpec(clients, List.of(id.eq(R23_ROW_COUNT_DELETE_ID)), List.of()),
+            renderer
+        ).named("BenchmarkClient.deleteRowCount");
+        mortarInsertReturningMutation = MortarReturningMutation.unnamed(
+            new InsertSpec(
+                clients,
+                List.of(
+                    Assignment.of(id, R23_RETURNING_INSERT_ID),
+                    Assignment.of(routeId, R23_MUTATION_ROUTE_ID),
+                    Assignment.of(name, "r23-returning-fetch"),
+                    Assignment.of(active, true)
+                ),
+                List.of(id, name)
+            ),
+            renderer,
+            ClientRow.class
+        ).named("BenchmarkClient.insertReturningFetch");
+        mortarInsertReturningOptionalMutation = MortarReturningMutation.unnamed(
+            new InsertSpec(
+                clients,
+                List.of(
+                    Assignment.of(id, R23_RETURNING_OPTIONAL_INSERT_ID),
+                    Assignment.of(routeId, R23_MUTATION_ROUTE_ID),
+                    Assignment.of(name, "r23-returning-optional"),
+                    Assignment.of(active, true)
+                ),
+                List.of(id, name)
+            ),
+            renderer,
+            ClientRow.class
+        ).named("BenchmarkClient.insertReturningFetchOptional");
         mortarUpdateBatch = List.of(
             new UpdateSpec(clients, List.of(Assignment.of(active, false)), List.of(id.eq(QUERY_CLIENT_ID)), List.of()),
             new UpdateSpec(clients, List.of(Assignment.of(active, true)), List.of(id.eq(QUERY_CLIENT_ID)), List.of())
         );
-        PostgresQueryRenderer renderer = new PostgresQueryRenderer();
         mortarRenderedQuery = renderer.render(mortarQuery);
         mortarClient = new MortarJdbcClient(connection, renderer);
         tunedMortarClient = new MortarJdbcClient(tunedConnection, renderer);
@@ -662,6 +909,19 @@ public class PostgresExecutionBenchmark {
     private String tunedJdbcUrl() {
         String separator = postgres.getJdbcUrl().contains("?") ? "&" : "?";
         return postgres.getJdbcUrl() + separator + TUNED_PGJDBC_PARAMETERS;
+    }
+
+    private static boolean requiresR23MutableRowReset(String benchmarkName) {
+        return benchmarkName.endsWith(".plainJdbcInsertRowCount")
+            || benchmarkName.endsWith(".mortarInsertRowCount")
+            || benchmarkName.endsWith(".plainJdbcUpdateRowCount")
+            || benchmarkName.endsWith(".mortarUpdateRowCount")
+            || benchmarkName.endsWith(".plainJdbcDeleteRowCount")
+            || benchmarkName.endsWith(".mortarDeleteRowCount")
+            || benchmarkName.endsWith(".plainJdbcInsertReturningFetch")
+            || benchmarkName.endsWith(".mortarInsertReturningFetch")
+            || benchmarkName.endsWith(".plainJdbcInsertReturningFetchOptional")
+            || benchmarkName.endsWith(".mortarInsertReturningFetchOptional");
     }
 
     private record ClientLookupParameters(boolean active, long id) {
