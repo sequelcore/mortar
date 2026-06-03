@@ -29,3 +29,7 @@ criterion.workspace = true
 [[bench]]
 name = "r20_lsp_resolver"
 harness = false
+
+[[bench]]
+name = "r23_rust_tooling_lsp"
+harness = false

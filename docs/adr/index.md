@@ -9,3 +9,4 @@
 - [ADR-0007: R18 Source-Map And Incremental Contract](0007-r18-source-map-and-incremental-contract.md)
 - [ADR-0008: R19 Java Call Resolution Boundary](0008-r19-java-call-resolution-boundary.md)
 - [ADR-0009: R22 Scalar And Mutation Contracts](0009-r22-scalar-and-mutation-contracts.md)
+- [ADR-0010: R23 Retained Tooling And Editor Evidence Boundaries](0010-r23-retained-tooling-and-editor-evidence-boundaries.md)

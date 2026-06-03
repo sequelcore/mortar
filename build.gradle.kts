@@ -81,6 +81,21 @@ tasks.register("verifyBenchmarkWorkflow") {
             "unsupportedRows",
             "actions/upload-artifact",
             "java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime",
+            "rust-tooling-lsp",
+            "r23.3-rust-tooling-lsp",
+            "mortar-r23-rust-tooling-criterion-manifest-v1",
+            "r23_rust_tooling_lsp",
+            "cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp",
+            "rust/target/criterion",
+            "rust/target/r23.3-rust-tooling-lsp",
+            "mortar-r23.3-rust-tooling-lsp-",
+            "vscode-editor-latency",
+            "r23.4-vscode-editor-latency",
+            "mortar-r23-vscode-editor-latency-manifest-v1",
+            "bun run test",
+            "bun run test:screenshots",
+            "editors/vscode/build/r23.4-vscode-editor-latency",
+            "mortar-r23.4-vscode-editor-latency-",
             "retention-days: 90"
         )
         val missingFragments = requiredFragments.filterNot(content::contains)

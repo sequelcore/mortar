@@ -163,6 +163,16 @@ cargo bench -p mortar-lsp --bench r20_lsp_resolver
 This writes Criterion output under `rust/target/criterion`. That output is
 local internal tooling evidence only and must not be committed.
 
+Run the R23.3 retained Rust tooling benchmark target locally:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp
+```
+
+This target reuses the existing R20/R19 LSP corpus but emits R23 benchmark
+group names for retained R23.3 evidence.
+
 Run the smallest R20.6 Rust LSP benchmark smoke:
 
 ```bash
@@ -171,6 +181,16 @@ cargo bench -p mortar-lsp --bench r20_lsp_resolver -- r20_lsp_parser/canonical_g
 ```
 
 The smoke command proves the Criterion harness and fixture path. It is not
+retained evidence for optimization proposals or public performance reporting.
+
+Run the smallest R23.3 Rust tooling smoke:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp -- r23_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+```
+
+The smoke command proves the R23 Criterion target and fixture path. It is not
 retained evidence for optimization proposals or public performance reporting.
 
 Run a short harness smoke test:
@@ -193,20 +213,40 @@ R23 adds the post-R22 retained-evidence plan in
 When an R23 scenario or optimization/public-claim decision is involved, the R23
 plan is the stricter rule.
 
-Current R23.2 workflow inputs:
+Current retained workflow inputs:
 
+- `evidenceFamily`: `java-runtime-postgres`, `rust-tooling-lsp`, or
+  `vscode-editor-latency`.
 - `jmhIncludes`: JMH include regex. Default:
   `PostgresExecutionBenchmark\\.(plainJdbcCountActive|mortarCountActive|plainJdbcExistsActive|mortarExistsActive|plainJdbcInsertRowCount|mortarInsertRowCount|plainJdbcUpdateRowCount|mortarUpdateRowCount|plainJdbcDeleteRowCount|mortarDeleteRowCount|plainJdbcInsertReturningFetch|mortarInsertReturningFetch|plainJdbcInsertReturningFetchOptional|mortarInsertReturningFetchOptional|plainJdbcUpdateBatch|mortarUpdateBatch)$`.
-- `profile`: `throughput`, `allocation`, `latency`, or `all`.
+- `profile`: Java profile: `throughput`, `allocation`, `latency`, or `all`.
+- `rustBenchmarkFilter`: Criterion filter for R23.3 Rust tooling, or `all`.
+- `editorScenario`: R23.4 VS Code scenario: `smoke` or `screenshots`.
 - `repeatCount`: integer greater than or equal to `2`.
 
-The current workflow runs PostgreSQL benchmarks on `ubuntu-latest`, confirms
-Docker is available, writes JMH JSON under
+For `java-runtime-postgres`, the workflow runs PostgreSQL benchmarks on
+`ubuntu-latest`, confirms Docker is available, writes JMH JSON under
 `java/benchmarks/build/reports/jmh`, copies each repeated run into
 `java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime`, writes a
 retained `manifest.json`, `commands.txt`, `summary.md`, `review-notes.md`, and
 environment files, then uploads `mortar-r23.2-post-r22-java-runtime-*` with
 90-day retention.
+
+For `rust-tooling-lsp`, the workflow runs
+`cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp`, retains Criterion
+console output and `rust/target/criterion` copies under
+`rust/target/r23.3-rust-tooling-lsp`, writes schema
+`mortar-r23-rust-tooling-criterion-manifest-v1`, and uploads
+`mortar-r23.3-rust-tooling-lsp-*` with 90-day retention.
+
+For `vscode-editor-latency`, the workflow runs VS Code smoke or screenshot
+tests under Xvfb with `MORTAR_VSCODE_LATENCY_TRACE`, retains client-visible
+trace JSON and test output under
+`editors/vscode/build/r23.4-vscode-editor-latency`, writes schema
+`mortar-r23-vscode-editor-latency-manifest-v1`, and uploads
+`mortar-r23.4-vscode-editor-latency-*` with 90-day retention. Screenshot runs
+must set `MORTAR_VSCODE_SCREENSHOT_OUTPUT_DIR`; the workflow points it at a
+per-run retained result directory.
 
 ## R23 Retained Evidence
 
@@ -226,8 +266,15 @@ R23.2 covers the post-R22 public executable Java runtime surface:
 - R22 PostgreSQL insert `RETURNING` fetch and fetchOptional behavior;
 - same-SQL non-returning update batch writes.
 
-R23.3 Rust tooling and R23.4 editor-latency evidence remain planned and must be
-retained separately from Java runtime bundles.
+R23.3 Rust tooling evidence is retained separately from Java runtime bundles
+through `r23.3-rust-tooling-lsp`. R23.4 editor-latency evidence is retained
+separately from both Java runtime and Rust Criterion bundles through
+`r23.4-vscode-editor-latency`.
+
+R23.5 benchmark-readiness and optimization gate docs:
+
+- [`r23-benchmark-readiness.md`](r23-benchmark-readiness.md)
+- [`r23-performance-gate.md`](r23-performance-gate.md)
 
 Local smoke output remains harness proof only. Retained R23.2 evidence requires
 raw result files, exact commands, clean commit metadata, environment metadata,

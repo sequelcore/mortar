@@ -93,6 +93,28 @@ current full-buffer change behavior. Criterion output under
 `rust/target/criterion` is internal tooling evidence only. It must not be mixed
 into Java runtime or database performance claims.
 
+R23.3 Rust tooling evidence uses a retained R23 benchmark target:
+
+```bash
+cd rust
+cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp
+```
+
+The manual `Benchmarks` workflow retains this family under
+`rust/target/r23.3-rust-tooling-lsp` with schema
+`mortar-r23-rust-tooling-criterion-manifest-v1` and artifact names beginning
+`mortar-r23.3-rust-tooling-lsp-`. The R23 target reuses the existing LSP corpus
+but emits R23 group names. It remains Rust tooling/LSP evidence only.
+
+R23.4 VS Code editor-latency evidence uses the VS Code smoke test harness with
+`MORTAR_VSCODE_LATENCY_TRACE`. The manual `Benchmarks` workflow retains this
+family under `editors/vscode/build/r23.4-vscode-editor-latency` with schema
+`mortar-r23-vscode-editor-latency-manifest-v1` and artifact names beginning
+`mortar-r23.4-vscode-editor-latency-`. This trace boundary is client-visible
+extension-host behavior for hover, code actions, definition, diagnostics, copy
+SQL, and EXPLAIN command invocation where PostgreSQL is available. It is not
+Rust Criterion timing and not Java runtime evidence.
+
 R20.7/R20.8 close as an internal optimization and public-report gate:
 
 - `docs/benchmarks/r20-performance-gate.md` records the evidence-ranked
@@ -117,11 +139,17 @@ R23 extends that gate to the post-R22 API surface:
   writes.
 - R23.2 implements the post-R22 Java runtime scalar/mutation/batch matrix and
   retained artifact workflow.
+- R23.3 implements the retained Rust tooling/LSP Criterion workflow.
+- R23.4 implements the retained VS Code editor-latency trace workflow.
 - R23 keeps Java runtime evidence, Rust tooling evidence, and editor-latency
   traces separate.
 - R23 does not authorize optimization or public performance wording until
   retained artifacts, dominant-cost evidence, and benchmark-readiness review
   approve the exact change or claim.
+- R23.5 remains pending retained artifact review in
+  `docs/benchmarks/r23-performance-gate.md`; R23.6 is not pre-authorized and
+  R23.7 before/after review is not applicable unless R23.5 authorizes an
+  optimization.
 
 Current internal baseline:
 
@@ -129,6 +157,8 @@ Current internal baseline:
 - `docs/benchmarks/postgres-execution-2026-06-01.md`
 - `docs/benchmarks/r20-benchmark-readiness.md`
 - `docs/benchmarks/r20-performance-gate.md`
+- `docs/benchmarks/r23-benchmark-readiness.md`
+- `docs/benchmarks/r23-performance-gate.md`
 
 Current performance strategy research:
 
