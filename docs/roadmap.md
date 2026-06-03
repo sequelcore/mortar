@@ -1550,7 +1550,7 @@ R19.5 completion record:
 
 ### R20: Performance And Runtime Efficiency
 
-Status: In Progress
+Status: Done
 
 Goal: produce evidence-backed performance and runtime-efficiency work after the
 R19 editor semantics risk is closed.
@@ -1581,8 +1581,9 @@ Slices:
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
   Status: Done.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
-  Planned.
-- R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
+  Done as a no-optimization decision gate.
+- R20.8: Public performance report gate and reviewer sign-off. Status: Done as
+  a public-report no-go.
 
 R20.1/R20.2 completion record:
 
@@ -1789,6 +1790,45 @@ R20.6 completion record:
   `gradlew.bat check --no-daemon`, `cd editors/vscode && bun run typecheck`,
   `git diff --check`, and private path/project scrub excluding build, cache,
   dependency, generated, and target outputs.
+
+R20.7/R20.8 completion record:
+
+- The required xhigh optimization and public-report debate concluded that
+  R20.3-R20.6 prove harness coverage, scenario coverage, and boundary-correct
+  measurement surfaces, but not retained evidence strong enough to rank or
+  implement an optimization candidate.
+- `docs/benchmarks/r20-performance-gate.md` records the evidence-ranked
+  optimization table. Java runtime candidates are separated from Rust tooling
+  candidates, and every candidate is blocked until retained repeated artifacts,
+  exact commands, clean commit metadata, environment metadata, dataset or corpus
+  notes, limitations, profiler/allocation evidence where needed, derived
+  summary, and reviewer notes identify a dominant cost.
+- Blocked Java runtime candidates include generated binder/mapper tightening,
+  prepared generated-query lifecycle changes, renderer reuse or pre-render
+  caching, PgJDBC default/tuning changes, and benchmark threshold tightening.
+- Blocked Rust tooling candidates include parser construction reuse or parser
+  caching, source-map/snapshot lookup caching, diagnostics full-buffer scan
+  optimization, and incremental parse or partial-sync strategy.
+- R20.8 is a public-report no-go. The existing
+  `docs/benchmarks/performance-report-2026-06-01.md` remains an internal
+  public-readiness draft because it cites local build-output JSON, has pending
+  release commit metadata, does not attach retained workflow artifacts, does
+  not record independent reviewer sign-off against retained artifacts, and does
+  not include broader workload evidence for application-level claims.
+- Public wording is limited to internal/local evidence only until retained
+  artifacts exist for the exact claim. Broad "Mortar is faster than JDBC"
+  wording remains invalid, Java runtime and Rust tooling metrics remain
+  separate, and controlled fake-JDBC rows remain excluded from database,
+  PostgreSQL, driver, or product performance claims.
+- R20 is Done as a measurement and decision-gate phase. It does not authorize a
+  public performance report, runtime optimization, benchmark threshold change,
+  Java API change, generated Java API change, R19 editor semantic change,
+  release, publication, migration, tag, PR, push, or merge.
+- Changed docs: `docs/benchmarks/r20-performance-gate.md`,
+  `docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+  `docs/performance.md`, `docs/plan.md`, and this roadmap.
+- R21 AI/agent-friendly work and R22 pre-release readiness remain deferred and
+  are not implemented by R20.
 
 ## Canonical Update Protocol
 

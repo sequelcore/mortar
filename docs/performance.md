@@ -81,11 +81,28 @@ current full-buffer change behavior. Criterion output under
 `rust/target/criterion` is internal tooling evidence only. It must not be mixed
 into Java runtime or database performance claims.
 
+R20.7/R20.8 close as an internal optimization and public-report gate:
+
+- `docs/benchmarks/r20-performance-gate.md` records the evidence-ranked
+  optimization table and public-report decision.
+- No Java runtime optimization is authorized from R20 evidence. Generated
+  binder/mapper, prepared-query lifecycle, renderer reuse, PgJDBC default, and
+  threshold changes all require repeated retained Java runtime artifacts and
+  review before implementation.
+- No Rust tooling optimization is authorized from R20 evidence. Parser caching,
+  source-map/snapshot caching, diagnostics scan, and incremental parse strategy
+  changes all require repeated retained Criterion/profiler artifacts and review
+  before implementation.
+- Public performance reporting is no-go until retained artifacts, clean commit
+  metadata, exact claim boundaries, limitations, and benchmark-readiness
+  sign-off exist.
+
 Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`
 - `docs/benchmarks/postgres-execution-2026-06-01.md`
 - `docs/benchmarks/r20-benchmark-readiness.md`
+- `docs/benchmarks/r20-performance-gate.md`
 
 Current performance strategy research:
 
@@ -114,3 +131,6 @@ Current performance strategy research:
   or unbundled `rust/target/criterion` output. R20.6 evidence must be repeated,
   retained, scenario-specific, and paired with profiler/allocation evidence
   before tooling optimization candidates are ranked.
+- Do not implement R20 optimization candidates or publish R20 performance
+  reports without the retained evidence and review recorded as required by
+  `docs/benchmarks/r20-performance-gate.md`.

@@ -1,8 +1,8 @@
 # Mortar PostgreSQL Performance Report: 2026-06-01
 
-Status: Public-readiness draft. Do not use for public performance claims until
-the retained CI benchmark workflow is run on a clean release commit and
-reviewed.
+Status: Internal/local public-readiness draft. Do not use for public
+performance claims until the retained CI benchmark workflow is run on a clean
+release commit and reviewed.
 
 ## Environment
 
@@ -84,6 +84,8 @@ Local raw JSON:
 
 ## Interpretation
 
+This interpretation is internal/local only. It is not public claim text.
+
 Mortar's generated prepared path is already in the same throughput and latency
 band as direct JDBC for the measured query shape. It does not yet support a
 broad public claim that Mortar is faster than maximum handwritten JDBC.
@@ -94,6 +96,9 @@ than ordinary plain JDBC, jOOQ, and QueryDSL SQL for the measured list paths.
 
 This supports the Mortar product thesis: Java-first, refactor-safe query code can
 stay SQL-transparent while preserving low-level JDBC performance characteristics.
+
+R20.8 keeps that wording internal because the retained evidence gate is not
+satisfied.
 
 ## Readiness
 
@@ -109,6 +114,7 @@ Blocking items:
 - get independent reviewer sign-off against the retained JSON artifacts;
 - add at least one broader workload before claiming application-level
   performance.
+- pass the R20 public-report gate in `r20-performance-gate.md`.
 
 ## Limits
 
