@@ -2699,8 +2699,8 @@ public claim, not a known performance regression.
 R20 is Done as a measurement and decision-gate phase. Follow-up work is
 deferred to a later retained-artifact review or optimization slice. R21
 AI/agent-friendly work is a later authoring-guidance slice and is not
-implemented by R20. R22 scalar/mutation contract work and R23 pre-release
-readiness remain deferred.
+implemented by R20. R22 scalar/mutation contract work, R23 retained performance
+evidence and optimization, and R24 pre-release readiness remain deferred.
 
 ## R21 Canonical Plan: AI-Friendly Authoring And Query Recipes
 
@@ -2836,7 +2836,8 @@ decision gate. R21 completed the AI/agent-friendly authoring guidance gate.
 Deferred future maturity work remains out of scope here:
 
 - R22 scalar and mutation contracts for real repository persistence flows.
-- R23 pre-release readiness.
+- R23 retained performance evidence and optimization.
+- R24 pre-release readiness.
 - Retained-artifact benchmark review or optimization slices that may follow
   R20 only when retained evidence authorizes the exact claim or change.
 
@@ -2905,12 +2906,53 @@ R22 must not be marked Done until:
 - docs state that Mortar remains explicit persistence, not an ORM;
 - no performance, release, migration, or replacement claims are added.
 
-## R23 Planned Gate: Pre-Release Readiness
+## R23 Planned Gate: Retained Performance Evidence And Optimization
 
 Status: Planned.
 
-R23 should evaluate whether Mortar is ready for a first public alpha after R22
-has closed the repository persistence-cycle surface.
+R23 should finish the performance program properly before pre-release readiness
+is evaluated. R20 created the measurement discipline, benchmark harnesses, and
+public-claim policy. R23 must produce retained, repeated, reviewable evidence
+on the post-R22 API surface, then optimize only if the evidence identifies a
+dominant cost.
+
+Planned scope:
+
+- run repeated Java runtime JMH/PostgreSQL benchmark workflows on a clean commit
+  and retain raw artifacts;
+- run generated fixed-read, scalar, mutation, broader DSL, join/page, and batch
+  scenarios where supported by R22;
+- keep JDBC, PgJDBC-tuned JDBC, jOOQ, and QueryDSL reference comparisons fair
+  and explicitly bounded;
+- run Rust LSP/tooling benchmarks separately from Java runtime evidence;
+- capture commands, environment metadata, dataset/corpus notes, limitations,
+  raw JSON, derived summaries, and reviewer notes;
+- profile allocation and latency before proposing optimizations;
+- implement only evidence-ranked optimizations with before/after retained
+  artifacts and review;
+- decide whether any public performance wording is allowed, and keep no-go if
+  evidence is insufficient.
+
+Rejected scope:
+
+- optimizing from local smoke output;
+- public performance claims without retained artifacts and reviewer sign-off;
+- changing API shape only for benchmark convenience;
+- mixing Rust tooling latency with Java/JDBC runtime claims;
+- release, tag, publish, PR, push, migration, or announcement work.
+
+R23 must not be marked Done until either evidence-backed optimizations are
+implemented and re-measured, or the retained evidence explicitly supports a
+no-optimization decision. In both cases, public claims remain blocked unless the
+exact claim has retained artifacts and reviewer sign-off.
+
+## R24 Planned Gate: Pre-Release Readiness
+
+Status: Planned.
+
+R24 should evaluate whether Mortar is ready for a first public alpha after R22
+has closed the repository persistence-cycle surface and R23 has completed
+retained performance evidence and any justified optimization work.
 
 Planned scope:
 
@@ -2925,7 +2967,7 @@ Planned scope:
 - benchmark-report go/no-go remains blocked unless retained evidence exists;
 - explicit `0.1.0-alpha` go/no-go decision.
 
-R23 does not authorize release, tag, publish, or announcement by itself. It only
+R24 does not authorize release, tag, publish, or announcement by itself. It only
 produces the readiness decision and any remaining blocker list.
 
 ## Completed Slice: R15 Public API Readiness Hardening

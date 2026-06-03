@@ -1828,7 +1828,8 @@ R20.7/R20.8 completion record:
   `docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
   `docs/performance.md`, `docs/plan.md`, and this roadmap.
 - R21 AI/agent-friendly work was deferred by R20 and is completed below. R22
-  scalar/mutation contract work and R23 pre-release readiness remain deferred.
+  scalar/mutation contract work, R23 retained performance evidence and
+  optimization, and R24 pre-release readiness remain deferred.
 
 ### R21: AI-Friendly Authoring And Query Recipes
 
@@ -1955,12 +1956,55 @@ Exit criteria:
 - docs state that Mortar remains explicit persistence, not an ORM;
 - no performance, release, migration, or replacement claims are added.
 
-### R23: Pre-Release Readiness
+### R23: Retained Performance Evidence And Optimization
+
+Status: Planned
+
+Goal: Finish the performance program properly before pre-release readiness is
+evaluated. R20 created measurement discipline, benchmark harnesses, and public
+claim policy. R23 must produce retained, repeated, reviewable evidence on the
+post-R22 API surface, then optimize only if evidence identifies a dominant cost.
+
+Planned scope:
+
+- repeated Java runtime JMH/PostgreSQL benchmark workflows on a clean commit
+  with retained raw artifacts;
+- generated fixed-read, scalar, mutation, broader DSL, join/page, and batch
+  scenarios where supported by R22;
+- fair and explicitly bounded JDBC, PgJDBC-tuned JDBC, jOOQ, and QueryDSL
+  reference comparisons;
+- Rust LSP/tooling benchmarks kept separate from Java runtime evidence;
+- commands, environment metadata, dataset/corpus notes, limitations, raw JSON,
+  derived summaries, and reviewer notes;
+- allocation and latency profiling before optimization proposals;
+- evidence-ranked optimizations only, with before/after retained artifacts and
+  review;
+- public performance wording go/no-go for exact claims only.
+
+Non-goals:
+
+- optimizing from local smoke output;
+- public performance claims without retained artifacts and reviewer sign-off;
+- changing API shape only for benchmark convenience;
+- mixing Rust tooling latency with Java/JDBC runtime claims;
+- release, tag, publish, PR, push, migration, or announcement work.
+
+Exit criteria:
+
+- retained artifacts exist for the measured scenarios;
+- benchmark-readiness review approves the evidence boundary;
+- optimization decisions are ranked by retained evidence;
+- any implemented optimization has before/after retained evidence;
+- public performance claims remain blocked unless exact retained evidence and
+  reviewer sign-off exist.
+
+### R24: Pre-Release Readiness
 
 Status: Planned
 
 Goal: Decide whether Mortar is ready for a first public alpha after R22 closes
-the repository persistence-cycle surface.
+the repository persistence-cycle surface and R23 completes retained performance
+evidence plus any justified optimization work.
 
 Planned scope:
 
