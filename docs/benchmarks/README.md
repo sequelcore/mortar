@@ -99,6 +99,33 @@ gradlew.bat :java:benchmarks:jmhR20GeneratedFixedReadLatency
 This writes JSON results to
 `java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-latency.json`.
 
+Run the R20.5 DSL render/execute throughput profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20DslShapes
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-throughput.json`.
+
+Run the R20.5 DSL render/execute allocation profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20DslShapesAllocation
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-allocation.json`.
+
+Run the R20.5 DSL render/execute latency profile:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20DslShapesLatency
+```
+
+This writes JSON results to
+`java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-latency.json`.
+
 Run a short harness smoke test:
 
 ```bash
@@ -245,6 +272,75 @@ engineering evidence only.
 Optional variants, handwritten generated-style Mortar rows, join/page rows,
 update-batch rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC rows remain out
 of the R20.4 interpretation boundary.
+
+## R20.5 DSL Render/Execute Profiling
+
+R20.5 is measurement-only. It profiles existing dynamic DSL render/execute
+paths over live PostgreSQL/Testcontainers rows for broader read and write
+shapes. It does not authorize runtime optimization, public performance claims,
+Java public API changes, generated Java API changes, or benchmark threshold
+changes.
+
+Canonical include regex:
+
+```text
+PostgresExecutionBenchmark\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$
+```
+
+R20.5 matrix rows:
+
+- ordinary JDBC simple read: `PostgresExecutionBenchmark.plainJdbcFetch`;
+- Mortar DSL render-per-call simple read: `PostgresExecutionBenchmark.mortarJdbcFetch`;
+- Mortar pre-rendered simple read: `PostgresExecutionBenchmark.mortarPreRenderedJdbcFetch`;
+- reusable prepared JDBC join/page: `PostgresExecutionBenchmark.plainJdbcJoinPageFetch`;
+- Mortar DSL join/page: `PostgresExecutionBenchmark.mortarJoinPageFetch`;
+- reusable prepared JDBC update batch: `PostgresExecutionBenchmark.plainJdbcUpdateBatch`;
+- Mortar DSL update batch: `PostgresExecutionBenchmark.mortarUpdateBatch`.
+
+Local full-profile commands:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20DslShapes --no-daemon
+gradlew.bat :java:benchmarks:jmhR20DslShapesAllocation --no-daemon
+gradlew.bat :java:benchmarks:jmhR20DslShapesLatency --no-daemon
+```
+
+Equivalent commands using the generic PostgreSQL tasks:
+
+```bash
+gradlew.bat :java:benchmarks:jmhPostgresExecution "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$" --no-daemon
+gradlew.bat :java:benchmarks:jmhPostgresExecutionAllocation "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$" --no-daemon
+gradlew.bat :java:benchmarks:jmhPostgresExecutionLatency "-PjmhIncludes=PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$" --no-daemon
+```
+
+Local smoke command for proving the R20.5 preset and JSON output:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20DslShapes "-PjmhIncludes=PostgresExecutionBenchmark[.]mortarJoinPageFetch$" "-PjmhArgs=-wi 0 -i 1 -f 1 -r 100ms -w 100ms -rf json -rff build/reports/jmh/r20.5-dsl-shapes-smoke.json" --no-daemon
+```
+
+The smoke command intentionally uses one R20.5 method so it is quick enough to
+prove the local task, include override, Testcontainers startup, and JMH JSON
+writing. The JSON remains build output and must not be committed.
+
+R20.5 keeps `plainJdbcReusableStatementFetch` contextual instead of canonical:
+the simple-read DSL path is compared to ordinary JDBC plus the internal
+pre-rendered Mortar isolate. The join/page and update-batch baselines are
+matched reusable prepared JDBC rows because the Mortar DSL paths reuse stable
+query or mutation specs created at trial setup.
+
+Generated fixed-read R20.4 rows, optional variants, handwritten
+generated-style Mortar rows, jOOQ, QueryDSL SQL, `PostgresRenderingBenchmark`,
+and controlled fake-JDBC rows remain outside the R20.5 interpretation
+boundary. jOOQ and QueryDSL require separate fair-comparison boundaries before
+they can be used for broader DSL shape evidence.
+
+Local retained R20.5 bundles are internal-only unless a later benchmark
+readiness review signs off. A local bundle must include raw JSON for
+throughput, allocation, and latency, exact commands, commit SHA, clean-worktree
+state, date, JDK/Gradle/Docker/PostgreSQL/Testcontainers/PgJDBC versions,
+dataset notes, a derived summary, limitations, and review notes. Build-directory
+JSON without that bundle metadata is local engineering evidence only.
 
 ## Current Scenarios
 

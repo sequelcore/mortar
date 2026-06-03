@@ -2,6 +2,8 @@ description = "JMH benchmarks for Mortar performance measurement."
 
 val r20GeneratedFixedReadIncludes =
     "PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$"
+val r20DslShapesIncludes =
+    "PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$"
 
 dependencies {
     implementation(project(":java:core"))
@@ -215,6 +217,66 @@ tasks.register<JavaExec>("jmhR20GeneratedFixedReadLatency") {
         "-w", "1s",
         "-rf", "json",
         "-rff", layout.buildDirectory.file("reports/jmh/r20.4-generated-fixed-read-latency.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR20DslShapes") {
+    group = "verification"
+    description = "Runs the R20.5 DSL render/execute PostgreSQL throughput profile."
+    configureJmhMain(r20DslShapesIncludes)
+    addDefaultJmhProfile(
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r20.5-dsl-shapes-throughput.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR20DslShapesAllocation") {
+    group = "verification"
+    description = "Runs the R20.5 DSL render/execute PostgreSQL allocation profile."
+    configureJmhMain(r20DslShapesIncludes)
+    addDefaultJmhProfile(
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-prof", "gc",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r20.5-dsl-shapes-allocation.json").get().asFile.absolutePath
+    )
+    addConfiguredJmhExtraArgs()
+    doFirst {
+        layout.buildDirectory.dir("reports/jmh").get().asFile.mkdirs()
+    }
+}
+
+tasks.register<JavaExec>("jmhR20DslShapesLatency") {
+    group = "verification"
+    description = "Runs the R20.5 DSL render/execute PostgreSQL sample-time latency profile."
+    configureJmhMain(r20DslShapesIncludes)
+    addDefaultJmhProfile(
+        "-bm", "sample",
+        "-tu", "ms",
+        "-wi", "5",
+        "-i", "10",
+        "-f", "3",
+        "-r", "1s",
+        "-w", "1s",
+        "-rf", "json",
+        "-rff", layout.buildDirectory.file("reports/jmh/r20.5-dsl-shapes-latency.json").get().asFile.absolutePath
     )
     addConfiguredJmhExtraArgs()
     doFirst {
