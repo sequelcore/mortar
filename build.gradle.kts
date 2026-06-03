@@ -118,7 +118,7 @@ tasks.register("verifyBenchmarkWorkflow") {
 
 tasks.register("verifyPublishWorkflow") {
     group = LifecycleBasePlugin.VERIFICATION_GROUP
-    description = "Validates that Maven Central release publishing is configured for public modules."
+    description = "Validates that release-readiness workflows remain dry-run only."
 
     doLast {
         val workflowFile = file(".github/workflows/publish.yml")
@@ -128,15 +128,15 @@ tasks.register("verifyPublishWorkflow") {
 
         val workflowContent = workflowFile.readText()
         val requiredWorkflowFragments = listOf(
-            "tags:",
-            "v*",
-            "DOPPLER_TOKEN",
-            "publishToMavenCentral",
-            "MAVEN_USERNAME",
-            "MAVEN_PASSWORD",
-            "GPG_PRIVATE_KEY",
-            "GPG_PASSPHRASE",
-            "softprops/action-gh-release"
+            "workflow_dispatch:",
+            "permissions:",
+            "contents: read",
+            "publishToMavenLocal",
+            "cargo package --list -p mortar-compiler",
+            "cargo package --list -p mortar-cli",
+            "cargo package --list -p mortar-lsp",
+            "cargo publish --dry-run -p mortar-compiler",
+            "bun run package:vsix"
         )
         val missingWorkflowFragments = requiredWorkflowFragments.filterNot(workflowContent::contains)
         if (missingWorkflowFragments.isNotEmpty()) {
@@ -145,13 +145,34 @@ tasks.register("verifyPublishWorkflow") {
             )
         }
 
+        val forbiddenWorkflowFragments = listOf(
+            "tags:",
+            "publishToMaven" + "Central",
+            "publishAndReleaseToMaven" + "Central",
+            "publishAllPublicationsToMaven" + "CentralRepository",
+            "DOPPLER" + "_TOKEN",
+            "MAVEN_USERNAME",
+            "MAVEN_PASSWORD",
+            "GPG_",
+            "soft" + "props/action-gh" + "-release",
+            "contents: " + "write",
+            "vsce publish"
+        )
+        val presentForbiddenWorkflowFragments = forbiddenWorkflowFragments.filter(workflowContent::contains)
+        if (presentForbiddenWorkflowFragments.isNotEmpty()) {
+            throw GradleException(
+                "Publish workflow contains non-dry-run fragments: "
+                    + presentForbiddenWorkflowFragments.joinToString(", ")
+            )
+        }
+
         val buildContent = file("build.gradle.kts").readText()
         val requiredBuildFragments = listOf(
             "io.github.sequelcore",
             "com.vanniktech.maven.publish",
-            "publishToMavenCentral(automaticRelease = true)",
             "hasSigningConfiguration",
             "signAllPublications()",
+            "coordinates(",
             "mortar-core",
             "mortar-dialect-postgres",
             "mortar-runtime-jdbc",
@@ -163,6 +184,29 @@ tasks.register("verifyPublishWorkflow") {
         if (missingBuildFragments.isNotEmpty()) {
             throw GradleException(
                 "Publishing configuration is missing required fragments: ${missingBuildFragments.joinToString(", ")}"
+            )
+        }
+
+        val forbiddenBuildFragments = listOf(
+            "publishToMaven" + "Central(",
+            "publishAndReleaseToMaven" + "Central",
+            "publishAllPublicationsToMaven" + "CentralRepository"
+        )
+        val presentForbiddenBuildFragments = forbiddenBuildFragments.filter(buildContent::contains)
+        if (presentForbiddenBuildFragments.isNotEmpty()) {
+            throw GradleException(
+                "Publishing configuration contains remote publication fragments: "
+                    + presentForbiddenBuildFragments.joinToString(", ")
+            )
+        }
+
+        val nonPublicPublishableProjects = publishableJavaProjects.filter {
+            it == ":java:benchmarks" || it.startsWith(":examples:") || it.startsWith(":editors:")
+        }
+        if (nonPublicPublishableProjects.isNotEmpty()) {
+            throw GradleException(
+                "Publishing configuration contains non-public modules: "
+                    + nonPublicPublishableProjects.joinToString(", ")
             )
         }
     }
@@ -190,7 +234,6 @@ subprojects {
 
     if (path in publishableJavaProjects) {
         configure<com.vanniktech.maven.publish.MavenPublishBaseExtension> {
-            publishToMavenCentral(automaticRelease = true)
             if (hasSigningConfiguration) {
                 signAllPublications()
             }
@@ -226,6 +269,10 @@ subprojects {
                     developerConnection.set("scm:git:ssh://git@github.com/sequelcore/mortar.git")
                 }
             }
+        }
+
+        tasks.matching { it.name == "generateMetadataFileForMavenPublication" }.configureEach {
+            dependsOn("plainJavadocJar")
         }
     }
 

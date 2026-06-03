@@ -46,7 +46,7 @@ Current limits:
 | R21 Query recipes | Done | Public repository authoring recipes and DDD/Clean Architecture usage guidance. |
 | R22 Scalar and mutation contracts | Done | DSL scalar `count`/`exists`, row-count mutations, `RETURNING`, and JDBC execution paths. |
 | R23 Retained performance evidence and optimization decision | Done | Retained Java runtime, Rust tooling, and VS Code editor-latency evidence reviewed; optimization no-go and public performance claims remain blocked. |
-| R24 Public documentation and pre-release readiness | In Progress | R24.2/R24.3 documentation cleanup and R24.4/R24.5 API, Javadocs, examples, and first-user readiness are complete; remaining readiness slices are planned. |
+| R24 Public documentation and pre-release readiness | In Progress | R24.2/R24.3 documentation cleanup, R24.4/R24.5 API and examples readiness, and R24.6/R24.7 package dry-run plus CI/security readiness are complete; final evidence and go/no-go slices remain planned. |
 
 R23 retained evidence:
 
@@ -77,8 +77,8 @@ readiness program, not an artifact publication step.
 | R24.3 Public documentation rewrite and cleanup | Done | README, roadmap, plan, performance docs, benchmark docs, release policy, and topical guides rewritten for current public scope. |
 | R24.4 API and Javadocs readiness review | Done | Public API surfaces reviewed; targeted Javadocs and generated-source docs tightened without API expansion. |
 | R24.5 Examples and first-user path readiness | Done | Spring Boot, Clean Architecture, and query-corpus example paths verified and user-facing stale guidance removed. |
-| R24.6 Packaging and publishing dry-runs | Planned | Verify Maven Central, Gradle local publishing, Cargo dry-runs, VS Code packaging, and publication workflow behavior without publishing. |
-| R24.7 CI, repository health, and security readiness | Planned | Review health files, CI permissions, dependency/code scanning posture, and security policy. |
+| R24.6 Packaging and publishing dry-runs | Done | Verified Java Maven local publication, generated POM/source/Javadoc artifacts, Rust package inspection and dry-run behavior, VS Code VSIX packaging, and validation-only publication workflow behavior without publishing. |
+| R24.7 CI, repository health, and security readiness | Done | Hardened readiness workflows to explicit minimal permissions, added dependency and CodeQL security automation, reviewed health files and security policy, and kept actual publication disabled. |
 | R24.8 Performance wording and benchmark evidence review | Planned | Re-check all public performance wording against retained evidence and claim boundaries. |
 | R24.9 `0.1.0-alpha` go/no-go decision | Planned | Decide whether alpha publication can proceed after R24.4-R24.8 close. |
 
@@ -120,10 +120,8 @@ Research basis for the R24 documentation posture:
 
 Before `0.1.0-alpha.1`, R24 must still complete:
 
-1. Packaging and publishing dry-runs without publication.
-2. CI, repository health, and security readiness review.
-3. Performance wording and retained evidence review.
-4. Final go/no-go decision.
+1. Performance wording and retained evidence review.
+2. Final go/no-go decision.
 
 Publication, tagging, release notes, PR/merge work, and application migration
 remain outside completed R24 readiness slices and require a later explicit

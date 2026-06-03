@@ -96,10 +96,13 @@ Before a public release:
     Java artifacts before any Maven Central publication.
 11. Cargo package inspection and dry-run evidence exists for publishable
     crates.
-12. VS Code package dry-run evidence exists if the extension is included.
-13. GitHub Actions publish workflow uses scoped permissions, protected secrets,
-    and dry-run jobs before publication jobs.
-14. Release notes are drafted from `CHANGELOG.md`.
+12. Dependent Rust crates that cannot complete a crates.io publish dry-run
+    until their internal dependencies are published have package-inspection
+    evidence and a documented fail-closed reason.
+13. VS Code package dry-run evidence exists if the extension is included.
+14. GitHub Actions release-readiness workflows use scoped permissions and
+    dry-run jobs only until publication is explicitly authorized.
+15. Release notes are drafted from `CHANGELOG.md`.
 
 ## Dry-Run Commands
 
@@ -114,24 +117,36 @@ Cargo package inspection and dry run:
 ```bash
 cd rust
 cargo package --list -p mortar-compiler
+cargo package --list -p mortar-cli
+cargo package --list -p mortar-lsp
 cargo publish --dry-run -p mortar-compiler
 ```
+
+`mortar-cli` and `mortar-lsp` depend on `mortar-compiler`. Before the compiler
+crate is available in the target registry, their `cargo publish --dry-run`
+checks may fail closed during registry dependency resolution. Package contents
+must still be inspected before any release decision.
 
 VS Code extension check:
 
 ```bash
 cd editors/vscode
 bun run typecheck
+bun run package:vsix
 ```
 
-This command is not a VSIX packaging dry run. A real package dry run, normally
-through the VS Code `vsce package` path, must be added and verified during
-R24.6 if the VS Code extension is included in a release readiness decision.
+`package:vsix` creates a local VSIX through the VS Code `vsce package` path. It
+does not publish to the VS Code Marketplace.
 
 ## Publication Policy
 
-Publication is tag-gated and requires an explicit go/no-go decision. Dry-runs do
-not publish artifacts.
+Active workflows are release-readiness only and do not publish artifacts.
+Publication requires a later explicit go/no-go decision and a separate workflow
+change that restores a guarded release path.
+
+Future publication should be tag-gated and protected by scoped permissions,
+protected secrets, and validation jobs before any upload step. Dry-runs do not
+publish artifacts.
 
 Maven Central publishing must use the current Central Portal path, validated
 POM metadata, sources, Javadocs, license metadata, SCM metadata, developer
@@ -146,4 +161,4 @@ same as publishing it.
 
 No release, tag, Maven Central publication, crates.io publication, VS Code
 Marketplace publication, GitHub release, PR, merge, or application migration is
-authorized by R24.2/R24.3 documentation cleanup.
+authorized by R24 readiness work.
