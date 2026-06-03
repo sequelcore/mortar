@@ -122,7 +122,7 @@ the external prerequisites below are completed:
    token, and signing credentials.
 2. crates.io ownership and publish order for `mortar-compiler`,
    `mortar-cli`, and `mortar-lsp`.
-3. VS Code Marketplace publisher ownership for `sequel` and a Marketplace PAT.
+3. VS Code Marketplace publisher ownership for `sequelcore` and a Marketplace PAT.
 4. Protected release environment or equivalent guarded secret access, branch
    protection/rulesets, and a release automation change that restores guarded
    publication steps.

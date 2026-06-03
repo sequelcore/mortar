@@ -171,7 +171,7 @@ Before an alpha publication action, complete these external prerequisites:
    Central Portal token access, and signing credentials.
 2. Confirm crates.io owner access for `mortar-compiler`, `mortar-cli`, and
    `mortar-lsp`, and publish in dependency order.
-3. Confirm VS Code Marketplace publisher ownership for `sequel` and a
+3. Confirm VS Code Marketplace publisher ownership for `sequelcore` and a
    Marketplace PAT if the extension is included.
 4. Add protected release controls for publication credentials, including branch
    protection or rulesets and a protected environment or equivalent approval
