@@ -14,8 +14,8 @@ Use those modules as the source of truth when copying code into an application.
   need: `read(renderer).findById(...)` or `read(renderer).findAll()`.
 - Use the Java DSL for supported application-specific predicates, joins,
   projections, sorting, pagination, and writes.
-- Treat `count` and `exists` as future scalar-query contracts until a later
-  roadmap slice approves them explicitly.
+- Treat `count` and `exists` as future scalar-query contracts until R22
+  approves and implements them explicitly.
 - Name every repository-owned query with `.named("Repository.method")`.
 - Execute through `MortarJdbcClient`; generated query objects do not execute
   themselves.
