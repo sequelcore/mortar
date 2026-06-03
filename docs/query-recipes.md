@@ -14,8 +14,10 @@ Use those modules as the source of truth when copying code into an application.
   need: `read(renderer).findById(...)` or `read(renderer).findAll()`.
 - Use the Java DSL for supported application-specific predicates, joins,
   projections, sorting, pagination, and writes.
-- Treat `count` and `exists` as future scalar-query contracts until R22
-  approves and implements them explicitly.
+- Use DSL scalar terminals for `count` and `exists`; do not invent generated
+  scalar facade methods.
+- Use explicit mutation specs and bound mutation values for writes; do not
+  invent generated write facades or repositories.
 - Name every repository-owned query with `.named("Repository.method")`.
 - Execute through `MortarJdbcClient`; generated query objects do not execute
   themselves.
@@ -100,6 +102,100 @@ assertThatSql(renderer.render(query))
     .hasParameters(true, 20, 20);
 ```
 
+## Count And Exists
+
+Use DSL scalar terminals when the repository needs a single value:
+
+```java
+public long countActive() {
+    return jdbcClient.fetchOne(
+        db.from(CLIENT)
+            .where(client -> client.active.eq(true))
+            .count(renderer)
+            .named("ClientRepository.countActive")
+    );
+}
+
+public boolean existsActive(long id) {
+    return jdbcClient.fetchOne(
+        db.from(CLIENT)
+            .where(client -> client.id.eq(id))
+            .where(client -> client.active.eq(true))
+            .exists(renderer)
+            .named("ClientRepository.existsActive")
+    );
+}
+```
+
+Assert scalar SQL before relying on repository behavior:
+
+```java
+assertThatSql(repository.countActiveQuery())
+    .hasName("ClientRepository.countActive")
+    .hasSql("select count(*) from clients c where c.active = ?")
+    .hasParameters(true)
+    .hasParameterTypes(Boolean.class);
+```
+
+## Create, Update, And Delete
+
+Use explicit mutation specs. Mutations are inspectable values; execution still
+belongs to `MortarJdbcClient`.
+
+```java
+public int deactivate(long id) {
+    return jdbcClient.execute(deactivateMutation(id));
+}
+
+MortarBoundMutation deactivateMutation(long id) {
+    return MortarBoundMutation.unnamed(
+            new UpdateSpec(
+                CLIENT.table,
+                List.of(Assignment.of(CLIENT.active, false)),
+                List.of(CLIENT.id.eq(id)),
+                List.of()
+            ),
+            renderer
+        )
+        .named("ClientRepository.deactivate");
+}
+```
+
+Use `MortarReturningMutation<T>` only when PostgreSQL `RETURNING` columns are
+declared and mapped into an adapter-facing row or DTO:
+
+```java
+MortarReturningMutation<ClientSummary> createMutation(long id, String name, boolean active) {
+    return MortarReturningMutation.unnamed(
+            new InsertSpec(
+                CLIENT.table,
+                List.of(
+                    Assignment.of(CLIENT.id, id),
+                    Assignment.of(CLIENT.name, name),
+                    Assignment.of(CLIENT.active, active)
+                ),
+                List.of(CLIENT.id, CLIENT.name)
+            ),
+            renderer,
+            ClientSummary.class
+        )
+        .named("ClientRepository.create");
+}
+```
+
+When the repository expects `INSERT ... RETURNING` to produce one row, make that
+cardinality explicit in the adapter:
+
+```java
+public Optional<ClientSummary> create(long id, String name, boolean active) {
+    List<ClientSummary> rows = jdbcClient.fetch(createMutation(id, name, active));
+    if (rows.size() != 1) {
+        throw new IllegalStateException("expected exactly one row from ClientRepository.create");
+    }
+    return Optional.of(rows.getFirst());
+}
+```
+
 ## Spring Repository Adapter Pattern
 
 Spring repositories should be ordinary infrastructure adapters. Mortar does not
@@ -155,8 +251,8 @@ When generating or editing Mortar repository code:
 6. Do not bypass source-map, metadata, or snapshot contracts for editor
    tooling.
 7. Do not generate repositories, optional-filter method matrices, hidden joins,
-   lazy loading, aggregate loaders, writes, batches, `count`, or `exists`
-   helpers unless a later roadmap slice explicitly adds that API.
+   lazy loading, aggregate loaders, writes, batches, or generated scalar
+   helpers.
 8. Do not add raw SQL unless the requested query cannot be represented by the
    current generated facade or DSL. If raw SQL is required, use the explicit
    unsafe API and add adapter-boundary SQL tests.

@@ -11,13 +11,13 @@ final class StringPredicateTest {
 
     @Test
     void createsExplicitCaseSensitiveStringPredicates() {
-        Predicate predicate = name.contains("Ricardo", StringComparison.caseSensitive());
+        Predicate predicate = name.contains("Ada", StringComparison.caseSensitive());
 
         assertThat(predicate).isEqualTo(
             new Predicate.StringPredicate(
                 name,
                 StringOperator.CONTAINS,
-                "Ricardo",
+                "Ada",
                 StringComparison.caseSensitive()
             )
         );

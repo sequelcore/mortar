@@ -67,6 +67,24 @@ public record QueryMetadata(List<TableRef> tables, List<ColumnRef<?>> columns, L
         return new QueryMetadata(tables, columns, List.of());
     }
 
+    public static QueryMetadata from(ScalarSpec<?> scalar) {
+        Objects.requireNonNull(scalar, "scalar cannot be null");
+
+        List<TableRef> tables = new ArrayList<>();
+        List<ColumnRef<?>> columns = new ArrayList<>();
+        addDistinct(tables, scalar.table());
+
+        for (Join join : scalar.joins()) {
+            addDistinct(tables, join.table());
+            addDistinct(columns, join.leftColumn());
+            addDistinct(columns, join.rightColumn());
+        }
+
+        scalar.predicates().forEach(predicate -> addPredicateColumns(columns, predicate));
+
+        return new QueryMetadata(tables, columns, scalar.joins());
+    }
+
     private static void addPredicateColumns(List<ColumnRef<?>> columns, Predicate predicate) {
         switch (predicate) {
             case Predicate.BetweenPredicate between -> addDistinct(columns, between.column());

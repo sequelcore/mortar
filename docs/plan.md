@@ -2847,7 +2847,7 @@ this handoff.
 
 ## R22 Planned Gate: Scalar And Mutation Contracts
 
-Status: Planned.
+Status: Done.
 
 R22 should make Mortar cover the minimum real repository persistence cycle
 before pre-release readiness is evaluated: read, count, check existence, create,
@@ -2862,10 +2862,59 @@ scalar reads, and mutations.
 
 ### R22 Scope Decision
 
-R22 must start with xhigh architecture debate before implementation. The debate
-should challenge whether scalar reads and mutations belong in one gate or need
-to be split, but the planning default is one persistence-cycle gate because
-repositories usually need these operations together.
+R22 started with xhigh architecture debate before implementation on
+2026-06-03. The debate accepted one persistence-cycle gate, but split the public
+contract into three explicit surfaces: existing row reads, new scalar reads, and
+new mutation-bound values.
+
+Decision summary:
+
+- Keep `count` and `exists` in R22 with mutations because repositories usually
+  need the full persistence cycle together before pre-release readiness.
+- Do not collapse row reads, scalar reads, and mutations into one generic query
+  object. JDBC and PostgreSQL semantics differ for result sets, scalar reads,
+  DML row counts, and DML `RETURNING` rows.
+- Add a small scalar contract for `count` and `exists`, exposed through the DSL
+  and inspectable bound scalar values. Do not generate scalar facades in R22.
+- Keep existing `InsertSpec`, `UpdateSpec`, and `DeleteSpec` as semantic
+  mutation specs. Add inspectable bound mutation values for names, SQL,
+  ordered parameters, parameter types, metadata, and explicit row-count vs.
+  returning-row result modes.
+- Keep all execution in `MortarJdbcClient`. Query, scalar, and mutation objects
+  remain inspectable values and must not execute themselves.
+- Reuse the current SQL snapshot format for named scalar and mutation
+  contracts. Do not change processor metadata, source-map, Rust compiler, or
+  LSP contracts unless implementation discovers a hard requirement.
+- Keep generated repositories, generated write namespaces, method-name
+  derivation, dirty checking, managed state, lazy loading, aggregate graph
+  loading, batch `RETURNING`, broad scalar expression DSLs, runtime
+  optimization, and performance/release claims rejected.
+
+Implementation slices:
+
+1. Core contract slice:
+   - `java/core`: add scalar specs for `count` and `exists`, bound scalar value,
+     bound mutation value(s), mutation result mode, metadata extraction, and
+     validation for unsupported scalar/mutation shapes.
+   - `java/core` tests: add failing tests for scalar metadata, bound scalar
+     inspection, bound mutation inspection, and invalid shapes.
+2. Dialect/runtime slice:
+   - `java/dialect-postgres`: render `count` and `exists`, preserve mutation
+     rendering, and test SQL, ordered parameters, parameter types, metadata, and
+     PostgreSQL behavior.
+   - `java/runtime-jdbc`: execute scalar reads through `fetchOne`, execute
+     non-returning mutations through explicit update-count methods, execute
+     returning mutations through explicit returning-row methods, preserve
+     caller-owned transaction participation, and reject batch `RETURNING`.
+3. Evidence slice:
+   - `java/testkit`: add scalar and mutation assertion entry points.
+   - Examples: add Spring repository and Clean Architecture adapter methods for
+     `count`, `exists`, create, update, and delete while keeping Mortar inside
+     infrastructure adapters.
+   - Docs: update recipes, usage, API reference, troubleshooting, roadmap, and
+     ADRs for the public contract.
+   - Processor/Rust: no generated scalar/write facades and no metadata or
+     source-map format change in R22 unless tests prove unavoidable drift.
 
 Accepted planning scope:
 
@@ -2905,6 +2954,117 @@ R22 must not be marked Done until:
 - examples compile and prove Mortar stays inside infrastructure adapters;
 - docs state that Mortar remains explicit persistence, not an ORM;
 - no performance, release, migration, or replacement claims are added.
+
+### R22 Implementation Record
+
+R22 completed the scalar and mutation contract gate on 2026-06-03.
+
+Implemented API shape:
+
+- `CountSpec`, `ExistsSpec`, and `ScalarSpec<T>` model scalar reads in
+  `java/core`.
+- `QueryBuilder.count()` and `QueryBuilder.exists()` create semantic scalar
+  specs; `count(renderer)` and `exists(renderer)` create inspectable
+  `MortarBoundScalar<T>` values.
+- `MortarBoundMutation` models named, rendered row-count mutations.
+- `MortarReturningMutation<T>` models named, rendered PostgreSQL `RETURNING`
+  mutations with explicit returning-column order for row mapping.
+- `MutationResultMode` records whether a mutation expects an update count or
+  returning rows.
+- `PostgresQueryRenderer` renders `count`, `exists`, insert, update, delete,
+  and `RETURNING` SQL with ordered parameters and metadata.
+- `MortarJdbcClient.fetchOne(...)` executes bound scalar reads,
+  `execute(...)` executes row-count mutations, and `fetch(...)` /
+  `fetchOptional(...)` execute returning mutations.
+- `executeBatch(...)` remains same-SQL, non-returning mutation batch execution
+  and now rejects `RETURNING` mutations.
+- `MortarSqlAssertions` accepts bound scalar and mutation values.
+- Spring Boot and Clean Architecture examples prove repository methods for
+  `count`, `exists`, create, update, and delete while keeping Mortar in
+  infrastructure adapters.
+
+Rejected by R22:
+
+- generated `count` or `exists` facade methods;
+- generated write namespaces, generated repositories, and method-name
+  derivation;
+- self-executing scalar or mutation values;
+- ORM behavior, dirty checking, managed state, lazy loading, identity maps,
+  cascade persistence, or aggregate graph loading;
+- batch `RETURNING`;
+- broad scalar-expression DSLs;
+- runtime performance optimization, public performance claims, release, tag,
+  publish, push, PR, migration, or announcement work.
+
+Changed modules/docs:
+
+- `java/core`;
+- `java/dialect-postgres`;
+- `java/runtime-jdbc`;
+- `java/testkit`;
+- `examples/spring-boot-postgres`;
+- `examples/clean-architecture-postgres`;
+- `rust/crates/mortar-cli` test Docker availability guard;
+- `docs/adr/0009-r22-scalar-and-mutation-contracts.md`;
+- `docs/adr/index.md`;
+- `docs/api-reference.md`;
+- `docs/query-recipes.md`;
+- `docs/spec/architecture.md`;
+- `docs/sql-snapshots.md`;
+- `docs/testkit.md`;
+- `docs/troubleshooting.md`;
+- `docs/usage-guide.md`;
+- this plan and `docs/roadmap.md`.
+
+Verification passed on 2026-06-03:
+
+- failing tests were written first; the initial focused core gate failed
+  because R22 scalar and bound mutation contracts did not exist;
+- `gradlew.bat :java:core:test --no-daemon`;
+- focused gate:
+  `gradlew.bat :java:dialect-postgres:test :java:runtime-jdbc:test :java:testkit:test :examples:spring-boot-postgres:test :examples:clean-architecture-postgres:test --no-daemon`;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test` with Docker-backed PostgreSQL tests passing;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/user/project scrub excluding build, cache, dependency,
+  generated, and target outputs.
+
+Review result:
+
+- Sequel standards preserved: no wildcard imports, no dead code, no duplicate
+  generated APIs, and the 80% JaCoCo gates pass.
+- Clean Architecture boundaries preserved: `java/core` remains framework-free,
+  PostgreSQL rendering stays in `java/dialect-postgres`, JDBC execution stays
+  in `java/runtime-jdbc`, Spring examples remain wiring/adapter examples, and
+  domain/application ports do not expose Mortar types.
+- Public API minimality preserved: scalar reads are DSL-only, generated
+  processor facades remain fixed-read-only, and Rust metadata/source-map/LSP
+  contracts did not change.
+- ORM boundary preserved: no managed state, dirty checking, lazy loading,
+  aggregate graph loading, repository generation, or method-name derivation was
+  added.
+- Public docs make no release, migration, replacement, optimization, benchmark,
+  or performance claim.
+
+Research basis:
+
+- JDBC `PreparedStatement` semantics distinguish result-set execution,
+  update-count execution, and batch update counts.
+- PostgreSQL documentation defines `count`, `exists`, DML row counts, and
+  `RETURNING` result rows.
+- Spring transaction guidance keeps transaction policy at the service/Spring
+  boundary; Mortar participates through caller-owned or Spring-provided
+  connections and does not commit or roll back.
+- jOOQ and QueryDSL validate separate scalar and mutation APIs with visible SQL
+  and bindings.
+- JPA/Hibernate documentation validates the rejected ORM boundary: managed
+  entity state, dirty checking, and lazy loading remain outside Mortar.
+- LSP 3.17 position-based editor capabilities support leaving source-map and
+  generated metadata contracts unchanged when R22 adds no generated scalar or
+  write facade methods.
 
 ## R23 Planned Gate: Retained Performance Evidence And Optimization
 

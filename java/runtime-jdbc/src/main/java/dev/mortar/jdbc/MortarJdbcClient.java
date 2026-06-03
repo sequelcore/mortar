@@ -3,7 +3,11 @@ package dev.mortar.jdbc;
 import dev.mortar.core.ColumnRef;
 import dev.mortar.core.DeleteSpec;
 import dev.mortar.core.InsertSpec;
+import dev.mortar.core.MortarBoundMutation;
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.MortarBoundScalar;
+import dev.mortar.core.MortarReturningMutation;
+import dev.mortar.core.MutationResultMode;
 import dev.mortar.core.MutationSpec;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.Projection;
@@ -103,6 +107,12 @@ public final class MortarJdbcClient {
         Objects.requireNonNull(mapper, "mapper cannot be null");
 
         return fetchOptionalRendered(renderedQuery, mapper);
+    }
+
+    public <T> T fetchOne(MortarBoundScalar<T> scalar) {
+        Objects.requireNonNull(scalar, "scalar cannot be null");
+
+        return fetchOneRendered(scalar.rendered(), scalar.scalarType());
     }
 
     public <T> List<T> fetch(MortarBoundQuery<T> query) {
@@ -228,6 +238,31 @@ public final class MortarJdbcClient {
         }
     }
 
+    private <T> T fetchOneRendered(RenderedQuery rendered, Class<T> scalarType) {
+        log(MortarJdbcOperation.QUERY, rendered);
+
+        try (
+            ConnectionLease lease = connectionLease();
+            PreparedStatement statement = lease.connection().prepareStatement(rendered.sql())
+        ) {
+            bind(statement, rendered.parameters());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    throw new IllegalStateException("expected exactly one row");
+                }
+                @SuppressWarnings("unchecked")
+                T value = (T) convertJdbcValue(resultSet.getObject(1), scalarType);
+                if (resultSet.next()) {
+                    throw new IllegalStateException("expected exactly one row");
+                }
+                return value;
+            }
+        } catch (SQLException exception) {
+            throw new MortarJdbcException("Failed to execute Mortar scalar query", rendered, exception);
+        }
+    }
+
     private <P, T> List<T> fetchGenerated(MortarGeneratedQuery<P, T> query, P parameters) {
         log(MortarJdbcOperation.QUERY, query);
 
@@ -297,6 +332,83 @@ public final class MortarJdbcClient {
         return fetch(query, new ConstructorRowMapper<>(targetType, projection.columns()));
     }
 
+    public int execute(MortarBoundMutation mutation) {
+        Objects.requireNonNull(mutation, "mutation cannot be null");
+        if (mutation.resultMode() != MutationResultMode.ROW_COUNT) {
+            throw new IllegalArgumentException("execute requires a row-count mutation");
+        }
+
+        RenderedQuery rendered = mutation.rendered();
+        log(MortarJdbcOperation.MUTATION, rendered);
+
+        try (
+            ConnectionLease lease = connectionLease();
+            PreparedStatement statement = lease.connection().prepareStatement(rendered.sql())
+        ) {
+            bind(statement, rendered.parameters());
+            return statement.executeUpdate();
+        } catch (SQLException exception) {
+            throw new MortarJdbcException("Failed to execute Mortar mutation", rendered, exception);
+        }
+    }
+
+    public <T> List<T> fetch(MortarReturningMutation<T> mutation) {
+        Objects.requireNonNull(mutation, "mutation cannot be null");
+
+        return fetchReturningMutation(mutation.rendered(), rowTypeMapper(mutation));
+    }
+
+    public <T> Optional<T> fetchOptional(MortarReturningMutation<T> mutation) {
+        Objects.requireNonNull(mutation, "mutation cannot be null");
+
+        return fetchOptionalReturningMutation(mutation.rendered(), rowTypeMapper(mutation));
+    }
+
+    private <T> List<T> fetchReturningMutation(RenderedQuery rendered, RowMapper<T> mapper) {
+        log(MortarJdbcOperation.MUTATION, rendered);
+
+        try (
+            ConnectionLease lease = connectionLease();
+            PreparedStatement statement = lease.connection().prepareStatement(rendered.sql())
+        ) {
+            bind(statement, rendered.parameters());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                List<T> rows = new ArrayList<>();
+                while (resultSet.next()) {
+                    rows.add(mapper.map(resultSet));
+                }
+                return List.copyOf(rows);
+            }
+        } catch (SQLException exception) {
+            throw new MortarJdbcException("Failed to execute Mortar returning mutation", rendered, exception);
+        }
+    }
+
+    private <T> Optional<T> fetchOptionalReturningMutation(RenderedQuery rendered, RowMapper<T> mapper) {
+        log(MortarJdbcOperation.MUTATION, rendered);
+
+        try (
+            ConnectionLease lease = connectionLease();
+            PreparedStatement statement = lease.connection().prepareStatement(rendered.sql())
+        ) {
+            bind(statement, rendered.parameters());
+
+            try (ResultSet resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) {
+                    return Optional.empty();
+                }
+                T row = mapper.map(resultSet);
+                if (resultSet.next()) {
+                    throw new IllegalStateException("expected at most one row");
+                }
+                return Optional.ofNullable(row);
+            }
+        } catch (SQLException exception) {
+            throw new MortarJdbcException("Failed to execute Mortar returning mutation", rendered, exception);
+        }
+    }
+
     private <T> RowMapper<T> rowTypeMapper(MortarBoundQuery<T> query) {
         List<ColumnRef<?>> columns = query.metadata().columns();
         if (columns.isEmpty()) {
@@ -305,10 +417,21 @@ public final class MortarJdbcClient {
         return new ConstructorRowMapper<>(query.rowType(), columns);
     }
 
+    private <T> RowMapper<T> rowTypeMapper(MortarReturningMutation<T> mutation) {
+        List<ColumnRef<?>> columns = mutation.returningColumns();
+        if (columns.isEmpty()) {
+            throw new IllegalArgumentException("returning mutation metadata columns are required for row-type mapping");
+        }
+        return new ConstructorRowMapper<>(mutation.rowType(), columns);
+    }
+
     public int[] executeBatch(List<? extends MutationSpec> mutations) {
         Objects.requireNonNull(mutations, "mutations cannot be null");
         if (mutations.isEmpty()) {
             throw new IllegalArgumentException("mutations cannot be empty");
+        }
+        if (mutations.stream().anyMatch(mutation -> !mutation.returning().isEmpty())) {
+            throw new IllegalArgumentException("batch mutations cannot declare returning columns");
         }
 
         List<RenderedQuery> renderedQueries = mutations.stream()
@@ -522,29 +645,33 @@ public final class MortarJdbcClient {
         }
 
         private Object convert(Object value, Class<?> targetType) {
-            if (value == null) {
-                return null;
-            }
-            if (targetType.isInstance(value)) {
-                return value;
-            }
-            if ((Long.class.equals(targetType) || Long.TYPE.equals(targetType)) && value instanceof Number number) {
-                return number.longValue();
-            }
-            if ((Integer.class.equals(targetType) || Integer.TYPE.equals(targetType)) && value instanceof Number number) {
-                return number.intValue();
-            }
-            if (LocalDate.class.equals(targetType) && value instanceof Date date) {
-                return date.toLocalDate();
-            }
-            if (LocalDateTime.class.equals(targetType) && value instanceof Timestamp timestamp) {
-                return timestamp.toLocalDateTime();
-            }
-            if (Instant.class.equals(targetType) && value instanceof Timestamp timestamp) {
-                return timestamp.toInstant();
-            }
+            return convertJdbcValue(value, targetType);
+        }
+    }
+
+    private static Object convertJdbcValue(Object value, Class<?> targetType) {
+        if (value == null) {
+            return null;
+        }
+        if (targetType.isInstance(value)) {
             return value;
         }
+        if ((Long.class.equals(targetType) || Long.TYPE.equals(targetType)) && value instanceof Number number) {
+            return number.longValue();
+        }
+        if ((Integer.class.equals(targetType) || Integer.TYPE.equals(targetType)) && value instanceof Number number) {
+            return number.intValue();
+        }
+        if (LocalDate.class.equals(targetType) && value instanceof Date date) {
+            return date.toLocalDate();
+        }
+        if (LocalDateTime.class.equals(targetType) && value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        if (Instant.class.equals(targetType) && value instanceof Timestamp timestamp) {
+            return timestamp.toInstant();
+        }
+        return value;
     }
 
     private record ConnectionLease(Connection connection, boolean closeOnExit) implements AutoCloseable {

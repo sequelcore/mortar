@@ -1,5 +1,6 @@
 package dev.mortar.postgres;
 
+import static dev.mortar.testkit.MortarSqlAssertions.assertThatSql;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.mortar.core.Assignment;
@@ -28,11 +29,12 @@ final class PostgresMutationRendererTest {
 
         RenderedQuery rendered = new PostgresQueryRenderer().render(insert);
 
-        assertThat(rendered.sql()).isEqualTo("insert into clients (id, name) values (?, ?) returning id, name");
-        assertThat(rendered.parameters())
-            .extracting(parameter -> parameter.value())
-            .containsExactly(1L, "Ada");
-        assertThat(rendered.metadata().columns()).containsExactly(id, name);
+        assertThatSql(rendered)
+            .hasSql("insert into clients (id, name) values (?, ?) returning id, name")
+            .hasParameters(1L, "Ada")
+            .hasParameterTypes(Long.class, String.class)
+            .hasTables(clients)
+            .hasColumns(id, name);
     }
 
     @Test
@@ -49,12 +51,12 @@ final class PostgresMutationRendererTest {
 
         RenderedQuery rendered = new PostgresQueryRenderer().render(update);
 
-        assertThat(rendered.sql()).isEqualTo(
-            "update clients set name = ? where id = ? and name is not null returning id, name"
-        );
-        assertThat(rendered.parameters())
-            .extracting(parameter -> parameter.value())
-            .containsExactly("Ada", 1L);
+        assertThatSql(rendered)
+            .hasSql("update clients set name = ? where id = ? and name is not null returning id, name")
+            .hasParameters("Ada", 1L)
+            .hasParameterTypes(String.class, Long.class)
+            .hasTables(clients)
+            .hasColumns(name, id);
     }
 
     @Test
@@ -65,9 +67,11 @@ final class PostgresMutationRendererTest {
 
         RenderedQuery rendered = new PostgresQueryRenderer().render(delete);
 
-        assertThat(rendered.sql()).isEqualTo("delete from clients where id = ? returning id");
-        assertThat(rendered.parameters())
-            .extracting(parameter -> parameter.value())
-            .containsExactly(1L);
+        assertThatSql(rendered)
+            .hasSql("delete from clients where id = ? returning id")
+            .hasParameters(1L)
+            .hasParameterTypes(Long.class)
+            .hasTables(clients)
+            .hasColumns(id);
     }
 }

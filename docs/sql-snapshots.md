@@ -6,6 +6,9 @@ store the SQL contract that Java tests and CI can compare against.
 ## File Format
 
 The current format is `mortar-sql-snapshot-v1`.
+Generated reads, DSL scalar values, row-count mutations, and returning
+mutations all use the same snapshot entry shape; R22 does not add a second
+snapshot format.
 
 ```json
 {

@@ -9,7 +9,8 @@ SQL snapshot file format and CLI update behavior are documented in
 ## SQL Assertions
 
 Use `MortarSqlAssertions.assertThatSql` with a framework-free
-`MortarBoundQuery<?>` from a generated read facade or with a lower-level
+`MortarBoundQuery<?>` from a generated read facade, a `MortarBoundScalar<?>`,
+`MortarBoundMutation`, `MortarReturningMutation<?>`, or with a lower-level
 `RenderedQuery` from any dialect renderer.
 
 ```java
@@ -28,6 +29,17 @@ assertThatSql(query)
 `MortarBoundQuery<?>` failures include the rendered SQL, query name, and row
 type. The testkit still depends only on `java/core`; JDBC row mapping remains
 outside the testkit contract.
+
+Scalar and mutation assertions keep R22 writes and scalar reads visible without
+adding JDBC dependencies to the testkit:
+
+```java
+assertThatSql(deactivate)
+    .hasName("ClientRepository.deactivate")
+    .hasSql("update clients set active = ? where id = ?")
+    .hasParameters(false, 7L)
+    .hasParameterTypes(Boolean.class, Long.class);
+```
 
 `renders(...)` is kept as a readable alias for `hasSql(...)`.
 

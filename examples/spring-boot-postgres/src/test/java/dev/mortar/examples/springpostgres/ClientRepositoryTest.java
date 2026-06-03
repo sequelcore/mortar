@@ -6,10 +6,14 @@ import static dev.mortar.testkit.MortarSqlAssertions.assertThatSql;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.mortar.core.MortarBoundQuery;
+import dev.mortar.core.MortarBoundMutation;
+import dev.mortar.core.MortarBoundScalar;
+import dev.mortar.core.MortarReturningMutation;
 import dev.mortar.core.Parameter;
 import dev.mortar.core.QuerySpec;
 import dev.mortar.jdbc.MortarJdbcClient;
@@ -69,6 +73,43 @@ final class ClientRepositoryTest {
     }
 
     @Test
+    void buildsTransparentSqlForScalarAndMutationContracts() {
+        ClientRepository repository = new ClientRepository(mock(MortarJdbcClient.class), renderer);
+
+        assertThatSql(repository.countActiveQuery())
+            .hasName("ClientRepository.countActive")
+            .hasSql("select count(*) from clients c where c.active = ?")
+            .hasParameters(true)
+            .hasParameterTypes(Boolean.class);
+        assertThatSql(repository.existsActiveQuery(7L))
+            .hasName("ClientRepository.existsActive")
+            .hasSql("select exists (select 1 from clients c where c.id = ? and c.active = ?)")
+            .hasParameters(7L, true)
+            .hasParameterTypes(Long.class, Boolean.class);
+        assertThatSql(repository.deactivateMutation(7L))
+            .hasName("ClientRepository.deactivate")
+            .hasSql("update clients set active = ? where id = ?")
+            .hasParameters(false, 7L)
+            .hasParameterTypes(Boolean.class, Long.class);
+        assertThatSql(repository.deleteMutation(7L))
+            .hasName("ClientRepository.delete")
+            .hasSql("delete from clients where id = ?")
+            .hasParameters(7L)
+            .hasParameterTypes(Long.class);
+    }
+
+    @Test
+    void buildsTransparentSqlForCreateReturningMutation() {
+        ClientRepository repository = new ClientRepository(mock(MortarJdbcClient.class), renderer);
+
+        assertThatSql(repository.createMutation(9L, "Lin", true))
+            .hasName("ClientRepository.create")
+            .hasSql("insert into clients (id, name, active) values (?, ?, ?) returning id, name")
+            .hasParameters(9L, "Lin", true)
+            .hasParameterTypes(Long.class, String.class, Boolean.class);
+    }
+
+    @Test
     void fetchesClientByIdWithGeneratedExecutor() {
         MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
         when(jdbcClient.fetchOptional(anyFindByIdQuery()))
@@ -115,6 +156,49 @@ final class ClientRepositoryTest {
         assertThat(query.getValue().name()).contains("ClientRepository.findActiveById");
     }
 
+    @Test
+    void executesScalarAndMutationRepositoryMethodsThroughJdbcClient() {
+        MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
+        when(jdbcClient.fetchOne(anyScalar()))
+            .thenAnswer(invocation -> {
+                MortarBoundScalar<?> scalar = invocation.getArgument(0);
+                if (scalar.scalarType().equals(Long.class)) {
+                    return 2L;
+                }
+                return true;
+            });
+        when(jdbcClient.fetch(anyReturningClientSummaryMutation()))
+            .thenReturn(List.of(new ClientSummary(9L, "Lin")));
+        when(jdbcClient.execute(anyBoundMutation())).thenReturn(1);
+        ClientRepository repository = new ClientRepository(jdbcClient, renderer);
+
+        assertThat(repository.countActive()).isEqualTo(2L);
+        assertThat(repository.existsActive(7L)).isTrue();
+        assertThat(repository.create(9L, "Lin", true)).contains(new ClientSummary(9L, "Lin"));
+        assertThat(repository.deactivate(7L)).isEqualTo(1);
+        assertThat(repository.delete(7L)).isEqualTo(1);
+        verify(jdbcClient, times(2)).fetchOne(anyScalar());
+        verify(jdbcClient).fetch(anyReturningClientSummaryMutation());
+        verify(jdbcClient, times(2)).execute(anyBoundMutation());
+    }
+
+    @Test
+    void createFailsFastWhenReturningMutationDoesNotReturnExactlyOneRow() {
+        MortarJdbcClient jdbcClient = mock(MortarJdbcClient.class);
+        ClientRepository repository = new ClientRepository(jdbcClient, renderer);
+
+        when(jdbcClient.fetch(anyReturningClientSummaryMutation())).thenReturn(List.of());
+        assertThatThrownBy(() -> repository.create(9L, "Lin", true))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("expected exactly one row from ClientRepository.create");
+
+        when(jdbcClient.fetch(anyReturningClientSummaryMutation()))
+            .thenReturn(List.of(new ClientSummary(9L, "Lin"), new ClientSummary(10L, "Lina")));
+        assertThatThrownBy(() -> repository.create(9L, "Lin", true))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("expected exactly one row from ClientRepository.create");
+    }
+
     @SuppressWarnings("unchecked")
     private MortarBoundQuery<QClient.FindByIdRow> anyFindByIdQuery() {
         return any(MortarBoundQuery.class);
@@ -123,5 +207,18 @@ final class ClientRepositoryTest {
     @SuppressWarnings("unchecked")
     private MortarBoundQuery<QClient.FindAllRow> anyFindAllQuery() {
         return any(MortarBoundQuery.class);
+    }
+
+    private MortarBoundMutation anyBoundMutation() {
+        return any(MortarBoundMutation.class);
+    }
+
+    private <T> MortarBoundScalar<T> anyScalar() {
+        return any();
+    }
+
+    @SuppressWarnings("unchecked")
+    private MortarReturningMutation<ClientSummary> anyReturningClientSummaryMutation() {
+        return any(MortarReturningMutation.class);
     }
 }

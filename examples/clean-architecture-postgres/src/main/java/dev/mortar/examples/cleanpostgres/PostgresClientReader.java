@@ -3,6 +3,7 @@ package dev.mortar.examples.cleanpostgres;
 import static dev.mortar.examples.cleanpostgres.QClient.CLIENT;
 
 import dev.mortar.core.MortarDb;
+import dev.mortar.core.MortarBoundScalar;
 import dev.mortar.core.MortarPage;
 import dev.mortar.core.QueryRenderer;
 import dev.mortar.core.QuerySpec;
@@ -42,6 +43,16 @@ public final class PostgresClientReader implements ClientReader {
         return jdbcClient.fetch(activePageQuery(page, size), ClientSummary.class);
     }
 
+    @Override
+    public long countActive() {
+        return jdbcClient.fetchOne(countActiveQuery());
+    }
+
+    @Override
+    public boolean existsActive(long id) {
+        return jdbcClient.fetchOne(existsActiveQuery(id));
+    }
+
     QuerySpec activePageQuery(int page, int size) {
         return db.from(CLIENT)
             .projectRecord(ClientSummary.class, client -> client.id, client -> client.name)
@@ -50,5 +61,20 @@ public final class PostgresClientReader implements ClientReader {
             .page(MortarPage.of(page, size))
             .named("PostgresClientReader.findActivePage")
             .build();
+    }
+
+    MortarBoundScalar<Long> countActiveQuery() {
+        return db.from(CLIENT)
+            .where(client -> client.active.eq(true))
+            .count(renderer)
+            .named("PostgresClientReader.countActive");
+    }
+
+    MortarBoundScalar<Boolean> existsActiveQuery(long id) {
+        return db.from(CLIENT)
+            .where(client -> client.id.eq(id))
+            .where(client -> client.active.eq(true))
+            .exists(renderer)
+            .named("PostgresClientReader.existsActive");
     }
 }

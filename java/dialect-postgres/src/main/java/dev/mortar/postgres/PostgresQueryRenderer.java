@@ -2,7 +2,9 @@ package dev.mortar.postgres;
 
 import dev.mortar.core.Assignment;
 import dev.mortar.core.ColumnRef;
+import dev.mortar.core.CountSpec;
 import dev.mortar.core.DeleteSpec;
+import dev.mortar.core.ExistsSpec;
 import dev.mortar.core.InsertSpec;
 import dev.mortar.core.Join;
 import dev.mortar.core.JoinType;
@@ -83,6 +85,29 @@ public final class PostgresQueryRenderer implements QueryRenderer {
     }
 
     @Override
+    public RenderedQuery render(CountSpec count) {
+        List<Parameter> parameters = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(128);
+
+        sql.append("select count(*)");
+        appendFromJoinsAndPredicates(sql, count.table(), count.joins(), count.predicates(), parameters);
+
+        return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(count));
+    }
+
+    @Override
+    public RenderedQuery render(ExistsSpec exists) {
+        List<Parameter> parameters = new ArrayList<>();
+        StringBuilder sql = new StringBuilder(128);
+
+        sql.append("select exists (select 1");
+        appendFromJoinsAndPredicates(sql, exists.table(), exists.joins(), exists.predicates(), parameters);
+        sql.append(")");
+
+        return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(exists));
+    }
+
+    @Override
     public RenderedQuery render(InsertSpec insert) {
         List<Parameter> parameters = new ArrayList<>();
         String columns = insert.assignments().stream()
@@ -160,6 +185,30 @@ public final class PostgresQueryRenderer implements QueryRenderer {
         return query.selectColumns().stream()
             .map(this::renderColumn)
             .collect(Collectors.joining(", "));
+    }
+
+    private void appendFromJoinsAndPredicates(
+        StringBuilder sql,
+        dev.mortar.core.TableRef table,
+        List<Join> joins,
+        List<Predicate> predicates,
+        List<Parameter> parameters
+    ) {
+        appendClause(sql, "from ");
+        sql.append(identifier(table.tableName()));
+        sql.append(" ");
+        sql.append(identifier(table.alias()));
+
+        for (Join join : joins) {
+            appendClause(sql, renderJoin(join));
+        }
+
+        if (!predicates.isEmpty()) {
+            appendClause(sql, "where ");
+            sql.append(predicates.stream()
+                .map(predicate -> renderPredicate(predicate, parameters))
+                .collect(Collectors.joining(" and ")));
+        }
     }
 
     private String renderPredicate(Predicate predicate, List<Parameter> parameters) {

@@ -2,13 +2,14 @@
 
 ## Module Boundaries
 
-`java/core` defines the query model and framework-free rendered-query
-inspection contracts. It is framework-free.
+`java/core` defines the query, scalar, and mutation models plus
+framework-free rendered inspection contracts. It is framework-free.
 
-`java/dialect-postgres` converts query models into PostgreSQL SQL.
+`java/dialect-postgres` converts query, scalar, and mutation models into
+PostgreSQL SQL.
 
-`java/runtime-jdbc` executes rendered SQL through JDBC and owns JDBC row
-mapping contracts.
+`java/runtime-jdbc` executes rendered SQL through JDBC and owns JDBC row,
+scalar, mutation update-count, and mutation-returning row mapping contracts.
 
 `java/spring-boot-starter` wires Mortar into Spring Boot applications.
 
@@ -45,6 +46,17 @@ R16.1 keeps bound read-query inspection and JDBC execution split:
 generated read facade -> core MortarBoundQuery
 runtime JDBC adapter -> runtime-jdbc MortarJdbcBoundQuery -> core MortarBoundQuery
 ```
+
+R22 keeps scalar and mutation inspection values separate from execution:
+
+```text
+DSL scalar terminal -> core MortarBoundScalar
+explicit mutation spec -> core MortarBoundMutation or MortarReturningMutation
+runtime JDBC adapter -> runtime-jdbc MortarJdbcClient
+```
+
+Generated R22 scalar and write facades are intentionally not part of the
+processor contract, so metadata/source-map/LSP consumers remain fixed-read-only.
 
 Generated query objects must not execute themselves. Editors and LSP consume
 processor metadata but do not own query semantics.
