@@ -3068,7 +3068,7 @@ Research basis:
 
 ## R23 Gate: Retained Performance Evidence And Optimization
 
-Status: In Progress.
+Status: Done.
 
 R23 should finish the performance program properly before pre-release readiness
 is evaluated. R20 created the measurement discipline, benchmark harnesses, and
