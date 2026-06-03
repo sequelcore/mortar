@@ -22,14 +22,31 @@ public final class PostgresPredicates {
     private PostgresPredicates() {
     }
 
+    /**
+     * Builds a PostgreSQL array containment predicate using {@code @>}.
+     *
+     * @throws IllegalArgumentException when the column is not an array column or
+     * values are empty
+     */
     public static Predicate arrayContains(ColumnRef<?> column, List<?> values) {
         return arrayPredicate(ARRAY_CONTAINS, column, values);
     }
 
+    /**
+     * Builds a PostgreSQL array overlap predicate using {@code &&}.
+     *
+     * @throws IllegalArgumentException when the column is not an array column or
+     * values are empty
+     */
     public static Predicate arrayOverlaps(ColumnRef<?> column, List<?> values) {
         return arrayPredicate(ARRAY_OVERLAPS, column, values);
     }
 
+    /**
+     * Builds a PostgreSQL JSONB containment predicate using {@code @>}.
+     *
+     * @throws IllegalArgumentException when {@code json} is blank
+     */
     public static Predicate jsonbContains(ColumnRef<?> column, String json) {
         Objects.requireNonNull(column, "column cannot be null");
         Objects.requireNonNull(json, "json cannot be null");
@@ -39,6 +56,14 @@ public final class PostgresPredicates {
         return Predicate.dialect(DIALECT, JSONB_CONTAINS, column, List.of(Parameter.of(json)), Map.of());
     }
 
+    /**
+     * Builds a PostgreSQL full-text search predicate using
+     * {@code websearch_to_tsquery}.
+     *
+     * @throws IllegalStateException when the column is not a String column
+     * @throws IllegalArgumentException when the text-search configuration is not
+     * a valid identifier or the query is blank
+     */
     public static Predicate webSearch(ColumnRef<String> column, String config, String query) {
         Objects.requireNonNull(column, "column cannot be null");
         Objects.requireNonNull(config, "config cannot be null");

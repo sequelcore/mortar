@@ -1,4 +1,4 @@
-description = "PostgreSQL infrastructure adapter for the Mortar R17 public query corpus fixture."
+description = "PostgreSQL infrastructure adapter for the Mortar public query corpus fixture."
 
 dependencies {
     implementation(project(":examples:query-corpus-application"))

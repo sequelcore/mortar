@@ -29,18 +29,33 @@ import java.util.stream.Collectors;
 
 /**
  * PostgreSQL SQL renderer for Mortar query and mutation specifications.
+ *
+ * <p>This class only renders SQL and parameters. It does not open database
+ * connections, execute statements, or apply transaction policy.</p>
  */
 public final class PostgresQueryRenderer implements QueryRenderer {
     private final PostgresSqlFormat sqlFormat;
 
+    /**
+     * Creates a compact PostgreSQL renderer.
+     */
     public PostgresQueryRenderer() {
         this(PostgresSqlFormat.COMPACT);
     }
 
+    /**
+     * Creates a PostgreSQL renderer with the requested SQL formatting mode.
+     */
     public PostgresQueryRenderer(PostgresSqlFormat sqlFormat) {
         this.sqlFormat = Objects.requireNonNull(sqlFormat, "sqlFormat cannot be null");
     }
 
+    /**
+     * Renders a select query using PostgreSQL identifier and parameter rules.
+     *
+     * @throws IllegalArgumentException when the query contains an invalid SQL
+     * identifier or unsupported dialect predicate
+     */
     @Override
     public RenderedQuery render(QuerySpec query) {
         List<Parameter> parameters = new ArrayList<>();
@@ -84,6 +99,9 @@ public final class PostgresQueryRenderer implements QueryRenderer {
         return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(query));
     }
 
+    /**
+     * Renders a PostgreSQL {@code count(*)} scalar query.
+     */
     @Override
     public RenderedQuery render(CountSpec count) {
         List<Parameter> parameters = new ArrayList<>();
@@ -95,6 +113,9 @@ public final class PostgresQueryRenderer implements QueryRenderer {
         return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(count));
     }
 
+    /**
+     * Renders a PostgreSQL {@code exists} scalar query.
+     */
     @Override
     public RenderedQuery render(ExistsSpec exists) {
         List<Parameter> parameters = new ArrayList<>();
@@ -107,6 +128,10 @@ public final class PostgresQueryRenderer implements QueryRenderer {
         return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(exists));
     }
 
+    /**
+     * Renders a PostgreSQL insert mutation, including {@code RETURNING} columns
+     * when present.
+     */
     @Override
     public RenderedQuery render(InsertSpec insert) {
         List<Parameter> parameters = new ArrayList<>();
@@ -133,6 +158,10 @@ public final class PostgresQueryRenderer implements QueryRenderer {
         return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(insert));
     }
 
+    /**
+     * Renders a PostgreSQL update mutation, including {@code RETURNING} columns
+     * when present.
+     */
     @Override
     public RenderedQuery render(UpdateSpec update) {
         List<Parameter> parameters = new ArrayList<>();
@@ -158,6 +187,10 @@ public final class PostgresQueryRenderer implements QueryRenderer {
         return new RenderedQuery(sql.toString(), parameters, QueryMetadata.from(update));
     }
 
+    /**
+     * Renders a PostgreSQL delete mutation, including {@code RETURNING} columns
+     * when present.
+     */
     @Override
     public RenderedQuery render(DeleteSpec delete) {
         List<Parameter> parameters = new ArrayList<>();

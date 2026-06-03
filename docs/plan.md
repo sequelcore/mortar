@@ -18,8 +18,8 @@ readiness decision authorizes them.
 | R24.1 Documentation canonization strategy and readiness plan | Done |
 | R24.2 Public documentation canon audit | Done |
 | R24.3 Public documentation rewrite and cleanup | Done |
-| R24.4 API and Javadocs readiness review | Planned |
-| R24.5 Examples and first-user path readiness | Planned |
+| R24.4 API and Javadocs readiness review | Done |
+| R24.5 Examples and first-user path readiness | Done |
 | R24.6 Packaging and publishing dry-runs | Planned |
 | R24.7 CI, repository health, and security readiness | Planned |
 | R24.8 Performance wording and benchmark evidence review | Planned |
@@ -132,6 +132,145 @@ The R24.2/R24.3 review accepted a compact public canon:
 - Use official publishing, package, security, and starter documentation as
   readiness criteria, not as proof that Mortar has released.
 
+## R24.4/R24.5 Readiness Decision
+
+The API and examples readiness review remains a bounded pre-release hardening
+step. It does not remove public APIs, add query families, generate
+repositories, publish artifacts, or widen Mortar beyond the current
+PostgreSQL/JDBC/Spring Boot scope.
+
+Public API decision:
+
+- Keep the current public Java surface. No class, package, or method removal is
+  justified by the review.
+- Improve Javadocs where they define external contracts: query construction,
+  rendering, execution, generated read facades, cardinality, null handling,
+  connection ownership, and failure modes.
+- Avoid blanket comments on trivial bean accessors and enum constants.
+- Keep generated fixed reads inspectable and rendered, not self-executing.
+- Keep CLI help changes limited to existing commands and flags.
+
+Examples and first-user decision:
+
+- Keep `examples/spring-boot-postgres` as the quickest runnable Spring Boot
+  path.
+- Keep `examples/clean-architecture-postgres` as the DDD/Clean Architecture
+  boundary example.
+- Keep `examples/query-corpus-*` as public-facing corpus fixtures for query
+  coverage, not as the first-user path.
+- Remove roadmap slice identifiers from user-facing example prose while
+  preserving them in roadmap and ADR history.
+- Fix stale CLI documentation where the current command behavior already
+  supports JSON output.
+
+Risks accepted and mitigated:
+
+- API redesign remains out of scope for this slice; only proven readiness fixes
+  are allowed.
+- Javadocs must describe behavior, boundaries, and exceptions, not restate
+  method names.
+- Generated-source documentation must be covered by processor tests so it does
+  not drift silently.
+- CLI documentation and `mortar --help` must stay aligned for the existing
+  command set.
+
+## R24.4/R24.5 Implementation Plan
+
+R24.4 API and Javadocs readiness:
+
+1. Tighten Javadocs on core query entry points, query builders, bound values,
+   mutation/scalar contracts, and diagnostics where they affect public use.
+2. Tighten Javadocs on PostgreSQL rendering and JDBC runtime execution
+   boundaries, including connection ownership, explicit execution, cardinality,
+   and exception behavior.
+3. Tighten generated `Q*` Javadocs for the `Read` facade, fixed read members,
+   generated query contracts, row records, and parameter records.
+4. Verify generated-source Javadocs through processor tests.
+5. Run the Java Javadoc task for publishable modules as the public API
+   documentation readiness check.
+
+R24.5 examples and first-user path readiness:
+
+1. Keep the Spring Boot example focused on generated reads, DSL reads,
+   scalar reads, mutations, `RETURNING`, JDBC execution, starter configuration,
+   and SQL testkit assertions.
+2. Keep the Clean Architecture example focused on pure application ports and
+   PostgreSQL infrastructure adapters.
+3. Align CLI docs and help text for existing commands.
+4. Remove stale slice labels and deleted-reference residue from user-facing
+   docs.
+5. Re-run example checks and scrub docs for private paths, unsupported
+   patterns, and non-public process wording.
+
+## R24.4/R24.5 Completion Evidence
+
+R24.4 API and Javadocs readiness outcome:
+
+- Public Java API review covered core query construction and bound values,
+  PostgreSQL rendering, JDBC execution, Spring Boot starter properties and
+  diagnostics, testkit assertions, processor annotations, and generated `Q*`
+  read facades.
+- No accidental public API, dead public API, duplicate public surface, or
+  justified public API removal was found.
+- Javadocs were tightened where they define external contracts: rendering and
+  execution boundaries, generated read facades, scalar and mutation contracts,
+  connection ownership, cardinality, unsafe raw SQL, string/PostgreSQL
+  predicate validation, and exception context.
+- Generated-source Javadocs now state that generated reads are rendered and
+  inspectable, not self-executing. Processor tests assert this generated
+  wording.
+- Java Javadoc generation succeeds for all publishable modules. Remaining
+  Javadoc warnings are missing tag details on existing records and simple
+  methods; they are not malformed-comment failures and do not block R24.4.
+
+R24.5 examples and first-user path outcome:
+
+- `examples/spring-boot-postgres` remains the quickest runnable first-user
+  path and demonstrates generated fixed reads, DSL reads, `count`, `exists`,
+  insert/update/delete mutations, PostgreSQL `RETURNING`, JDBC execution,
+  starter configuration, and SQL testkit assertions.
+- `examples/clean-architecture-postgres` remains the DDD/Clean Architecture
+  example and keeps Mortar/JDBC/PostgreSQL concerns inside infrastructure
+  adapters.
+- `examples/query-corpus-*` remain public query-corpus fixtures, not the
+  first-user path.
+- CLI docs now match current JSON output behavior, and `mortar --help`
+  describes the existing public commands without adding commands.
+- User-facing example docs no longer use stale roadmap slice labels for
+  current guidance.
+
+Verification evidence:
+
+- `gradlew.bat check --no-daemon`
+- `gradlew.bat :java:core:javadoc :java:dialect-postgres:javadoc :java:runtime-jdbc:javadoc :java:spring-boot-starter:javadoc :java:processor:javadoc :java:testkit:javadoc --no-daemon`
+- `gradlew.bat :java:processor:test --tests dev.mortar.processor.MortarProcessorGenerationTest :java:core:test :java:runtime-jdbc:test :java:testkit:test :examples:spring-boot-postgres:test :examples:clean-architecture-postgres:test --no-daemon`
+- `cd rust && cargo fmt --all --check`
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`
+- `cd rust && cargo test`
+- `cd editors/vscode && bun run typecheck`
+- `git diff --check`
+- private path, non-public process wording, stale deleted-reference,
+  wildcard-import, and local Markdown link scans
+- public API review, DDD/Clean Architecture boundary review, and focused code
+  review
+
+Review outcome:
+
+- Public API review found no accidental API expansion and no justified API
+  removals.
+- DDD/Clean Architecture review found no boundary drift.
+- Focused code review found no blocking issues. Residual risks are documented
+  below.
+
+Residual risks:
+
+- Some existing public records and simple methods still produce Javadoc
+  missing-tag warnings. R24.4 improved semantic contract docs but avoided
+  tag-only boilerplate.
+- Historical R16/R17 identifiers remain in ADRs, roadmap history, tests, and
+  fixture names where they identify durable history or test fixtures. They were
+  removed from current first-user prose.
+
 ## Research Basis
 
 - Sonatype Central Portal publishing and requirements:
@@ -159,16 +298,36 @@ The R24.2/R24.3 review accepted a compact public canon:
 - QueryDSL reference documentation, used as a comparison reference:
   https://querydsl.com/static/querydsl/latest/reference/html_single/
 
+Additional R24.4/R24.5 research basis:
+
+- Oracle Javadoc doc-comment guidance:
+  https://www.oracle.com/java/technologies/javase/writing-doc-comments.html
+- Oracle `javadoc` command documentation:
+  https://docs.oracle.com/en/java/javase/24/docs/specs/man/javadoc.html
+- Sonatype Central publishing requirements for Javadoc and source jars:
+  https://central.sonatype.org/publish/requirements/
+- Gradle Java plugin Javadoc, source jar, and Javadoc jar tasks:
+  https://docs.gradle.org/current/userguide/java_plugin.html
+- Spring Boot auto-configuration and starter guidance:
+  https://docs.spring.io/spring-boot/3.5-SNAPSHOT/reference/features/developing-auto-configuration.html
+- VS Code extension contribution points for commands and settings:
+  https://code.visualstudio.com/api/references/contribution-points
+- Cargo manifest metadata guidance:
+  https://doc.rust-lang.org/cargo/reference/manifest.html
+- jOOQ DSL API documentation, used as a public API documentation reference:
+  https://www.jooq.org/doc/latest/manual/sql-building/dsl-api/
+- QueryDSL reference documentation, used as a generated-query API
+  documentation reference:
+  https://querydsl.com/static/querydsl/latest/reference/html_single/
+
 ## Remaining R24 Work
 
-R24.4-R24.9 remain Planned:
+R24.6-R24.9 remain Planned:
 
-1. API and Javadocs readiness review.
-2. Examples and first-user path readiness.
-3. Packaging and publishing dry-runs.
-4. CI, repository health, and security readiness.
-5. Performance wording and benchmark evidence review.
-6. `0.1.0-alpha` go/no-go decision.
+1. Packaging and publishing dry-runs.
+2. CI, repository health, and security readiness.
+3. Performance wording and benchmark evidence review.
+4. `0.1.0-alpha` go/no-go decision.
 
 ## Verification Plan
 
@@ -182,8 +341,8 @@ R24 documentation changes require:
 - `git diff --check`
 - private path, user, and project scrub excluding build, cache, dependency,
   generated, and target outputs
-- documentation residue scan for internal workflow language
+- documentation residue scan for non-public process wording
 - link/reference sanity check
 - documentation review for no archive/log clutter, no construction diary, no
   public overclaims, no broken references, R23 Done, R24 In Progress, and only
-  R24.2/R24.3 newly Done
+  R24.4/R24.5 newly Done in this change

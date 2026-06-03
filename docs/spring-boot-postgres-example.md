@@ -1,7 +1,7 @@
 # Spring Boot PostgreSQL Example
 
 The canonical Spring Boot example lives in `examples/spring-boot-postgres`.
-For the R21 copyable recipe view of the same patterns, see
+For copyable repository recipes using the same patterns, see
 [`query-recipes.md`](query-recipes.md).
 
 ## What It Shows
@@ -125,10 +125,10 @@ QuerySpec findActiveByIdQuery(long id) {
 }
 ```
 
-R16 generated `Read` facades intentionally do not cover optional filters,
-joins, writes, `count`, `exists`, generated projections, generated repositories,
-or self-executing query objects. Keep those shapes explicit until a later
-roadmap slice proves and documents a larger surface.
+Generated `Read` facades intentionally do not cover optional filters, joins,
+writes, `count`, `exists`, generated projections, generated repositories, or
+self-executing query objects. Keep those shapes explicit until a later roadmap
+decision proves and documents a larger surface.
 
 ## Local Database
 

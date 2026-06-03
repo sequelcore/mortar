@@ -376,16 +376,24 @@ public final class MortarProcessor extends AbstractProcessor {
 
         source.append("\n");
         source.append("    /**\n");
-        source.append("     * Fixed single-table read facade for rendered, inspectable queries.\n");
+        source.append("     * Creates a fixed single-table read facade for rendered, inspectable queries.\n");
+        source.append("     * The returned facade does not execute SQL; pass its bound queries to a runtime adapter.\n");
         source.append("     */\n");
         source.append("    public Read read(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("        return new Read(renderer);\n");
         source.append("    }\n\n");
+        source.append("    /**\n");
+        source.append("     * Generated fixed-read namespace for this table.\n");
+        source.append("     */\n");
         source.append("    public static final class Read {\n");
         source.append("        private final dev.mortar.core.QueryRenderer renderer;\n\n");
         source.append("        private Read(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("            this.renderer = java.util.Objects.requireNonNull(renderer, \"renderer cannot be null\");\n");
         source.append("        }\n\n");
+        source.append("        /**\n");
+        source.append("         * Renders a primary-key lookup as an inspectable bound query.\n");
+        source.append("         * The query is not executed until a runtime adapter receives it.\n");
+        source.append("         */\n");
         source.append("        public dev.mortar.core.MortarBoundQuery<FindByIdRow> findById(")
             .append(id.javaType()).append(" ").append(id.propertyName()).append(") {\n");
         source.append("            return dev.mortar.core.MortarBoundQuery.unnamed(renderer.render(findByIdSpec(")
@@ -393,6 +401,7 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("        }\n\n");
         source.append("        /**\n");
         source.append("         * Renders an explicit full-table read for all mapped columns.\n");
+        source.append("         * The query is not executed until a runtime adapter receives it.\n");
         source.append("         */\n");
         source.append("        public dev.mortar.core.MortarBoundQuery<FindAllRow> findAll() {\n");
         source.append("            return dev.mortar.core.MortarBoundQuery.unnamed(renderer.render(findAllSpec()), FindAllRow.class);\n");
@@ -410,7 +419,7 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("    /**\n");
         source.append("     * Generated query for {@code select ").append(columnList(columns)).append(" from ")
             .append(tableName).append("}.\n");
-        source.append("     * SQL is rendered by the supplied dialect renderer.\n");
+        source.append("     * SQL is rendered by the supplied dialect renderer and executed only by a runtime adapter.\n");
         source.append("     */\n");
         source.append("    public FindAllQuery findAll(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("        return new FindAllQuery(renderer);\n");
@@ -471,11 +480,14 @@ public final class MortarProcessor extends AbstractProcessor {
         source.append("    /**\n");
         source.append("     * Generated primary-key lookup for SQL table {@code ")
             .append(tableName).append("}.\n");
-        source.append("     * SQL is rendered by the supplied dialect renderer.\n");
+        source.append("     * SQL is rendered by the supplied dialect renderer and executed only by a runtime adapter.\n");
         source.append("     */\n");
         source.append("    public FindByIdQuery findById(dev.mortar.core.QueryRenderer renderer) {\n");
         source.append("        return new FindByIdQuery(renderer);\n");
         source.append("    }\n\n");
+        source.append("    /**\n");
+        source.append("     * Parameters for the generated primary-key lookup.\n");
+        source.append("     */\n");
         source.append("    public record FindByIdParameters(").append(id.javaType()).append(" ")
             .append(id.propertyName()).append(") {\n");
         source.append("    }\n\n");
@@ -528,6 +540,9 @@ public final class MortarProcessor extends AbstractProcessor {
     }
 
     private void appendRowRecord(StringBuilder source, String rowType, List<ColumnModel> columns) {
+        source.append("    /**\n");
+        source.append("     * Row returned by the generated fixed read.\n");
+        source.append("     */\n");
         source.append("    public record ").append(rowType).append("(");
         for (int index = 0; index < columns.size(); index++) {
             ColumnModel column = columns.get(index);

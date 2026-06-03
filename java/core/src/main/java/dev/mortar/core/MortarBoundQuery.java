@@ -5,7 +5,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Framework-free description of a named, rendered read query.
+ * Framework-free description of a rendered read query and its row type.
+ *
+ * <p>A bound query is inspectable SQL plus metadata. It is not self-executing;
+ * runtime adapters such as the JDBC module own execution.</p>
  */
 public record MortarBoundQuery<T>(
     Optional<String> queryName,
@@ -23,15 +26,28 @@ public record MortarBoundQuery<T>(
         });
     }
 
+    /**
+     * Creates a named bound read query.
+     *
+     * @throws NullPointerException when {@code queryName}, {@code rendered}, or
+     * {@code rowType} is null
+     * @throws IllegalArgumentException when {@code queryName} is blank
+     */
     public static <T> MortarBoundQuery<T> of(String queryName, RenderedQuery rendered, Class<T> rowType) {
         Objects.requireNonNull(queryName, "queryName cannot be null");
         return new MortarBoundQuery<>(Optional.of(queryName), rendered, rowType);
     }
 
+    /**
+     * Creates an unnamed bound read query for later naming or direct execution.
+     */
     public static <T> MortarBoundQuery<T> unnamed(RenderedQuery rendered, Class<T> rowType) {
         return new MortarBoundQuery<>(Optional.empty(), rendered, rowType);
     }
 
+    /**
+     * Returns a copy with an inspection name.
+     */
     public MortarBoundQuery<T> named(String queryName) {
         return MortarBoundQuery.of(queryName, rendered, rowType);
     }

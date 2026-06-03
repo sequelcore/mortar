@@ -6,6 +6,10 @@ import java.util.Optional;
 
 /**
  * Framework-free description of a named, rendered mutation that returns rows.
+ *
+ * <p>This value is for dialects that support mutation result sets, such as
+ * PostgreSQL {@code RETURNING}. It is inspectable and still requires an
+ * explicit runtime adapter call to execute.</p>
  */
 public record MortarReturningMutation<T>(
     Optional<String> mutationName,
@@ -30,6 +34,9 @@ public record MortarReturningMutation<T>(
         returningColumns = List.copyOf(returningColumns);
     }
 
+    /**
+     * Renders and names a mutation that declares returning columns.
+     */
     public static <T> MortarReturningMutation<T> of(
         String mutationName,
         MutationSpec mutation,
@@ -39,6 +46,12 @@ public record MortarReturningMutation<T>(
         return unnamed(mutation, renderer, rowType).named(mutationName);
     }
 
+    /**
+     * Renders an unnamed mutation that declares returning columns.
+     *
+     * @throws IllegalArgumentException when the mutation has no returning
+     * columns
+     */
     public static <T> MortarReturningMutation<T> unnamed(
         MutationSpec mutation,
         QueryRenderer renderer,
@@ -59,6 +72,9 @@ public record MortarReturningMutation<T>(
         );
     }
 
+    /**
+     * Returns a copy with an inspection name.
+     */
     public MortarReturningMutation<T> named(String mutationName) {
         return new MortarReturningMutation<>(
             Optional.of(requireName(mutationName)),

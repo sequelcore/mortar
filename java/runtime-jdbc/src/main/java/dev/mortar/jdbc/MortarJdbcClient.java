@@ -39,6 +39,10 @@ import java.util.Optional;
 
 /**
  * JDBC adapter that executes rendered and generated Mortar query plans.
+ *
+ * <p>This adapter is the execution boundary for JDBC. Query models and
+ * renderers stay framework-free; this class opens statements, binds
+ * parameters, maps rows, and wraps SQL failures in {@link MortarJdbcException}.</p>
  */
 public final class MortarJdbcClient {
     private final DataSource dataSource;
@@ -47,6 +51,9 @@ public final class MortarJdbcClient {
     private final MortarJdbcLogger logger;
     private final boolean loggingEnabled;
 
+    /**
+     * Creates a client that obtains and closes a connection for each operation.
+     */
     public MortarJdbcClient(DataSource dataSource, QueryRenderer renderer) {
         this.dataSource = Objects.requireNonNull(dataSource, "dataSource cannot be null");
         this.connection = null;
@@ -55,6 +62,10 @@ public final class MortarJdbcClient {
         this.loggingEnabled = false;
     }
 
+    /**
+     * Creates a client that obtains and closes a connection for each operation
+     * and emits redacted SQL log events.
+     */
     public MortarJdbcClient(DataSource dataSource, QueryRenderer renderer, MortarJdbcLogger logger) {
         this.dataSource = Objects.requireNonNull(dataSource, "dataSource cannot be null");
         this.connection = null;
@@ -63,6 +74,12 @@ public final class MortarJdbcClient {
         this.loggingEnabled = logger != MortarJdbcLogger.noop();
     }
 
+    /**
+     * Creates a client over a caller-owned connection.
+     *
+     * <p>The client does not close this connection. This constructor is useful
+     * for explicit transaction scopes and prepared generated-query reuse.</p>
+     */
     public MortarJdbcClient(Connection connection, QueryRenderer renderer) {
         this.dataSource = null;
         this.connection = Objects.requireNonNull(connection, "connection cannot be null");
@@ -71,6 +88,10 @@ public final class MortarJdbcClient {
         this.loggingEnabled = false;
     }
 
+    /**
+     * Creates a client over a caller-owned connection and emits redacted SQL
+     * log events.
+     */
     public MortarJdbcClient(Connection connection, QueryRenderer renderer, MortarJdbcLogger logger) {
         this.dataSource = null;
         this.connection = Objects.requireNonNull(connection, "connection cannot be null");
@@ -79,6 +100,9 @@ public final class MortarJdbcClient {
         this.loggingEnabled = logger != MortarJdbcLogger.noop();
     }
 
+    /**
+     * Renders and executes a query specification with a custom row mapper.
+     */
     public <T> List<T> fetch(QuerySpec query, RowMapper<T> mapper) {
         Objects.requireNonNull(query, "query cannot be null");
         Objects.requireNonNull(mapper, "mapper cannot be null");
@@ -87,6 +111,9 @@ public final class MortarJdbcClient {
         return fetchRendered(rendered, mapper);
     }
 
+    /**
+     * Executes already rendered SQL with a custom row mapper.
+     */
     public <T> List<T> fetch(RenderedQuery renderedQuery, RowMapper<T> mapper) {
         Objects.requireNonNull(renderedQuery, "renderedQuery cannot be null");
         Objects.requireNonNull(mapper, "mapper cannot be null");
@@ -94,6 +121,11 @@ public final class MortarJdbcClient {
         return fetchRendered(renderedQuery, mapper);
     }
 
+    /**
+     * Renders and executes an at-most-one-row query specification.
+     *
+     * @throws IllegalStateException when more than one row is returned
+     */
     public <T> Optional<T> fetchOptional(QuerySpec query, RowMapper<T> mapper) {
         Objects.requireNonNull(query, "query cannot be null");
         Objects.requireNonNull(mapper, "mapper cannot be null");
@@ -102,6 +134,11 @@ public final class MortarJdbcClient {
         return fetchOptionalRendered(rendered, mapper);
     }
 
+    /**
+     * Executes already rendered SQL and expects at most one row.
+     *
+     * @throws IllegalStateException when more than one row is returned
+     */
     public <T> Optional<T> fetchOptional(RenderedQuery renderedQuery, RowMapper<T> mapper) {
         Objects.requireNonNull(renderedQuery, "renderedQuery cannot be null");
         Objects.requireNonNull(mapper, "mapper cannot be null");
@@ -109,36 +146,58 @@ public final class MortarJdbcClient {
         return fetchOptionalRendered(renderedQuery, mapper);
     }
 
+    /**
+     * Executes a scalar query and returns the first column from exactly one row.
+     *
+     * @throws IllegalStateException when zero rows or more than one row are
+     * returned
+     */
     public <T> T fetchOne(MortarBoundScalar<T> scalar) {
         Objects.requireNonNull(scalar, "scalar cannot be null");
 
         return fetchOneRendered(scalar.rendered(), scalar.scalarType());
     }
 
+    /**
+     * Executes a bound read query and maps rows through its declared row type.
+     */
     public <T> List<T> fetch(MortarBoundQuery<T> query) {
         Objects.requireNonNull(query, "query cannot be null");
 
         return fetchRendered(query.rendered(), rowTypeMapper(query));
     }
 
+    /**
+     * Executes a bound read query that must return at most one row.
+     */
     public <T> Optional<T> fetchOptional(MortarBoundQuery<T> query) {
         Objects.requireNonNull(query, "query cannot be null");
 
         return fetchOptionalRendered(query.rendered(), rowTypeMapper(query));
     }
 
+    /**
+     * Executes a bound query with a custom JDBC row mapper.
+     */
     public <T> List<T> fetch(MortarJdbcBoundQuery<T> query) {
         Objects.requireNonNull(query, "query cannot be null");
 
         return fetchRendered(query.rendered(), query.rowMapper());
     }
 
+    /**
+     * Executes a bound query with a custom JDBC row mapper and expects at most
+     * one row.
+     */
     public <T> Optional<T> fetchOptional(MortarJdbcBoundQuery<T> query) {
         Objects.requireNonNull(query, "query cannot be null");
 
         return fetchOptionalRendered(query.rendered(), query.rowMapper());
     }
 
+    /**
+     * Executes a generated query with caller-supplied parameters.
+     */
     public <P, T> List<T> fetch(MortarGeneratedQuery<P, T> query, P parameters) {
         Objects.requireNonNull(query, "query cannot be null");
         Objects.requireNonNull(parameters, "parameters cannot be null");
@@ -155,6 +214,10 @@ public final class MortarJdbcClient {
         return fetchGenerated(query, MortarNoParameters.INSTANCE);
     }
 
+    /**
+     * Executes a generated query with caller-supplied parameters and expects at
+     * most one row.
+     */
     public <P, T> Optional<T> fetchOptional(MortarGeneratedQuery<P, T> query, P parameters) {
         Objects.requireNonNull(query, "query cannot be null");
         Objects.requireNonNull(parameters, "parameters cannot be null");
@@ -171,6 +234,13 @@ public final class MortarJdbcClient {
         return fetchOptionalGenerated(query, MortarNoParameters.INSTANCE);
     }
 
+    /**
+     * Prepares a generated query for repeated execution on a caller-owned
+     * connection.
+     *
+     * @throws IllegalStateException when this client was created from a
+     * {@link DataSource}
+     */
     public <P, T> MortarPreparedQuery<P, T> prepare(MortarGeneratedQuery<P, T> query) {
         Objects.requireNonNull(query, "query cannot be null");
         if (connection == null) {
@@ -316,6 +386,13 @@ public final class MortarJdbcClient {
         }
     }
 
+    /**
+     * Renders and executes a projected query, then maps rows through the target
+     * record or DTO constructor.
+     *
+     * @throws IllegalArgumentException when the query has no record or DTO
+     * projection matching {@code targetType}
+     */
     public <T> List<T> fetch(QuerySpec query, Class<T> targetType) {
         Objects.requireNonNull(query, "query cannot be null");
         Objects.requireNonNull(targetType, "targetType cannot be null");
@@ -332,6 +409,12 @@ public final class MortarJdbcClient {
         return fetch(query, new ConstructorRowMapper<>(targetType, projection.columns()));
     }
 
+    /**
+     * Executes a row-count mutation.
+     *
+     * @throws IllegalArgumentException when the mutation represents a
+     * returning-row operation
+     */
     public int execute(MortarBoundMutation mutation) {
         Objects.requireNonNull(mutation, "mutation cannot be null");
         if (mutation.resultMode() != MutationResultMode.ROW_COUNT) {
@@ -352,12 +435,19 @@ public final class MortarJdbcClient {
         }
     }
 
+    /**
+     * Executes a mutation with returning columns and maps all returned rows.
+     */
     public <T> List<T> fetch(MortarReturningMutation<T> mutation) {
         Objects.requireNonNull(mutation, "mutation cannot be null");
 
         return fetchReturningMutation(mutation.rendered(), rowTypeMapper(mutation));
     }
 
+    /**
+     * Executes a mutation with returning columns and expects at most one
+     * returned row.
+     */
     public <T> Optional<T> fetchOptional(MortarReturningMutation<T> mutation) {
         Objects.requireNonNull(mutation, "mutation cannot be null");
 
@@ -425,6 +515,13 @@ public final class MortarJdbcClient {
         return new ConstructorRowMapper<>(mutation.rowType(), columns);
     }
 
+    /**
+     * Executes a JDBC batch of non-returning mutations that all render to the
+     * same SQL shape.
+     *
+     * @throws IllegalArgumentException when the list is empty, any mutation
+     * declares returning columns, or the rendered SQL shapes differ
+     */
     public int[] executeBatch(List<? extends MutationSpec> mutations) {
         Objects.requireNonNull(mutations, "mutations cannot be null");
         if (mutations.isEmpty()) {
