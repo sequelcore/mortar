@@ -2697,20 +2697,140 @@ The blocker is missing retained, reproducible, reviewable evidence for any
 public claim, not a known performance regression.
 
 R20 is Done as a measurement and decision-gate phase. Follow-up work is
-deferred to a later retained-artifact review or optimization slice; R21
-AI/agent-friendly work and R22 pre-release readiness remain deferred and are not
-implemented by R20.
+deferred to a later retained-artifact review or optimization slice. R21
+AI/agent-friendly work is a later authoring-guidance slice and is not
+implemented by R20. R22 pre-release readiness remains deferred.
+
+## R21 Canonical Plan: AI-Friendly Authoring And Query Recipes
+
+Status: Done.
+
+R21 makes Mortar easier for Java developers and AI coding agents to use
+correctly on the first try. It does not change Java public APIs, generated APIs,
+runtime behavior, editor semantics, benchmark thresholds, release posture, or
+performance claims.
+
+### R21 Scope Decision
+
+The required xhigh architecture debate concluded that R21 should be a narrow
+docs-and-existing-examples convergence slice, not a product/API slice. The
+existing Spring Boot and Clean Architecture examples already compile the
+canonical generated-read and adapter-boundary recipe shapes, so R21 does not
+add a duplicate fixture module.
+
+Accepted scope:
+
+- one canonical AI-friendly query authoring and recipe guide;
+- copyable recipes for generated `findById`, generated `findAll`, `.named(...)`,
+  testkit SQL assertions, Spring repository adapters, Clean Architecture
+  adapter boundaries, and common mistakes;
+- AI-agent invariants for fixed-read facades, raw SQL avoidance, SQL
+  visibility, source-map/snapshot contracts, self-executing query rejection,
+  and performance-claim restraint;
+- concise troubleshooting updates for generated-read editor visibility and
+  authoring mistakes;
+- careful comparison wording for Mortar, jOOQ, QueryDSL, and JPA/Hibernate
+  without replacement or performance claims;
+- roadmap and plan updates with evidence and remaining risks.
+
+Rejected scope:
+
+- runtime performance optimization;
+- public benchmark or performance claims;
+- broad DSL redesign;
+- generated repositories or Spring Data-style method derivation;
+- ORM behavior;
+- app migration;
+- Maven/GitHub release, tag, publish, PR, push, or announcement work;
+- compatibility hacks or duplicate docs not linked from canonical entry points.
+
+### R21 Implementation Record
+
+Changed docs:
+
+- `docs/query-recipes.md`: canonical AI-friendly authoring guide and recipes.
+- `README.md`: canonical docs entry.
+- `docs/getting-started.md`: onboarding path to R21 recipes.
+- `docs/usage-guide.md`: broader query-path guidance link.
+- `docs/spring-boot-postgres-example.md`: Spring example link.
+- `docs/ddd-clean-architecture-example.md`: Clean Architecture example link.
+- `docs/examples/spring-clean-architecture-repository.md`: legacy example link.
+- `docs/comparison.md`: concise Mortar/jOOQ/QueryDSL/JPA selection guidance.
+- `docs/troubleshooting.md`: generated-read metadata/source-map diagnostics.
+- `docs/roadmap.md` and this plan: status, evidence, and risks.
+
+Compile-backed recipe evidence remains in:
+
+- `examples/spring-boot-postgres/src/main/java/dev/mortar/examples/springpostgres/ClientRepository.java`;
+- `examples/spring-boot-postgres/src/test/java/dev/mortar/examples/springpostgres/ClientRepositoryTest.java`;
+- `examples/clean-architecture-postgres/src/main/java/dev/mortar/examples/cleanpostgres/PostgresClientReader.java`;
+- `examples/clean-architecture-postgres/src/test/java/dev/mortar/examples/cleanpostgres/PostgresClientReaderTest.java`.
+
+Completed exit criteria:
+
+- the new guide is linked from canonical docs and not dead;
+- examples in the guide match compiling repository examples;
+- docs contain no private paths, usernames, or internal project leakage;
+- docs make no unsupported performance, release, migration, replacement, or API
+  expansion claims;
+- focused example/testkit checks pass;
+- full Java, Rust, VS Code, whitespace, scrub, and review gates pass.
+
+Verification passed on 2026-06-03:
+
+- `gradlew.bat :examples:spring-boot-postgres:test --no-daemon`;
+- `gradlew.bat :examples:clean-architecture-postgres:check --no-daemon`;
+- `gradlew.bat :java:testkit:test --no-daemon`;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- changed-doc private path/project scrub excluding build, cache, dependency,
+  generated, and target outputs.
+
+Review result:
+
+- Project standards preserved: no wildcard imports, no dead code, no API
+  expansion, and no unverified completion claim.
+- Clean Architecture boundaries preserved: Mortar remains documented inside
+  infrastructure adapters; domain/application ports expose DTOs and business
+  methods.
+- Public docs quality preserved: the new guide is linked from README, getting
+  started, usage, example, comparison, and troubleshooting docs.
+- No overclaiming found: R21 makes no performance, replacement, release,
+  publish, migration, or benchmark claim.
+- Remaining risk: snippets are excerpts from compiling examples, not a new
+  standalone recipe module. The xhigh debate accepted this to avoid duplicate
+  fixture drift.
+
+Research basis:
+
+- VS Code custom instructions document always-on and file-scoped instruction
+  files for AI-assisted coding.
+- OpenAI prompt guidance supports explicit role/workflow guidance, examples,
+  relevant context, and testing instructions for coding tasks.
+- Spring Data JPA documents query-method derivation, declared string queries,
+  named parameters, and custom implementations, validating the need for clear
+  repository ergonomics without copying Spring Data behavior.
+- jOOQ documents SQL building, code generation, and SQL execution as a mature
+  SQL-first workflow.
+- QueryDSL documents type-safe SQL-like Java queries and SQL/binding
+  extraction.
+- LSP 3.17 documents hover, code action, and definition as position-based
+  editor capabilities, supporting Mortar's metadata/source-map-backed editor
+  guidance without editor-owned SQL semantics.
 
 ## Future Maturity Gates
 
 R17-R20 are completed maturity gates recorded above. They produced the
 real-query coverage gate, contract-hardening gate, Java call-resolution and
 editor-semantics hardening gate, and R20 performance measurement/public-claim
-decision gate.
+decision gate. R21 completed the AI/agent-friendly authoring guidance gate.
 
-Deferred future maturity work starts after R20 and remains out of scope here:
+Deferred future maturity work remains out of scope here:
 
-- R21 AI/agent-friendly behavior.
 - R22 pre-release readiness.
 - Retained-artifact benchmark review or optimization slices that may follow
   R20 only when retained evidence authorizes the exact claim or change.

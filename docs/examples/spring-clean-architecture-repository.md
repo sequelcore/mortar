@@ -7,6 +7,9 @@ It demonstrates Spring auto-configuration and port wiring with a lower-level
 DSL query. For the canonical R16 generated `Read` facade flow, use the
 CI-compiling `examples/clean-architecture-postgres` module.
 
+For R21 copyable repository recipes and AI-agent authoring rules, use
+[`../query-recipes.md`](../query-recipes.md).
+
 ## Boundary
 
 - Domain owns the repository port and domain result types.

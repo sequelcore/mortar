@@ -36,6 +36,7 @@ examples/clean-architecture-postgres Clean Architecture repository adapter examp
 
 - [Getting started](docs/getting-started.md)
 - [Usage guide](docs/usage-guide.md)
+- [AI-friendly query recipes](docs/query-recipes.md)
 - [Roadmap](docs/roadmap.md)
 - [Architecture](docs/spec/architecture.md)
 - [API reference](docs/api-reference.md)
