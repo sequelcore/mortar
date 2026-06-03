@@ -1577,7 +1577,7 @@ Slices:
   Status: Done.
 - R20.4: Generated fixed-read overhead and allocation profiling. Status: Done.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
-  shapes. Status: Planned.
+  shapes. Status: Done.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
   Status: Planned.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
@@ -1693,6 +1693,50 @@ R20.4 completion record:
   a focused R20.4 live PostgreSQL JMH smoke that generated
   `java/benchmarks/build/reports/jmh/r20.4-generated-fixed-read-smoke.json` as
   build output, `gradlew.bat check --no-daemon`,
+  `cd rust && cargo fmt --all --check`,
+  `cd rust && cargo clippy --all-targets --all-features -- -D warnings`,
+  `cd rust && cargo test`, `cd editors/vscode && bun run typecheck`,
+  `git diff --check`, and private path/project scrub excluding build, cache,
+  dependency, and generated outputs.
+
+R20.5 completion record:
+
+- The required xhigh DSL render/execute debate concluded that R20.5 should
+  stay a narrow live PostgreSQL/Testcontainers measurement slice over existing
+  broader DSL shapes, not an optimization, API, or library-ranking slice.
+- The canonical R20.5 scope is exactly seven live PostgreSQL/Testcontainers
+  rows: ordinary JDBC simple read, Mortar DSL render-per-call simple read,
+  Mortar pre-rendered simple read, reusable prepared JDBC join/page, Mortar DSL
+  join/page, reusable prepared JDBC update batch, and Mortar DSL update batch.
+- `java/benchmarks/build.gradle.kts` now provides `jmhR20DslShapes`,
+  `jmhR20DslShapesAllocation`, and `jmhR20DslShapesLatency` presets. The
+  canonical include regex is
+  `PostgresExecutionBenchmark\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$`.
+- `PostgresExecutionBenchmarkTest` guards the R20.5 matrix names and excludes
+  generated fixed-read R20.4 rows, optional variants, handwritten
+  generated-style Mortar rows, jOOQ, QueryDSL SQL, and controlled fake-JDBC
+  rows from the R20.5 interpretation boundary.
+- Local smoke JSON under `java/benchmarks/build` is internal build output only.
+  R20.5 does not create public performance evidence; repeated retained raw
+  artifacts, manifest, commands, environment metadata, dataset notes,
+  limitations, and review notes are still required before optimization
+  proposals or public reporting.
+- R20.5 `Done` means the DSL profiling harness, grouping guard, local
+  instructions, and local smoke proof are complete. It does not mean the
+  retained evidence gate for optimization proposals or public performance
+  reporting is satisfied.
+- Changed files/docs: `java/benchmarks/build.gradle.kts`,
+  `java/benchmarks/src/test/java/dev/mortar/benchmarks/PostgresExecutionBenchmarkTest.java`,
+  `docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+  `docs/performance.md`, `docs/plan.md`, and this roadmap.
+- Migration note: no Java public API, runtime behavior, generated Java API,
+  Rust tooling behavior, benchmark threshold, release, publication, migration,
+  optimization, or public performance claim changed.
+- Verification passed on 2026-06-02:
+  `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`,
+  a focused R20.5 live PostgreSQL JMH smoke that generated
+  `java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-smoke.json` as build
+  output, `gradlew.bat check --no-daemon`,
   `cd rust && cargo fmt --all --check`,
   `cd rust && cargo clippy --all-targets --all-features -- -D warnings`,
   `cd rust && cargo test`, `cd editors/vscode && bun run typecheck`,

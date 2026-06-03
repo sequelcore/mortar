@@ -38,10 +38,22 @@ final class PostgresExecutionBenchmarkTest {
         ),
         Map.entry("mortar-tuned-processor-generated-find-by-id", "mortarTunedProcessorGeneratedFindByIdFetch")
     );
+    private static final Map<String, String> R20_5_DSL_SHAPES_MATRIX = Map.ofEntries(
+        Map.entry("ordinary-jdbc-simple-read", "plainJdbcFetch"),
+        Map.entry("mortar-dsl-render-per-call-simple-read", "mortarJdbcFetch"),
+        Map.entry("mortar-pre-rendered-simple-read", "mortarPreRenderedJdbcFetch"),
+        Map.entry("reusable-prepared-jdbc-join-page", "plainJdbcJoinPageFetch"),
+        Map.entry("mortar-dsl-join-page", "mortarJoinPageFetch"),
+        Map.entry("reusable-prepared-jdbc-update-batch", "plainJdbcUpdateBatch"),
+        Map.entry("mortar-dsl-update-batch", "mortarUpdateBatch")
+    );
     private static final String R20_4_GENERATED_FIXED_READ_INCLUDE_REGEX =
         "PostgresExecutionBenchmark\\.(plainJdbcFindByIdFetch|plainJdbcReusableFindByIdFetch|"
             + "plainJdbcTunedReusableFindByIdFetch|mortarProcessorGeneratedFindByIdFetch|"
             + "mortarPreparedProcessorGeneratedFindByIdFetch|mortarTunedProcessorGeneratedFindByIdFetch)$";
+    private static final String R20_5_DSL_SHAPES_INCLUDE_REGEX =
+        "PostgresExecutionBenchmark\\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|"
+            + "plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$";
 
     @Test
     void fixtureDefinesDeterministicIndexedLookupDataset() {
@@ -171,6 +183,52 @@ final class PostgresExecutionBenchmarkTest {
             .collect(Collectors.toSet());
 
         assertThat(selectedMethods).containsExactlyInAnyOrderElementsOf(R20_4_GENERATED_FIXED_READ_MATRIX.values());
+    }
+
+    @Test
+    void r20DslShapesMatrixUsesOnlyMatchedLivePostgresDslScenarioNames() {
+        Set<String> methodNames = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .collect(Collectors.toSet());
+
+        assertThat(R20_5_DSL_SHAPES_MATRIX)
+            .containsKeys(
+                "ordinary-jdbc-simple-read",
+                "mortar-dsl-render-per-call-simple-read",
+                "mortar-pre-rendered-simple-read",
+                "reusable-prepared-jdbc-join-page",
+                "mortar-dsl-join-page",
+                "reusable-prepared-jdbc-update-batch",
+                "mortar-dsl-update-batch"
+            );
+        assertThat(methodNames).containsAll(R20_5_DSL_SHAPES_MATRIX.values());
+        assertThat(R20_5_DSL_SHAPES_MATRIX.values()).doesNotContain(
+            "plainJdbcReusableStatementFetch",
+            "plainJdbcFetchOptional",
+            "mortarJdbcFetchOptional",
+            "mortarPreRenderedJdbcFetchOptional",
+            "plainJdbcFindByIdFetch",
+            "plainJdbcReusableFindByIdFetch",
+            "plainJdbcTunedReusableFindByIdFetch",
+            "mortarProcessorGeneratedFindByIdFetch",
+            "mortarPreparedProcessorGeneratedFindByIdFetch",
+            "mortarTunedProcessorGeneratedFindByIdFetch",
+            "mortarGeneratedJdbcFetch",
+            "mortarPreparedGeneratedJdbcFetch",
+            "jooqFetch",
+            "querydslFetch"
+        );
+    }
+
+    @Test
+    void r20DslShapesIncludeRegexSelectsOnlyMatchedDslScenarioNames() {
+        Set<String> selectedMethods = Arrays.stream(PostgresExecutionBenchmark.class.getDeclaredMethods())
+            .map(Method::getName)
+            .filter(methodName -> ("PostgresExecutionBenchmark." + methodName)
+                .matches(R20_5_DSL_SHAPES_INCLUDE_REGEX))
+            .collect(Collectors.toSet());
+
+        assertThat(selectedMethods).containsExactlyInAnyOrderElementsOf(R20_5_DSL_SHAPES_MATRIX.values());
     }
 
     @Test

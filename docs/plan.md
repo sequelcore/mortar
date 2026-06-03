@@ -2379,7 +2379,7 @@ Canonical slices:
   Status: Done.
 - R20.4: Generated fixed-read overhead and allocation profiling. Status: Done.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
-  shapes. Status: Planned.
+  shapes. Status: Done.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
   Status: Planned.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
@@ -2494,11 +2494,75 @@ Verification passed on 2026-06-02:
 
 ### R20.5 DSL Render/Execute Profiling
 
-Status: Planned.
+Status: Done.
 
-Measure dynamic DSL render and execute paths for broader read and write shapes,
-including join/page and update-batch scenarios, before generalizing any
-fixed-read conclusion.
+R20.5 profiles existing dynamic DSL render/execute paths over live
+PostgreSQL/Testcontainers rows without changing runtime behavior. The required
+xhigh debate concluded that R20.5 should include all three existing broader DSL
+measurement categories, but only through current benchmark rows:
+
+- simple read render/execute context: ordinary JDBC simple read, Mortar DSL
+  render-per-call simple read, and Mortar pre-rendered simple read;
+- joined ordered paginated read: reusable prepared JDBC join/page and Mortar
+  DSL join/page;
+- write batch: reusable prepared JDBC update batch and Mortar DSL update batch.
+
+`java/benchmarks` now exposes focused R20.5 JMH presets for throughput,
+allocation, and sample-time latency:
+
+```bash
+gradlew.bat :java:benchmarks:jmhR20DslShapes --no-daemon
+gradlew.bat :java:benchmarks:jmhR20DslShapesAllocation --no-daemon
+gradlew.bat :java:benchmarks:jmhR20DslShapesLatency --no-daemon
+```
+
+Canonical include regex:
+
+```text
+PostgresExecutionBenchmark\.(plainJdbcFetch|mortarJdbcFetch|mortarPreRenderedJdbcFetch|plainJdbcJoinPageFetch|mortarJoinPageFetch|plainJdbcUpdateBatch|mortarUpdateBatch)$
+```
+
+R20.5 excludes `plainJdbcReusableStatementFetch`, generated fixed-read R20.4
+rows, optional variants, handwritten generated-style Mortar rows, jOOQ,
+QueryDSL SQL, rendering-only microbenchmarks, and controlled fake-JDBC rows
+from its interpretation boundary. jOOQ and QueryDSL remain out because R20.5
+does not define broader-shape fair-comparison boundaries for those libraries.
+
+R20.5 records local/internal evidence only. Local smoke JSON under
+`java/benchmarks/build` proves task and regex wiring but is not public
+performance evidence and must not be committed. Retained local or CI artifacts
+still need raw JSON, manifest, commands, environment metadata, dataset notes,
+limitations, review notes, and at least two repeated runs per selected profile
+before any optimization candidate is proposed.
+
+R20.5 `Done` means the DSL profiling harness, grouping guard, local
+instructions, and local smoke proof are complete. It does not mean the retained
+evidence gate for optimization proposals or public performance reporting is
+satisfied.
+
+Changed files/docs: `java/benchmarks/build.gradle.kts`,
+`java/benchmarks/src/test/java/dev/mortar/benchmarks/PostgresExecutionBenchmarkTest.java`,
+`docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+`docs/performance.md`, this plan, and `docs/roadmap.md`.
+
+Migration note: no Java public API, runtime behavior, generated Java API, Rust
+tooling behavior, benchmark threshold, release, publication, migration,
+optimization, or public performance claim changed.
+
+Verification passed on 2026-06-02:
+
+- `gradlew.bat :java:benchmarks:test --tests dev.mortar.benchmarks.PostgresExecutionBenchmarkTest --no-daemon`;
+- focused R20.5 live PostgreSQL JMH smoke generated
+  `java/benchmarks/build/reports/jmh/r20.5-dsl-shapes-smoke.json` as build
+  output;
+- `gradlew.bat check --no-daemon`;
+- `cd rust && cargo fmt --all --check`;
+- `cd rust && cargo clippy --all-targets --all-features -- -D warnings`;
+- `cd rust && cargo test`;
+- `cd editors/vscode && bun run typecheck`;
+- `git diff --check`;
+- private path/project scrub excluding build, cache, dependency, and generated
+  outputs.
 
 ### R20.6 Rust LSP Resolver Benchmarking
 

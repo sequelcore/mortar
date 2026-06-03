@@ -52,6 +52,15 @@ processor-generated `findById`, and Mortar tuned processor-generated
 retained with manifest, commands, environment metadata, limitations, and review
 notes.
 
+R20.5 DSL render/execute profiling uses local JMH presets in `java:benchmarks`:
+`jmhR20DslShapes`, `jmhR20DslShapesAllocation`, and
+`jmhR20DslShapesLatency`. These presets isolate ordinary JDBC simple read,
+Mortar DSL render-per-call simple read, Mortar pre-rendered simple read,
+reusable prepared JDBC join/page, Mortar DSL join/page, reusable prepared JDBC
+update batch, and Mortar DSL update batch. Local JSON remains internal
+engineering evidence unless it is retained with manifest, commands,
+environment metadata, limitations, dataset notes, and review notes.
+
 Current internal baseline:
 
 - `docs/benchmarks/baseline-2026-06-01.md`
@@ -77,4 +86,7 @@ Current performance strategy research:
   parser/resolver measurements do not support Java runtime claims.
 - Do not propose generated fixed-read optimizations from a single local smoke
   or unbundled build-output JSON. R20.4 evidence must be repeated and retained
+  before optimization candidates are ranked.
+- Do not propose DSL render/execute optimizations from a single local smoke or
+  unbundled build-output JSON. R20.5 evidence must be repeated and retained
   before optimization candidates are ranked.

@@ -171,16 +171,47 @@ The R20.4 generated fixed-read debate concluded:
   retained evidence gate for optimization proposals or public performance
   reporting is satisfied.
 
+The R20.5 DSL render/execute debate concluded:
+
+- R20.5 should stay a narrow live PostgreSQL/Testcontainers measurement slice
+  over broader existing DSL shapes, not a runtime optimization or library
+  ranking slice.
+- The canonical R20.5 group is limited to ordinary JDBC simple read, Mortar DSL
+  render-per-call simple read, Mortar pre-rendered simple read, reusable
+  prepared JDBC join/page, Mortar DSL join/page, reusable prepared JDBC update
+  batch, and Mortar DSL update batch.
+- The simple-read pre-rendered Mortar row is an internal isolate for render
+  cost, not an external baseline. `plainJdbcFetch` remains the matched external
+  ordinary JDBC baseline for that simple-read shape.
+- The join/page and update-batch JDBC baselines are reusable prepared JDBC rows
+  with the same SQL shape, bind values, result/update count shape, and row
+  materialization or batch lifecycle as the Mortar DSL rows.
+- `plainJdbcReusableStatementFetch` remains contextual R20.3 evidence, not a
+  canonical R20.5 row, because R20.5 should not broaden the simple-read
+  interpretation beyond the existing render-per-call versus pre-rendered
+  isolate.
+- Generated fixed-read R20.4 rows, optional variants, handwritten
+  generated-style Mortar rows, jOOQ, QueryDSL SQL, rendering-only
+  microbenchmarks, and controlled fake-JDBC rows remain outside R20.5.
+- R20.5 local smoke JSON proves harness and preset wiring only. Optimization
+  ranking remains blocked until retained raw JSON, manifest, commands,
+  environment metadata, dataset notes, limitations, reviewer notes, and at
+  least two repeated runs per selected profile exist.
+- R20.5 `Done` means the DSL profiling harness, grouping guard, local
+  instructions, and local smoke proof exist. It does not mean the retained
+  evidence gate for optimization proposals or public performance reporting is
+  satisfied.
+
 ## Current Benchmark Inventory
 
 | Artifact | Purpose | Readiness |
 | --- | --- | --- |
-| `java/benchmarks/build.gradle.kts` | JMH dependencies, throughput, allocation, latency, PostgreSQL benchmark tasks, and R20.4 generated fixed-read presets | Trustworthy as harness source; public reports still need retained raw artifacts |
+| `java/benchmarks/build.gradle.kts` | JMH dependencies, throughput, allocation, latency, PostgreSQL benchmark tasks, R20.4 generated fixed-read presets, and R20.5 DSL shape presets | Trustworthy as harness source; public reports still need retained raw artifacts |
 | `PostgresRenderingBenchmark` | PostgreSQL SQL rendering microbenchmark | Internal-only; cannot imply database throughput |
 | `ReferenceRenderingBenchmark` | jOOQ and QueryDSL rendering reference scenarios | Internal-only; comparable only for documented rendering shape |
 | `JdbcExecutionBenchmark` | Controlled JDBC-double adapter overhead | Internal-only; fake JDBC doubles must never support real database claims |
 | `PostgresExecutionBenchmark` | Live PostgreSQL/Testcontainers execution matrix | Best current runtime evidence source; still internal until retained clean-commit artifacts exist |
-| `PostgresExecutionBenchmarkTest` | Sanity checks for benchmark scenario names, deterministic dataset, and tuned PgJDBC parameters | Trustworthy as harness guard, not performance evidence |
+| `PostgresExecutionBenchmarkTest` | Sanity checks for benchmark scenario names, deterministic dataset, tuned PgJDBC parameters, and R20.4/R20.5 matrix guards | Trustworthy as harness guard, not performance evidence |
 | `docs/benchmarks/baseline-2026-06-01.md` | Local rendering and controlled JDBC baseline | Internal-only; not public-ready |
 | `docs/benchmarks/postgres-execution-2026-06-01.md` | Local real-PostgreSQL throughput, allocation, latency notes | Internal-only; not public-ready |
 | `docs/benchmarks/performance-report-2026-06-01.md` | Public-readiness draft | Blocked for public claims until retained artifacts and commit metadata exist |
@@ -309,7 +340,7 @@ Invalid or misleading claims include:
   Status: Done.
 - R20.4: Generated fixed-read overhead and allocation profiling. Status: Done.
 - R20.5: DSL query render/execute overhead profiling for broader read and write
-  shapes. Status: Planned.
+  shapes. Status: Done.
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
   Status: Planned.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
