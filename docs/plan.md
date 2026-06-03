@@ -2331,12 +2331,12 @@ R20 performance handoff:
 
 ## R20 Canonical Plan: Performance And Runtime Efficiency
 
-Status: In Progress.
+Status: Done.
 
-R20 is measurement and planning first. R20.1 and R20.2 complete the readiness
-audit and canonical plan only; they do not authorize optimization, runtime API
-changes, editor semantic changes, publication, migration, or public performance
-claims.
+R20 is measurement and planning first. It closes as a completed measurement and
+decision-gate phase. R20 does not authorize optimization, runtime API changes,
+editor semantic changes, publication, migration, release work, or public
+performance claims.
 
 ### R20.1 Benchmark Readiness Audit And Research
 
@@ -2383,8 +2383,9 @@ Canonical slices:
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
   Status: Done.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
-  Planned.
-- R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
+  Done as a no-optimization decision gate.
+- R20.8: Public performance report gate and reviewer sign-off. Status: Done as
+  a public-report no-go.
 
 ### R20.3 Java Runtime Baseline Matrix
 
@@ -2637,50 +2638,86 @@ Verification passed on 2026-06-03:
 
 ### R20.7 Evidence-Ranked Optimizations
 
-Status: Planned.
+Status: Done.
 
-Rank optimization candidates only after R20.3-R20.6 evidence exists. Candidate
-areas may include generated binders/mappers, renderer reuse, prepared-query
-lifecycle, LSP parser caching, and incremental parse strategy, but no candidate
-is approved before evidence exists.
+R20.7 ranks optimization candidates by retained evidence and closes with no
+optimization implementation authorized. The required xhigh
+performance/architecture debate concluded that R20.3-R20.6 prove harness
+coverage, scenario coverage, and Java/Rust measurement boundaries, but they do
+not provide retained repeated artifacts reviewed enough to rank an optimization
+candidate for implementation.
+
+The evidence-ranked table is recorded in
+`docs/benchmarks/r20-performance-gate.md`. Java runtime candidates are recorded
+separately from Rust tooling candidates:
+
+- Java runtime candidates: generated binder/mapper tightening, prepared
+  generated-query lifecycle changes, renderer reuse or pre-render caching, PgJDBC
+  default/tuning changes, and benchmark threshold tightening.
+- Rust tooling candidates: parser construction reuse or parser caching,
+  source-map/snapshot lookup caching, diagnostics full-buffer scan
+  optimization, and incremental parse or partial-sync strategy.
+
+Every candidate is blocked for implementation until retained raw artifacts,
+exact commands, clean commit metadata, environment metadata, dataset or corpus
+notes, limitations, profiler/allocation evidence where needed, derived summary,
+and reviewer notes identify a dominant cost. Controlled fake-JDBC evidence
+remains excluded from PostgreSQL, driver, database, and product performance
+claims.
+
+Changed docs: `docs/benchmarks/r20-performance-gate.md`,
+`docs/benchmarks/r20-benchmark-readiness.md`, `docs/benchmarks/README.md`,
+`docs/performance.md`, this plan, and `docs/roadmap.md`.
+
+Migration note: no Java public API, runtime behavior, generated Java API,
+metadata format, source-map format, VS Code command contract, R19 editor
+semantics, Rust tooling behavior, benchmark threshold, release, publication,
+migration, optimization, or public performance claim changed.
 
 ### R20.8 Public Performance Report Gate
 
-Status: Planned.
+Status: Done.
 
-Public reporting remains blocked until retained raw artifacts, environment
-metadata, derived summaries, limitations, and benchmark-readiness review are
-complete. Any public claim must name the exact baseline and workload.
+R20.8 closes with a public-report no-go decision. The existing
+`docs/benchmarks/performance-report-2026-06-01.md` remains an internal
+public-readiness draft because it cites local build-output JSON, has pending
+release commit metadata, does not attach retained workflow artifacts, does not
+record independent reviewer sign-off against retained artifacts, and does not
+include broader workload evidence for application-level claims.
+
+Public wording must say internal/local evidence only unless retained artifacts
+exist for the exact claim. R20 does not publish a report, prepare a release,
+tag, push, PR, merge, migration, or public performance claim. Broad claims such
+as "Mortar is faster than JDBC" remain invalid because they do not name the
+exact JDBC baseline, workload, confidence evidence, limitations, and retained
+artifact bundle.
+
+Benchmark-readiness review result: public performance reporting is blocked.
+The blocker is missing retained, reproducible, reviewable evidence for any
+public claim, not a known performance regression.
+
+R20 is Done as a measurement and decision-gate phase. Follow-up work is
+deferred to a later retained-artifact review or optimization slice; R21
+AI/agent-friendly work and R22 pre-release readiness remain deferred and are not
+implemented by R20.
 
 ## Future Maturity Gates
 
-R17 is planned as the real-query coverage gate above. It uses a public
-non-application-specific fixture app and query corpus to decide which broader
-read-query families should remain explicit DSL, become generated Java-first
-ergonomics, require more evidence, or be rejected. It does not authorize
-private app migration, generated writes, generated repositories, or release
-work.
+R17-R20 are completed maturity gates recorded above. They produced the
+real-query coverage gate, contract-hardening gate, Java call-resolution and
+editor-semantics hardening gate, and R20 performance measurement/public-claim
+decision gate.
 
-R18 is planned as the contract-hardening gate above. It should consume the R17
-corpus for refactor-safety failures, generated metadata/source-map freshness,
-Gradle incremental and multi-module convergence, VS Code source-map-backed SQL
-transparency, schema drift workflow, and SQL snapshots as a normal developer
-workflow. It does not authorize generated API expansion, release work, or
-application migration.
+Deferred future maturity work starts after R20 and remains out of scope here:
 
-R19 is planned as Java call-resolution and editor-semantics hardening. It should
-preserve ADR-0007 source-map freshness as the trust boundary, replace or
-constrain R18's token-walking generated-call matcher with local syntax-aware
-resolution, broaden only to explicit same-file alias patterns, and fail closed
-for unsupported generated-looking calls. It does not authorize runtime Java API
-changes, generated API expansion, performance work, AI/agent-friendly behavior,
-full IDE replacement behavior, public release work, or public demo claims.
+- R21 AI/agent-friendly behavior.
+- R22 pre-release readiness.
+- Retained-artifact benchmark review or optimization slices that may follow
+  R20 only when retained evidence authorizes the exact claim or change.
 
-R20 is planned as Performance And Runtime Efficiency. It should gather repeated
-clean-commit JMH/PostgreSQL artifacts, allocation and latency evidence,
-Windows/Linux CI confidence, upgrade notes, and performance-report updates only
-after R19 editor semantics are trustworthy enough that performance evidence is
-not paired with misleading SQL-transparency claims.
+No private application migration, generated repository expansion, release,
+publication, public performance report, or public demo claim is authorized by
+this handoff.
 
 ## Completed Slice: R15 Public API Readiness Hardening
 

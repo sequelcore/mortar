@@ -414,6 +414,36 @@ database, or application-runtime performance claims. Allocation interpretation
 requires retained profiler or allocation artifacts in addition to Criterion
 timing output.
 
+## R20.7/R20.8 Optimization And Public-Report Gate
+
+R20.7 and R20.8 are complete as decision gates. The internal gate record is
+[`r20-performance-gate.md`](r20-performance-gate.md).
+
+R20.7 does not authorize optimization implementation. R20.3-R20.6 prove the
+benchmark harnesses, scenario groups, local smoke paths, and Java/Rust evidence
+boundaries, but they do not provide retained repeated artifacts reviewed enough
+to rank an optimization candidate.
+
+R20.8 is a public-report no-go. `performance-report-2026-06-01.md` remains an
+internal public-readiness draft because it cites local build-output JSON and
+does not attach retained workflow artifacts, clean benchmark commit metadata, or
+reviewer sign-off. Public wording must say internal/local evidence only until
+retained artifacts exist for the exact claim.
+
+Optimization implementation remains blocked for:
+
+- Java runtime generated binder/mapper, prepared-query lifecycle, renderer
+  reuse, PgJDBC default, and threshold changes;
+- Rust LSP parser caching, source-map/snapshot caching, diagnostics scan, and
+  incremental parse strategy changes.
+
+Before any later optimization slice, retain the raw result files, exact
+commands, manifest, environment metadata, corpus or dataset notes, limitations,
+derived summary, profiler/allocation evidence where needed, and reviewer notes.
+Keep Java runtime metrics and Rust tooling metrics separate. Controlled
+JDBC-double rows must not support PostgreSQL, driver, database, or product
+performance claims.
+
 ## Current Scenarios
 
 - `PostgresRenderingBenchmark.renderSelectQuery`: Mortar PostgreSQL rendering overhead.
@@ -500,3 +530,4 @@ Internal baselines:
 - `baseline-2026-06-01.md`
 - `postgres-execution-2026-06-01.md`
 - `performance-report-2026-06-01.md`
+- `r20-performance-gate.md`

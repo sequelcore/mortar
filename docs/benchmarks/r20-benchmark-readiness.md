@@ -1,7 +1,8 @@
 # R20 Benchmark Readiness And Performance Plan
 
-Date: 2026-06-02
-Status: R20.1/R20.2 planning and audit record. No public performance claims.
+Date: 2026-06-03
+Status: R20 benchmark readiness, optimization gate, and public-report gate
+record. No public performance claims.
 
 ## Objective
 
@@ -231,6 +232,27 @@ The R20.6 Rust LSP resolver debate concluded:
   JMH/PostgreSQL runtime metrics and do not support JDBC, database, or runtime
   performance claims.
 
+The R20.7/R20.8 optimization and public-report gate debate concluded:
+
+- R20.3-R20.6 prove harness coverage, scenario coverage, and boundary-correct
+  measurement surfaces, but they are not sufficient to rank an optimization
+  candidate for implementation.
+- Java runtime candidates, including generated binders/mappers, prepared-query
+  lifecycle changes, renderer reuse, PgJDBC tuning defaults, and benchmark
+  threshold tightening, remain blocked until repeated retained artifacts and
+  review identify a dominant cost.
+- Rust tooling candidates, including parser caching, source-map/snapshot lookup
+  caching, diagnostics scan optimization, and incremental parse strategy,
+  remain blocked until repeated retained Criterion/profiler artifacts and
+  review identify a dominant tooling cost.
+- No low-risk runtime or tooling optimization is justified by R20 evidence
+  alone. Evidence-pipeline work is the only authorized follow-up.
+- R20.8 is a public-report no-go. The existing public-readiness draft stays
+  internal unless retained artifacts, exact claim boundaries, and
+  benchmark-readiness sign-off exist.
+- R20 closes as a measurement and decision-gate phase, with no runtime behavior
+  change and no public performance claim.
+
 ## Current Benchmark Inventory
 
 | Artifact | Purpose | Readiness |
@@ -244,6 +266,7 @@ The R20.6 Rust LSP resolver debate concluded:
 | `docs/benchmarks/baseline-2026-06-01.md` | Local rendering and controlled JDBC baseline | Internal-only; not public-ready |
 | `docs/benchmarks/postgres-execution-2026-06-01.md` | Local real-PostgreSQL throughput, allocation, latency notes | Internal-only; not public-ready |
 | `docs/benchmarks/performance-report-2026-06-01.md` | Public-readiness draft | Blocked for public claims until retained artifacts and commit metadata exist |
+| `docs/benchmarks/r20-performance-gate.md` | R20.7/R20.8 internal optimization and public-report decision gate | Trustworthy as decision record; explicitly blocks optimization implementation and public claims |
 | `docs/benchmarks/thresholds.json` | Bootstrap threshold shape check | Not a real regression threshold |
 | `rust/crates/mortar-lsp/src/lib.rs` | Current LSP parser/resolver implementation and tests | Correctness evidence; no benchmark-only public API |
 | `rust/crates/mortar-lsp/benches/r20_lsp_resolver.rs` | Criterion harness for R20.6 Rust LSP resolver/editor-feature scenarios | Internal-only tooling benchmark source; public claims blocked |
@@ -375,5 +398,11 @@ Invalid or misleading claims include:
 - R20.6: Rust LSP resolver latency and allocation benchmark plan/harness.
   Status: Done.
 - R20.7: Optimization candidates ranked only by retained evidence. Status:
-  Planned.
-- R20.8: Public performance report gate and reviewer sign-off. Status: Planned.
+  Done as a no-optimization decision gate.
+- R20.8: Public performance report gate and reviewer sign-off. Status: Done
+  as a public-report no-go.
+
+R20 is Done as a measurement and decision-gate phase. Public performance
+claims, runtime optimizations, benchmark threshold tightening, release work, and
+publication remain blocked until a later retained-artifact review authorizes
+the exact claim or change.
