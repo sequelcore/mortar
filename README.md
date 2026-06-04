@@ -81,10 +81,11 @@ The repository includes compile-backed examples for the current alpha:
 - `examples/clean-architecture-postgres`
 - `examples/query-corpus-*`
 
-A separate public Sequel backend demo is planned as the broader ecosystem
-showcase. That demo should live under the `sequelcore` GitHub organization and
-show a real Spring backend using Mortar first, then other Sequel libraries as
-they become release-ready.
+The official public backend demo is
+[`sequelcore/sequel-backend-demo`](https://github.com/sequelcore/sequel-backend-demo).
+It is a standalone Spring Boot backend that consumes Mortar from Maven Central
+and starts with Mortar-only repository adapters. Other Sequel libraries should
+be added there only after they are release-ready.
 
 ## Install
 
