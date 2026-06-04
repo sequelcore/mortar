@@ -37,11 +37,11 @@ on:
       doppler_project:
         description: "Doppler project containing release secrets."
         required: true
-        default: "sequel"
+        default: "sequel-releases"
       doppler_config:
         description: "Doppler config containing release secrets."
         required: true
-        default: "releases"
+        default: "prd"
       confirmation:
         description: "Required for publish: publish <release_version>"
         required: false

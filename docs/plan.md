@@ -39,7 +39,7 @@ fetch release secrets or publish artifacts. `operation=publish` requires:
 - at least one artifact family flag;
 - the protected `release` GitHub environment;
 - a repository `DOPPLER_TOKEN` secret that can fetch release credentials from
-  Doppler at runtime.
+  Doppler project `sequel-releases`, config `prd`, at runtime.
 
 Java publication uses the Vanniktech Maven Publish plugin with Central Portal
 publication enabled and automatic release configured. Maven Central credentials
@@ -61,7 +61,7 @@ The GitHub repository stores only the Doppler service token:
 
 - `DOPPLER_TOKEN`
 
-The Doppler release config owns publisher credentials:
+The Doppler `sequel-releases/prd` config owns publisher credentials:
 
 - `MAVEN_USERNAME`
 - `MAVEN_PASSWORD`
