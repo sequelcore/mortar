@@ -6,6 +6,10 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 
 ## Unreleased
 
+- Added a VS Code package contract check so VSIX builds fail if source files,
+  tests, dependency folders, build caches, or oversized bundles enter the
+  extension package.
+
 ## 0.1.0-alpha.1 - 2026-06-04
 
 - Created Java + Rust monorepo scaffold.
