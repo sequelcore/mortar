@@ -6,6 +6,8 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 
 ## Unreleased
 
+## 0.1.0-alpha.1 - 2026-06-04
+
 - Created Java + Rust monorepo scaffold.
 - Added core query model foundation.
 - Added PostgreSQL renderer foundation.
@@ -20,8 +22,12 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
   Rust package inspection, the compiler crate publish dry-run, and VS Code VSIX
   packaging.
 - Added guarded manual release automation for Maven Central, crates.io, and
-  VS Code Marketplace pre-release publication. No artifacts have been published
-  yet.
+  VS Code Marketplace pre-release publication.
+- Published Java artifacts to Maven Central as `0.1.0-alpha.1`.
+- Published Rust crates to crates.io as `sequel-mortar-compiler`,
+  `sequel-mortar-cli`, and `sequel-mortar-lsp` version `0.1.0`.
+- Published the VS Code extension to the Marketplace as
+  `sequelcore.mortar-vscode` version `0.1.0` pre-release.
 - Added dependency-update and CodeQL security automation for the public
   repository.
 - Added canonical roadmap and public governance docs.
