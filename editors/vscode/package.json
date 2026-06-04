@@ -55,7 +55,7 @@
   "scripts": {
     "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --minify --outfile=dist/extension.js",
     "compile": "tsc -p . && bun run bundle",
-    "package:vsix": "bun run compile && vsce package --out build/mortar-vscode-0.1.0.vsix",
+    "package:vsix": "bun run compile && node -e \"require('fs').mkdirSync('build',{recursive:true})\" && vsce package --out build/mortar-vscode-0.1.0.vsix",
     "test": "bun run compile && cargo build -p mortar-lsp -p mortar-cli --manifest-path ../../rust/Cargo.toml && node ./dist/test/runTest.js",
     "test:screenshots": "bun run compile && cargo build -p mortar-lsp -p mortar-cli --manifest-path ../../rust/Cargo.toml && node ./dist/test/runTest.js",
     "typecheck": "tsc --noEmit"
