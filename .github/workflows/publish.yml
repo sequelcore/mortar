@@ -149,13 +149,13 @@ jobs:
 
       - name: Rust crate package inspection
         run: |
-          cargo package --list -p mortar-compiler
-          cargo package --list -p mortar-cli
-          cargo package --list -p mortar-lsp
+          cargo package --list -p sequel-mortar-compiler
+          cargo package --list -p sequel-mortar-cli
+          cargo package --list -p sequel-mortar-lsp
         working-directory: rust
 
       - name: Rust compiler crate publish dry run
-        run: cargo publish --dry-run -p mortar-compiler
+        run: cargo publish --dry-run -p sequel-mortar-compiler
         working-directory: rust
 
       - name: Install VS Code dependencies
@@ -257,21 +257,21 @@ jobs:
         run: |
           set -euo pipefail
 
-          cargo publish -p mortar-compiler --token "$CARGO_REGISTRY_TOKEN"
+          cargo publish -p sequel-mortar-compiler --token "$CARGO_REGISTRY_TOKEN"
 
           for attempt in {1..12}; do
-            if cargo search mortar-compiler --limit 1 | grep -q '^mortar-compiler = '; then
+            if cargo search sequel-mortar-compiler --limit 1 | grep -q '^sequel-mortar-compiler = '; then
               break
             fi
             if [[ "$attempt" == "12" ]]; then
-              echo "mortar-compiler did not appear in the crates.io index in time."
+              echo "sequel-mortar-compiler did not appear in the crates.io index in time."
               exit 1
             fi
             sleep 10
           done
 
-          cargo publish -p mortar-cli --token "$CARGO_REGISTRY_TOKEN"
-          cargo publish -p mortar-lsp --token "$CARGO_REGISTRY_TOKEN"
+          cargo publish -p sequel-mortar-cli --token "$CARGO_REGISTRY_TOKEN"
+          cargo publish -p sequel-mortar-lsp --token "$CARGO_REGISTRY_TOKEN"
 
   publish-vscode:
     name: Publish VS Code extension

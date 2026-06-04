@@ -83,12 +83,12 @@ jobs:
         run: ./gradlew publishToMavenLocal --no-daemon --no-configuration-cache
       - name: Rust crate package inspection
         run: |
-          cargo package --list -p mortar-compiler
-          cargo package --list -p mortar-cli
-          cargo package --list -p mortar-lsp
+          cargo package --list -p sequel-mortar-compiler
+          cargo package --list -p sequel-mortar-cli
+          cargo package --list -p sequel-mortar-lsp
         working-directory: rust
       - name: Rust compiler crate publish dry run
-        run: cargo publish --dry-run -p mortar-compiler
+        run: cargo publish --dry-run -p sequel-mortar-compiler
         working-directory: rust
       - name: Install VS Code dependencies
         run: bun install --frozen-lockfile

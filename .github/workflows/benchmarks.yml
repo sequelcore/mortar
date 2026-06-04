@@ -386,8 +386,8 @@ jobs:
           Benchmark target: r23_rust_tooling_lsp
           Criterion filter: ${filter}
           Raw Criterion directory: rust/target/criterion
-          Full command: cd rust && cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp
-          Smoke command: cd rust && cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp -- r23_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
+          Full command: cd rust && cargo bench -p sequel-mortar-lsp --bench r23_rust_tooling_lsp
+          Smoke command: cd rust && cargo bench -p sequel-mortar-lsp --bench r23_rust_tooling_lsp -- r23_lsp_parser/canonical_generated_read --warm-up-time 0.1 --measurement-time 0.1 --sample-size 10
           EOF
 
           cat > "${bundle_dir}/corpus-notes.md" <<EOF
@@ -419,9 +419,9 @@ jobs:
           for run_index in $(seq 1 "$repeat_count"); do
             rm -rf target/criterion
             if [[ "$filter" == "all" ]]; then
-              cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp 2>&1 | tee "${results_dir}/criterion-run-${run_index}-${short_sha}.txt"
+              cargo bench -p sequel-mortar-lsp --bench r23_rust_tooling_lsp 2>&1 | tee "${results_dir}/criterion-run-${run_index}-${short_sha}.txt"
             else
-              cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp -- "$filter" 2>&1 | tee "${results_dir}/criterion-run-${run_index}-${short_sha}.txt"
+              cargo bench -p sequel-mortar-lsp --bench r23_rust_tooling_lsp -- "$filter" 2>&1 | tee "${results_dir}/criterion-run-${run_index}-${short_sha}.txt"
             fi
             cp -R target/criterion "${results_dir}/criterion-run-${run_index}-${short_sha}"
           done

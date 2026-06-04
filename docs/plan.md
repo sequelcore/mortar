@@ -48,9 +48,9 @@ variables during the guarded publish job.
 
 Rust publication uses Cargo in dependency order:
 
-1. `mortar-compiler`
-2. `mortar-cli`
-3. `mortar-lsp`
+1. `sequel-mortar-compiler`
+2. `sequel-mortar-cli`
+3. `sequel-mortar-lsp`
 
 VS Code publication packages the bundled VSIX and publishes through `vsce` as a
 pre-release using the `sequelcore` Marketplace publisher.
@@ -95,7 +95,7 @@ R25 release automation changes require:
 - `cd rust && cargo fmt --all --check`
 - `cd rust && cargo clippy --all-targets --all-features -- -D warnings`
 - `cd rust && cargo test`
-- `cd rust && cargo publish --dry-run -p mortar-compiler`
+- `cd rust && cargo publish --dry-run -p sequel-mortar-compiler`
 - `cd editors/vscode && bun run typecheck`
 - `cd editors/vscode && bun run package:vsix`
 - `git diff --check`

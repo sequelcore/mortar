@@ -1384,41 +1384,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "mortar-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "mortar-compiler",
- "postgres",
- "serde_json",
- "testcontainers-modules",
-]
-
-[[package]]
-name = "mortar-compiler"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror",
-]
-
-[[package]]
-name = "mortar-lsp"
-version = "0.1.0"
-dependencies = [
- "criterion",
- "lsp-server",
- "lsp-types",
- "mortar-compiler",
- "serde",
- "serde_json",
- "thiserror",
- "tree-sitter",
- "tree-sitter-java",
-]
-
-[[package]]
 name = "num"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2109,6 +2074,41 @@ name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
+
+[[package]]
+name = "sequel-mortar-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "postgres",
+ "sequel-mortar-compiler",
+ "serde_json",
+ "testcontainers-modules",
+]
+
+[[package]]
+name = "sequel-mortar-compiler"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "sequel-mortar-lsp"
+version = "0.1.0"
+dependencies = [
+ "criterion",
+ "lsp-server",
+ "lsp-types",
+ "sequel-mortar-compiler",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tree-sitter",
+ "tree-sitter-java",
+]
 
 [[package]]
 name = "serde"

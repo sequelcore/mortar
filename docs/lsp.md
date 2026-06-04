@@ -73,7 +73,7 @@ Markers are not a fallback for stale generated fixed-read source-map data.
 
 ```bash
 cd rust
-cargo run -p mortar-lsp
+cargo run -p sequel-mortar-lsp
 ```
 
 The process speaks LSP over stdio and is intended to be launched by an editor

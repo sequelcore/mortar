@@ -1,5 +1,5 @@
 [package]
-name = "mortar-compiler"
+name = "sequel-mortar-compiler"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 readme.workspace = true
 rust-version.workspace = true
 description = "Compiler and inspection foundation for Mortar query tooling."
+
+[lib]
+name = "mortar_compiler"
 
 [dependencies]
 serde.workspace = true
