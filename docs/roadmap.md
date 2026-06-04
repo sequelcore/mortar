@@ -138,8 +138,8 @@ the release prerequisites below are completed:
 
 1. Sonatype Central namespace access for `io.github.sequelcore`, Central Portal
    token, and signing credentials.
-2. crates.io ownership and publish order for `mortar-compiler`,
-   `mortar-cli`, and `mortar-lsp`.
+2. crates.io ownership and publish order for `sequel-mortar-compiler`,
+   `sequel-mortar-cli`, and `sequel-mortar-lsp`.
 3. VS Code Marketplace publisher ownership for `sequelcore` and a Marketplace PAT.
 4. Protected release environment or equivalent guarded secret access and branch
    protection/rulesets.

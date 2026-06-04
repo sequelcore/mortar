@@ -10,8 +10,8 @@ used Java workflow.
 
 Required setup:
 
-- `cargo build -p mortar-lsp`
-- `cargo build -p mortar-cli`
+- `cargo build -p sequel-mortar-lsp`
+- `cargo build -p sequel-mortar-cli`
 - `cd editors/vscode && bun install && bun run compile`
 - Open `examples/editor-smoke/vscode` with the Mortar extension development
   host.
@@ -49,7 +49,7 @@ bun run test:screenshots
 
 Required setup:
 
-- `cargo build -p mortar-lsp`
+- `cargo build -p sequel-mortar-lsp`
 - launch `mortar-lsp` using the configuration in `docs/neovim.md`.
 
 Matrix:

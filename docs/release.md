@@ -76,12 +76,12 @@ Publish only public Java libraries to Maven Central:
 Do not publish examples, benchmarks, aggregate projects, or editor plugins to
 Maven Central.
 
-Rust crates use the `mortar-*` naming convention and publish in dependency
-order:
+Rust crates use the `sequel-mortar-*` naming convention and publish in
+dependency order:
 
-1. `mortar-compiler`
-2. `mortar-cli`
-3. `mortar-lsp`
+1. `sequel-mortar-compiler`
+2. `sequel-mortar-cli`
+3. `sequel-mortar-lsp`
 
 ## Release Readiness Checklist
 
@@ -121,14 +121,15 @@ Cargo package inspection and dry run:
 
 ```bash
 cd rust
-cargo package --list -p mortar-compiler
-cargo package --list -p mortar-cli
-cargo package --list -p mortar-lsp
-cargo publish --dry-run -p mortar-compiler
+cargo package --list -p sequel-mortar-compiler
+cargo package --list -p sequel-mortar-cli
+cargo package --list -p sequel-mortar-lsp
+cargo publish --dry-run -p sequel-mortar-compiler
 ```
 
-`mortar-cli` and `mortar-lsp` depend on `mortar-compiler`. Before the compiler
-crate is available in the target registry, their `cargo publish --dry-run`
+`sequel-mortar-cli` and `sequel-mortar-lsp` depend on
+`sequel-mortar-compiler`. Before the compiler crate is available in the target
+registry, their `cargo publish --dry-run`
 checks may fail closed during registry dependency resolution. Package contents
 must still be inspected before any release decision.
 
@@ -168,8 +169,8 @@ metadata, signatures, and CI-provided credentials.
 
 Cargo publishing must inspect package contents before upload because published
 crate versions are permanent and cannot be overwritten. Mortar publishes Rust
-crates in dependency order: `mortar-compiler`, then `mortar-cli`, then
-`mortar-lsp`.
+crates in dependency order: `sequel-mortar-compiler`, then
+`sequel-mortar-cli`, then `sequel-mortar-lsp`.
 
 VS Code extension publication requires the `sequelcore` Marketplace publisher,
 a Marketplace PAT, and packaging evidence. The current workflow publishes with
@@ -180,8 +181,9 @@ prerequisites:
 
 1. Confirm Sonatype Central namespace ownership for `io.github.sequelcore`,
    Central Portal token access, and signing credentials.
-2. Confirm crates.io owner access for `mortar-compiler`, `mortar-cli`, and
-   `mortar-lsp`, and publish in dependency order.
+2. Confirm crates.io owner access for `sequel-mortar-compiler`,
+   `sequel-mortar-cli`, and `sequel-mortar-lsp`, and publish in dependency
+   order.
 3. Confirm VS Code Marketplace publisher ownership for `sequelcore` and a
    Marketplace PAT if the extension is included.
 4. Add or verify protected release controls for publication credentials,

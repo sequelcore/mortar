@@ -44,7 +44,7 @@ Run the retained Rust tooling benchmark target locally:
 
 ```bash
 cd rust
-cargo bench -p mortar-lsp --bench r23_rust_tooling_lsp
+cargo bench -p sequel-mortar-lsp --bench r23_rust_tooling_lsp
 ```
 
 Criterion output under `rust/target/criterion` is local tooling output unless
