@@ -9,6 +9,8 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 - Added a VS Code package contract check so VSIX builds fail if source files,
   tests, dependency folders, build caches, or oversized bundles enter the
   extension package.
+- Expanded the README with install, tooling, VS Code configuration, generated
+  read facade, SQL assertion, and first-user path examples.
 
 ## 0.1.0-alpha.1 - 2026-06-04
 

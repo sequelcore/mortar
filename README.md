@@ -75,6 +75,8 @@ examples/clean-architecture-postgres
 
 ## Install
 
+Java/Spring artifacts:
+
 ```kotlin
 dependencies {
     implementation("io.github.sequelcore:mortar-core:0.1.0-alpha.1")
@@ -90,12 +92,156 @@ Rust tooling crates:
 
 ```bash
 cargo install sequel-mortar-cli --version 0.1.0
+cargo install sequel-mortar-lsp --version 0.1.0
 ```
 
 VS Code extension:
 
 Install `sequelcore.mortar-vscode` from the VS Code Marketplace using the
 pre-release channel.
+
+The extension is a lightweight client. It does not bundle the Rust executables;
+install `sequel-mortar-cli` and `sequel-mortar-lsp` separately and keep
+`mortar` and `mortar-lsp` on `PATH`, or configure their paths explicitly.
+
+## Quick Start
+
+Configure the Spring Boot starter for PostgreSQL:
+
+```properties
+mortar.dialect=postgres
+```
+
+If the Rust tools are not on `PATH`, configure VS Code explicitly:
+
+```json
+{
+  "mortar.lsp.path": "mortar-lsp",
+  "mortar.cli.path": "mortar",
+  "mortar.postgres.connection": "postgres://user:password@localhost:5432/app"
+}
+```
+
+Model classes are annotated so the processor can generate `Q*` metamodels:
+
+```java
+@MortarEntity(table = "clients")
+public record Client(
+    @MortarId @MortarColumn("id") Long id,
+    @MortarColumn("name") String name,
+    @MortarColumn("active") boolean active
+) {}
+```
+
+Repository adapters build inspectable query values and execute them explicitly.
+Common primary-key reads use the generated fixed-read facade:
+
+```java
+MortarBoundQuery<QClient.FindByIdRow> query = QClient.CLIENT
+    .read(renderer)
+    .findById(clientId)
+    .named("ClientRepository.findById");
+
+Optional<QClient.FindByIdRow> row = jdbcClient.fetchOptional(query);
+```
+
+Explicit full-table reads are generated too, and should be reserved for small
+reference data or bounded fixtures:
+
+```java
+List<QClient.FindAllRow> rows = jdbcClient.fetch(
+    QClient.CLIENT
+        .read(renderer)
+        .findAll()
+        .named("ClientRepository.findAll")
+);
+```
+
+Application-specific reads use the Java DSL for predicates, projections,
+sorting, and pagination:
+
+```java
+QuerySpec query = db.from(CLIENT)
+    .projectRecord(ClientSummary.class, client -> client.id, client -> client.name)
+    .where(client -> client.active.eq(true))
+    .orderBy(client -> client.id.asc())
+    .page(MortarPage.of(page, size))
+    .named("ClientRepository.findActivePage")
+    .build();
+```
+
+Scalar reads use DSL terminals:
+
+```java
+long activeCount = jdbcClient.fetchOne(
+    db.from(CLIENT)
+        .where(client -> client.active.eq(true))
+        .count(renderer)
+        .named("ClientRepository.countActive")
+);
+
+boolean exists = jdbcClient.fetchOne(
+    db.from(CLIENT)
+        .where(client -> client.id.eq(clientId))
+        .exists(renderer)
+        .named("ClientRepository.existsById")
+);
+```
+
+Writes use explicit mutation specs. Non-returning mutations return row counts:
+
+```java
+MortarBoundMutation deactivate = MortarBoundMutation.unnamed(
+        new UpdateSpec(
+            CLIENT.table,
+            List.of(Assignment.of(CLIENT.active, false)),
+            List.of(CLIENT.id.eq(clientId)),
+            List.of()
+        ),
+        renderer
+    )
+    .named("ClientRepository.deactivate");
+
+int changedRows = jdbcClient.execute(deactivate);
+```
+
+PostgreSQL `RETURNING` uses a returning mutation value:
+
+```java
+MortarReturningMutation<ClientSummary> create = MortarReturningMutation.unnamed(
+        new InsertSpec(
+            CLIENT.table,
+            List.of(
+                Assignment.of(CLIENT.id, clientId),
+                Assignment.of(CLIENT.name, name),
+                Assignment.of(CLIENT.active, true)
+            ),
+            List.of(CLIENT.id, CLIENT.name)
+        ),
+        renderer,
+        ClientSummary.class
+    )
+    .named("ClientRepository.create");
+
+ClientSummary created = jdbcClient.fetchOptional(create).orElseThrow();
+```
+
+Adapter tests assert the generated SQL before runtime:
+
+```java
+assertThatSql(query)
+    .hasSql("select c.id, c.name, c.active from clients c where c.id = ?")
+    .hasParameters(clientId)
+    .hasParameterTypes(Long.class);
+```
+
+The current first-user path is:
+
+1. Run `gradlew.bat :examples:spring-boot-postgres:test`.
+2. Read [`docs/getting-started.md`](docs/getting-started.md).
+3. Copy repository shapes from [`docs/query-recipes.md`](docs/query-recipes.md).
+4. Use [`docs/usage-guide.md`](docs/usage-guide.md) for DSL reads, scalars,
+   mutations, Spring Boot wiring, and Clean Architecture placement.
 
 ## Verify
 
