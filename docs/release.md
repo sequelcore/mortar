@@ -157,7 +157,7 @@ Publishing requires:
 - at least one selected artifact family;
 - the protected GitHub `release` environment;
 - a repository `DOPPLER_TOKEN` secret that can fetch release credentials from
-  Doppler at runtime.
+  Doppler project `sequel-releases`, config `prd`, at runtime.
 
 The workflow does not publish on pushes, branch updates, pull requests, or tag
 creation. It does not create GitHub releases.
