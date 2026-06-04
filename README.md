@@ -8,12 +8,10 @@ executes. It is not an ORM: it does not provide managed entity state, lazy
 loading, identity maps, implicit graph traversal, or repository method-name
 query derivation.
 
-Status: pre-release. The first planned Java artifact version is
-`0.1.0-alpha.1`; it has not been published to Maven Central yet. Rust crates
-and the VS Code extension remain on their own `0.1.0` package versions. R24
-recorded a conditional alpha publication decision; publication still requires
-external publisher ownership, credentials, protected release controls, and a
-later explicit release action.
+Status: alpha. Java artifacts are published as `0.1.0-alpha.1`. Rust crates
+and the VS Code extension are published as `0.1.0`. Mortar remains pre-`1.0`;
+APIs may still change, and production adoption should pin exact versions and
+review migration notes.
 
 ## Current Scope
 
@@ -70,15 +68,12 @@ examples/clean-architecture-postgres
 - [Troubleshooting](docs/troubleshooting.md)
 - [Release policy](docs/release.md)
 - [Roadmap](docs/roadmap.md)
-- [Current R24 readiness plan](docs/plan.md)
+- [Current release plan](docs/plan.md)
 - [Architecture decisions](docs/adr/index.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 
-## Install Preview
-
-These coordinates are planned for the first alpha and are shown so examples can
-stabilize before publication:
+## Install
 
 ```kotlin
 dependencies {
@@ -91,7 +86,16 @@ dependencies {
 }
 ```
 
-Until artifacts are published, use the repository examples and local builds.
+Rust tooling crates:
+
+```bash
+cargo install sequel-mortar-cli --version 0.1.0
+```
+
+VS Code extension:
+
+Install `sequelcore.mortar-vscode` from the VS Code Marketplace using the
+pre-release channel.
 
 ## Verify
 

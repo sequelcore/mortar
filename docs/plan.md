@@ -1,26 +1,22 @@
 # R25 Formal Release Automation Plan
 
-Date: 2026-06-03
-Status: Current R25 plan
+Date: 2026-06-04
+Status: R25 complete
 
-This plan tracks the work that turns the R24 conditional alpha decision into a
-guarded release path. The canonical public status source remains
-[`roadmap.md`](roadmap.md).
+This plan records the R25 release automation and first alpha publication
+outcome. The canonical public status source remains [`roadmap.md`](roadmap.md).
 
-R25 does not publish artifacts by itself. Publication still requires an
-explicit workflow dispatch, a protected release environment, release secrets,
-version alignment, and confirmation text for the exact version being
-published.
+R25 published the first alpha artifacts. Future release work should start from
+this document, `CHANGELOG.md`, and [`release.md`](release.md).
 
 ## Current R25 Status
 
 | Slice | Status |
 | --- | --- |
 | R25.1 Guarded release automation and documentation | Done |
-| R25.2 `0.1.0-alpha.1` publication action | Planned |
+| R25.2 `0.1.0-alpha.1` publication action | Done |
 
-R24 remains Done. R25 is In Progress until a publication action is either
-completed or explicitly rejected.
+R24 and R25 are Done.
 
 ## R25.1 Outcome
 
@@ -54,6 +50,22 @@ Rust publication uses Cargo in dependency order:
 
 VS Code publication packages the bundled VSIX and publishes through `vsce` as a
 pre-release using the `sequelcore` Marketplace publisher.
+
+## R25.2 Outcome
+
+R25.2 published the first alpha artifacts:
+
+- Java modules published to Maven Central as `0.1.0-alpha.1`.
+- Rust crates published to crates.io as `sequel-mortar-compiler`,
+  `sequel-mortar-cli`, and `sequel-mortar-lsp` version `0.1.0`.
+- VS Code extension published to the Visual Studio Marketplace as
+  `sequelcore.mortar-vscode` version `0.1.0` with the pre-release flag.
+
+Java and VS Code publication used the guarded GitHub release workflow. Rust
+publication was completed from the corrected `main` commit after the original
+`mortar-*` crate names were rejected because crates.io treats hyphen and
+underscore names as equivalent and pre-existing `mortar_*` crates already
+occupied that namespace.
 
 ## Required Release Secrets
 
@@ -123,15 +135,6 @@ R25 release automation changes require:
 
 ## Remaining Work
 
-R25.2 is the only remaining R25 slice. It should:
-
-1. verify the GitHub `release` environment and external publisher access;
-2. create or confirm the `v0.1.0-alpha.1` release tag;
-3. run the release workflow in `validate` mode on the tag;
-4. if the validation run passes, dispatch `operation=publish` for the selected
-   artifact families;
-5. verify Maven Central, crates.io, and VS Code Marketplace results;
-6. update `CHANGELOG.md`, `docs/release.md`, and `docs/roadmap.md` with the
-   exact publication outcome.
-
-No publication is complete until the registries show the expected artifacts.
+No R25 release work remains. Follow-up work should focus on post-alpha
+feedback, release-note polish for future versions, dependency updates, VS Code
+bundling/file-count reduction, and next-scope planning.

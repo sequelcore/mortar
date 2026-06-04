@@ -1,6 +1,6 @@
 # Mortar Roadmap
 
-Date: 2026-06-03
+Date: 2026-06-04
 Status: Canonical
 
 Mortar is Java-first, refactor-safe, SQL-transparent query authoring for Spring
@@ -9,9 +9,10 @@ readiness work. Git history remains the detailed project history.
 
 ## Current Status
 
-Mortar is pre-release. No public artifact has been published, no public release
-tag has been created, and the first alpha remains gated by protected release
-controls plus an explicit publication action.
+Mortar is alpha. Java artifacts are published to Maven Central as
+`0.1.0-alpha.1`. Rust tooling crates and the VS Code extension are published as
+`0.1.0`. The project remains pre-`1.0`; APIs may still change before a stable
+release.
 
 Supported current scope:
 
@@ -32,9 +33,8 @@ Current limits:
 - Performance claims are limited to retained benchmark evidence, disciplined
   measurement, and evidence boundaries; Mortar does not claim broad superiority
   over JDBC, PostgreSQL, jOOQ, QueryDSL, Hibernate, or Spring Data.
-- Publication does not begin until external publisher ownership, credentials,
-  protected release controls, and an explicit release workflow dispatch are in
-  place.
+- Release publication uses guarded manual automation and scoped publisher
+  credentials.
 
 ## Completed Capability Milestones
 
@@ -48,7 +48,7 @@ Current limits:
 | R22 Scalar and mutation contracts | Done | DSL scalar `count`/`exists`, row-count mutations, `RETURNING`, and JDBC execution paths. |
 | R23 Retained performance evidence and optimization decision | Done | Retained Java runtime, Rust tooling, and VS Code editor-latency evidence reviewed; optimization no-go and public performance claims remain blocked. |
 | R24 Public documentation and pre-release readiness | Done | Public documentation, API/Javadocs, examples, packaging dry-runs, CI/security posture, performance wording, benchmark evidence boundaries, and the first alpha publication decision are complete. |
-| R25 Formal release automation | In Progress | Guarded manual release workflow added for Maven Central, crates.io, and VS Code Marketplace; no artifacts have been published. |
+| R25 Formal release automation and first alpha publication | Done | Guarded release workflow added; Java artifacts, Rust crates, and VS Code extension published for the first alpha. |
 
 R23 retained evidence covers the reviewed Java runtime, Rust tooling/LSP, and
 VS Code editor-latency families. The durable evidence reference is the retained
@@ -116,34 +116,27 @@ Research basis for the R24 documentation posture:
 
 ## R25: Formal Release Automation
 
-Status: In Progress
+Status: Done
 
 Purpose: turn the R24 conditional alpha decision into a guarded, manual release
-path. R25 is not complete until a publication action is either completed or
-explicitly rejected.
+path and complete the first alpha publication.
 
 | Slice | Status | Outcome |
 | --- | --- | --- |
 | R25.1 Guarded release automation and documentation | Done | Manual workflow supports validate and publish operations, requires exact tag/ref confirmation, uses the protected `release` environment, fetches publisher credentials from Doppler at runtime, and covers Java, Rust, and VS Code artifact families. |
-| R25.2 `0.1.0-alpha.1` publication action | Planned | Verify external release controls, run validation on the exact tag, dispatch selected publication jobs, verify registry results, and record the final outcome. |
+| R25.2 `0.1.0-alpha.1` publication action | Done | Published Java artifacts to Maven Central, Rust crates to crates.io under `sequel-mortar-*`, and the VS Code extension to the Marketplace as a pre-release. |
 
-R25.1 does not publish, tag, create a GitHub release, merge, push, open a PR, or
-migrate any application. It only establishes the guarded path.
+R25 did not create a GitHub release or migrate any application.
 
 ## Release Path
 
-R24 closes with a conditional go for the `0.1.0-alpha` publication decision.
-This means the repository is ready for a later alpha publication action after
-the release prerequisites below are completed:
+R25 closes the first alpha publication action. Published artifacts:
 
-1. Sonatype Central namespace access for `io.github.sequelcore`, Central Portal
-   token, and signing credentials.
-2. crates.io ownership and publish order for `sequel-mortar-compiler`,
-   `sequel-mortar-cli`, and `sequel-mortar-lsp`.
-3. VS Code Marketplace publisher ownership for `sequelcore` and a Marketplace PAT.
-4. Protected release environment or equivalent guarded secret access and branch
-   protection/rulesets.
-5. Successful `validate` workflow run against the exact `v0.1.0-alpha.1` tag.
+- Maven Central: `io.github.sequelcore:mortar-*` version `0.1.0-alpha.1`.
+- crates.io: `sequel-mortar-compiler`, `sequel-mortar-cli`, and
+  `sequel-mortar-lsp` version `0.1.0`.
+- Visual Studio Marketplace: `sequelcore.mortar-vscode` version `0.1.0`
+  pre-release.
 
-Publication, tagging, release notes, PR/merge work, and application migration
-require a later explicit release action.
+Application migration, stable API commitments, and public performance claims
+remain outside the first alpha.

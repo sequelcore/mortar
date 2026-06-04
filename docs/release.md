@@ -1,10 +1,10 @@
 # Release Policy
 
-Mortar is pre-1.0 and has not published a public release.
+Mortar is pre-1.0. The first alpha has been published.
 
-R24 recorded a conditional go for the `0.1.0-alpha` publication decision. R25
-adds guarded release automation for a later explicit alpha publication action.
-No artifact has been published yet.
+R25 published Java artifacts as `0.1.0-alpha.1`, Rust crates as `0.1.0`, and
+the VS Code extension as `0.1.0` pre-release. Future releases must continue to
+use guarded release automation and scoped publisher credentials.
 
 ## Versioning
 
@@ -128,10 +128,9 @@ cargo publish --dry-run -p sequel-mortar-compiler
 ```
 
 `sequel-mortar-cli` and `sequel-mortar-lsp` depend on
-`sequel-mortar-compiler`. Before the compiler crate is available in the target
-registry, their `cargo publish --dry-run`
-checks may fail closed during registry dependency resolution. Package contents
-must still be inspected before any release decision.
+`sequel-mortar-compiler`. Dry-runs for dependent crates should be repeated
+after any compiler crate publication when dependency resolution behavior
+matters for the release decision.
 
 VS Code extension check:
 
@@ -176,21 +175,18 @@ VS Code extension publication requires the `sequelcore` Marketplace publisher,
 a Marketplace PAT, and packaging evidence. The current workflow publishes with
 the VS Code pre-release flag when the VS Code artifact family is selected.
 
-Before an alpha publication action, complete or verify these external
-prerequisites:
+Before any future publication action, verify:
 
-1. Confirm Sonatype Central namespace ownership for `io.github.sequelcore`,
-   Central Portal token access, and signing credentials.
-2. Confirm crates.io owner access for `sequel-mortar-compiler`,
-   `sequel-mortar-cli`, and `sequel-mortar-lsp`, and publish in dependency
-   order.
-3. Confirm VS Code Marketplace publisher ownership for `sequelcore` and a
-   Marketplace PAT if the extension is included.
-4. Add or verify protected release controls for publication credentials,
-   including branch protection or rulesets and a protected environment or
-   equivalent approval gate.
-5. Run the release workflow in `validate` mode for the exact release tag before
-   any `publish` operation.
+1. Sonatype Central namespace ownership, Central Portal token access, and
+   signing credentials.
+2. crates.io owner access for the `sequel-mortar-*` crates.
+3. VS Code Marketplace publisher ownership for `sequelcore` and a Marketplace
+   PAT if the extension is included.
+4. Protected release controls for publication credentials, including branch
+   protection or rulesets and a protected environment or equivalent approval
+   gate.
+5. A release workflow `validate` run for the exact release tag before any
+   `publish` operation.
 
 Required Doppler release secrets:
 
@@ -205,6 +201,6 @@ The GitHub repository should store only the Doppler service token needed by the
 release workflow. Do not copy registry tokens, signing keys, or Marketplace PAT
 values into repository secrets, docs, logs, or prompts.
 
-No release, tag, Maven Central publication, crates.io publication, VS Code
-Marketplace publication, GitHub release, PR, merge, or application migration is
-authorized by R25.1 automation work alone.
+R25 published the first alpha. Future GitHub releases, announcements, stable
+version commitments, public performance claims, and application migrations
+require separate explicit decisions.
