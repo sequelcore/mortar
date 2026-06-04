@@ -3,6 +3,8 @@
 Mortar is Java-first query code with visible SQL output.
 
 The quickest runnable example is `examples/spring-boot-postgres`.
+The official standalone backend demo is
+[`sequelcore/sequel-backend-demo`](https://github.com/sequelcore/sequel-backend-demo).
 
 ## Verify The Example
 
