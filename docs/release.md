@@ -137,9 +137,11 @@ VS Code extension check:
 ```bash
 cd editors/vscode
 bun run typecheck
+bun run package:check
 bun run package:vsix
 ```
 
+`package:check` verifies the VSIX file allowlist and bundle-size budget.
 `package:vsix` creates a local VSIX through the VS Code `vsce package` path. It
 does not publish to the VS Code Marketplace.
 
