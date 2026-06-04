@@ -11,6 +11,8 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
   extension package.
 - Expanded the README with install, tooling, VS Code configuration, generated
   read facade, SQL assertion, and first-user path examples.
+- Documented the planned public Sequel backend demo path as a separate
+  ecosystem showcase.
 
 ## 0.1.0-alpha.1 - 2026-06-04
 

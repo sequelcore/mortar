@@ -73,6 +73,19 @@ examples/clean-architecture-postgres
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 
+## Examples And Demo Path
+
+The repository includes compile-backed examples for the current alpha:
+
+- `examples/spring-boot-postgres`
+- `examples/clean-architecture-postgres`
+- `examples/query-corpus-*`
+
+A separate public Sequel backend demo is planned as the broader ecosystem
+showcase. That demo should live under the `sequelcore` GitHub organization and
+show a real Spring backend using Mortar first, then other Sequel libraries as
+they become release-ready.
+
 ## Install
 
 Java/Spring artifacts:
