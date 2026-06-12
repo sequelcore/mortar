@@ -70,7 +70,7 @@ jobs:
       CONFIRMATION: ${{ inputs.confirmation }}
     steps:
       - name: Checkout release ref
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.release_ref }}
           fetch-depth: 0
@@ -178,7 +178,7 @@ jobs:
       GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx2g
     steps:
       - name: Checkout release ref
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.release_ref }}
 
@@ -228,7 +228,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout release ref
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.release_ref }}
 
@@ -283,7 +283,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout release ref
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           ref: ${{ inputs.release_ref }}
 
