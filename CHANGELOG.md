@@ -6,6 +6,16 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 
 ## Unreleased
 
+## 0.1.0-alpha.3 - 2026-06-23
+
+- Certified the Spring Boot starter against Spring Boot 4.1.0 and Spring
+  Framework 7.0.8.
+- Raised the Java toolchain and processor source-version target to Java 25.
+- Added Foojay toolchain provisioning so Gradle can resolve the Java 25
+  toolchain when it is not already installed locally.
+- Updated the Spring Boot example and public compatibility docs for the
+  4.1.x platform line.
+
 ## 0.1.0-alpha.2 - 2026-06-23
 
 - Added a VS Code package contract check so VSIX builds fail if source files,

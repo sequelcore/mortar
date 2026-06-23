@@ -38,7 +38,7 @@ import java.util.Set;
  */
 @SupportedAnnotationTypes("*")
 @SupportedOptions(MortarProcessor.JPA_DISCOVERY_OPTION)
-@SupportedSourceVersion(SourceVersion.RELEASE_21)
+@SupportedSourceVersion(SourceVersion.RELEASE_25)
 public final class MortarProcessor extends AbstractProcessor {
     static final String JPA_DISCOVERY_OPTION = "mortar.jpaDiscovery";
     private final List<EntityMetadata> sharedMetadata = new ArrayList<>();

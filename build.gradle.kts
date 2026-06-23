@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.sequelcore"
-version = "0.1.0-alpha.2"
+version = "0.1.0-alpha.3"
 
 val junitVersion = "6.0.3"
 val assertjVersion = "3.27.7"
@@ -252,7 +252,7 @@ subprojects {
 
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(21))
+            languageVersion.set(JavaLanguageVersion.of(25))
         }
     }
 

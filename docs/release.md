@@ -42,8 +42,8 @@ change must be listed in `CHANGELOG.md` and linked from release notes.
 
 Current tested compatibility envelope:
 
-- Java 21;
-- Spring Boot 3.5.x for the starter;
+- Java 25;
+- Spring Boot 4.1.x for the starter;
 - PostgreSQL 16 for PostgreSQL Testcontainers evidence;
 - PostgreSQL as the only supported starter dialect;
 - Rust stable toolchain for CLI/compiler/LSP crates.

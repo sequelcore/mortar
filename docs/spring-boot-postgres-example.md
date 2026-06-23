@@ -6,7 +6,7 @@ For copyable repository recipes using the same patterns, see
 
 ## What It Shows
 
-- Spring Boot 3.5 wiring through `java/spring-boot-starter`.
+- Spring Boot 4.1 wiring through `java/spring-boot-starter`.
 - PostgreSQL rendering through `java/dialect-postgres`.
 - JDBC execution boundary through `MortarJdbcClient`.
 - Generated Java metamodels through `java/processor`.

@@ -6,8 +6,8 @@ Mortar's Spring Boot starter follows Spring Boot's current auto-configuration mo
 
 | Spring Boot line | Status | Verification | Notes |
 | --- | --- | --- | --- |
-| 3.5.x | Tested | `java/spring-boot-starter` compiles and tests against Spring Boot 3.5.14 | Primary supported line for the current Mortar development cycle. |
-| 4.x | Planned | Not yet compiled in CI | Support requires a dedicated compatibility lane before being marked tested. |
+| 4.1.x | Tested | `java/spring-boot-starter` compiles and tests against Spring Boot 4.1.0 | Primary supported line for the current Mortar development cycle. |
+| 3.5.x | Previous alpha line | Last tested in `0.1.0-alpha.2` against Spring Boot 3.5.14 | Supported consumers should stay pinned to `0.1.0-alpha.2` until they migrate to Spring Boot 4.1.x. |
 
 ## Compatibility Rules
 
@@ -63,9 +63,10 @@ The boundary follows current platform practice:
 
 ## Current Baseline
 
-- Spring Boot autoconfigure: `3.5.14`
-- Spring Boot starter test: `3.5.14`
-- Spring Boot starter JDBC: `3.5.14`
-- Spring Boot starter Actuator: `3.5.14`
+- Spring Boot autoconfigure: `4.1.0`
+- Spring Boot starter test: `4.1.0`
+- Spring Boot starter JDBC: `4.1.0`
+- Spring Boot starter Actuator: `4.1.0`
+- Spring Framework JDBC: `7.0.8`
 
 The canonical version source is `java/spring-boot-starter/build.gradle.kts`.

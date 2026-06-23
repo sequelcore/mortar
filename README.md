@@ -8,14 +8,14 @@ executes. It is not an ORM: it does not provide managed entity state, lazy
 loading, identity maps, implicit graph traversal, or repository method-name
 query derivation.
 
-Status: alpha. Java artifacts are published as `0.1.0-alpha.2`. Rust crates
+Status: alpha. Java artifacts are prepared as `0.1.0-alpha.3`. Rust crates
 and the VS Code extension are published as `0.1.0`. Mortar remains pre-`1.0`;
 APIs may still change, and production adoption should pin exact versions and
 review migration notes.
 
 ## Current Scope
 
-- Java 21 and Spring Boot 3.5.x.
+- Java 25 and Spring Boot 4.1.x.
 - PostgreSQL 16 through a dedicated PostgreSQL renderer.
 - Generated Java metamodels for annotated models.
 - Generated fixed reads: `findById` and explicit `findAll`.
@@ -93,12 +93,12 @@ Java/Spring artifacts:
 
 ```kotlin
 dependencies {
-    implementation("io.github.sequelcore:mortar-core:0.1.0-alpha.2")
-    implementation("io.github.sequelcore:mortar-dialect-postgres:0.1.0-alpha.2")
-    implementation("io.github.sequelcore:mortar-runtime-jdbc:0.1.0-alpha.2")
-    implementation("io.github.sequelcore:mortar-spring-boot-starter:0.1.0-alpha.2")
-    annotationProcessor("io.github.sequelcore:mortar-processor:0.1.0-alpha.2")
-    testImplementation("io.github.sequelcore:mortar-testkit:0.1.0-alpha.2")
+    implementation("io.github.sequelcore:mortar-core:0.1.0-alpha.3")
+    implementation("io.github.sequelcore:mortar-dialect-postgres:0.1.0-alpha.3")
+    implementation("io.github.sequelcore:mortar-runtime-jdbc:0.1.0-alpha.3")
+    implementation("io.github.sequelcore:mortar-spring-boot-starter:0.1.0-alpha.3")
+    annotationProcessor("io.github.sequelcore:mortar-processor:0.1.0-alpha.3")
+    testImplementation("io.github.sequelcore:mortar-testkit:0.1.0-alpha.3")
 }
 ```
 
