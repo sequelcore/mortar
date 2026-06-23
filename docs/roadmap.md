@@ -10,13 +10,13 @@ readiness work. Git history remains the detailed project history.
 ## Current Status
 
 Mortar is alpha. Java artifacts are prepared for Maven Central as
-`0.1.0-alpha.2`. Rust tooling crates and the VS Code extension remain published
+`0.1.0-alpha.3`. Rust tooling crates and the VS Code extension remain published
 as `0.1.0`. The project remains pre-`1.0`; APIs may still change before a
 stable release.
 
 Supported current scope:
 
-- Java 21, Spring Boot 3.5.x, JDBC, and PostgreSQL 16 evidence.
+- Java 25, Spring Boot 4.1.x, JDBC, and PostgreSQL 16 evidence.
 - Framework-free core query model and DSL.
 - Java annotation processor for generated `Q*` metamodels.
 - Generated fixed reads for `findById` and explicit `findAll`.
@@ -50,6 +50,7 @@ Current limits:
 | R24 Public documentation and pre-release readiness | Done | Public documentation, API/Javadocs, examples, packaging dry-runs, CI/security posture, performance wording, benchmark evidence boundaries, and the first alpha publication decision are complete. |
 | R25 Formal release automation and first alpha publication | Done | Guarded release workflow added; Java artifacts, Rust crates, and VS Code extension published for the first alpha. |
 | R26 Incremental Spring/JPA adoption hardening | Done | Mortar processor discovery is explicit by default so existing Spring/JPA applications can adopt Mortar without generating metamodels for every JPA entity. UUID identifier row models compile generated fixed-read helpers. |
+| R27 Spring Boot 4.1 platform certification | Done | The Spring Boot starter compiles and tests against Spring Boot 4.1.0 and Spring Framework 7.0.8, with Java 25 toolchain certification for Java modules. |
 
 R23 retained evidence covers the reviewed Java runtime, Rust tooling/LSP, and
 VS Code editor-latency families. The durable evidence reference is the retained
@@ -150,15 +151,39 @@ choose it deliberately.
 R26 prepares Java artifact version `0.1.0-alpha.2`. Rust crates and editor
 artifacts remain at `0.1.0`.
 
+## R27: Spring Boot 4.1 Platform Certification
+
+Status: Done
+
+Purpose: align Mortar with Sequel's 2026 backend platform direction after
+Vigil's Spring Boot 4.1 certification. Mortar remains Java-first,
+SQL-transparent, and not an ORM; this slice certifies the Spring Boot adapter
+line and Java toolchain, not a broader persistence abstraction.
+
+| Slice | Status | Outcome |
+| --- | --- | --- |
+| R27.1 Spring Boot starter certification | Done | `java/spring-boot-starter` compiles and tests against Spring Boot 4.1.0 and Spring Framework 7.0.8. |
+| R27.2 Java 25 toolchain certification | Done | Java modules use a Java 25 Gradle toolchain, the processor declares `RELEASE_25`, and Foojay toolchain provisioning is enabled. |
+| R27.3 Documentation and release alignment | Done | README, compatibility docs, release policy, changelog, and the Spring Boot example state the Boot 4.1 and Java 25 baseline. |
+
+R27 prepares Java artifact version `0.1.0-alpha.3`. Rust crates and editor
+artifacts remain at `0.1.0`.
+
 ## Release Path
 
 R25 closes the first alpha publication action. Published artifacts:
 
-- Maven Central: `io.github.sequelcore:mortar-*` version `0.1.0-alpha.2`.
+- Maven Central: `io.github.sequelcore:mortar-*` version `0.1.0-alpha.1`.
 - crates.io: `sequel-mortar-compiler`, `sequel-mortar-cli`, and
   `sequel-mortar-lsp` version `0.1.0`.
 - Visual Studio Marketplace: `sequelcore.mortar-vscode` version `0.1.0`
   pre-release.
+
+Prepared Java artifacts:
+
+- `0.1.0-alpha.2` for incremental Spring/JPA adoption hardening on the Spring
+  Boot 3.5.x line.
+- `0.1.0-alpha.3` for Spring Boot 4.1.x and Java 25 platform certification.
 
 Application migration, stable API commitments, and public performance claims
 remain outside the first alpha.

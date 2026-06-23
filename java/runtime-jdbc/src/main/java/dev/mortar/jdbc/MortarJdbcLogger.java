@@ -1,9 +1,9 @@
 package dev.mortar.jdbc;
 
-@FunctionalInterface
 /**
  * Logging boundary for applications that want visibility into executed SQL.
  */
+@FunctionalInterface
 public interface MortarJdbcLogger {
     void log(MortarJdbcLogEvent event);
 

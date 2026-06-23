@@ -18,7 +18,7 @@ on:
       release_version:
         description: "Java release version. Rust and VS Code use the base semver for alpha."
         required: true
-        default: "0.1.0-alpha.2"
+        default: "0.1.0-alpha.3"
       publish_java:
         description: "Publish Java artifacts to Maven Central."
         required: true
@@ -79,7 +79,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6
@@ -186,7 +186,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v6

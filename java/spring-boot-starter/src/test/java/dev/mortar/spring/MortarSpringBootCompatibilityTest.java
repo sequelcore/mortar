@@ -7,7 +7,7 @@ import org.springframework.boot.SpringBootVersion;
 
 final class MortarSpringBootCompatibilityTest {
     @Test
-    void runsAgainstDocumentedSpringBoot35Baseline() {
-        assertThat(SpringBootVersion.getVersion()).startsWith("3.5.");
+    void runsAgainstDocumentedSpringBoot41Baseline() {
+        assertThat(SpringBootVersion.getVersion()).startsWith("4.1.");
     }
 }

@@ -20,7 +20,7 @@ final class MortarProcessorTest {
         MortarProcessor processor = new MortarProcessor();
 
         assertThat(processor.process(Set.of(), null)).isFalse();
-        assertThat(processor.getSupportedSourceVersion().name()).isEqualTo("RELEASE_21");
+        assertThat(processor.getSupportedSourceVersion().name()).isEqualTo("RELEASE_25");
     }
 
     @Test
