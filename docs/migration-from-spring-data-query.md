@@ -38,6 +38,23 @@ QuerySpec query = db.from(CLIENT)
 6. Add or update a SQL snapshot so CLI/editor tooling can inspect the rendered
    query.
 
+## Adopting Mortar Alongside JPA
+
+Mortar does not require a module to migrate away from Spring Data JPA before it
+can adopt refactor-safe SQL queries. Keep existing JPA repositories as the
+write and aggregate-loading path where they still fit. Add Mortar at repository
+adapter boundaries for reads that need visible SQL, stable parameter binding,
+SQL snapshots, or focused database review.
+
+Use dedicated `@MortarEntity` row models for new Mortar slices. This avoids
+coupling generated SQL metadata to ORM entities that may contain persistence
+state, graph relationships, lifecycle callbacks, or mapping details that do not
+belong in a SQL query model.
+
+Only enable `-Amortar.jpaDiscovery=true` when a module deliberately wants Mortar
+to generate metamodels from JPA annotations. That option exists for compatibility
+with simple JPA table mappings; it is not required for incremental adoption.
+
 ## Keep Spring Data Where It Fits
 
 Do not migrate simple CRUD only for churn. Mortar is meant for queries where

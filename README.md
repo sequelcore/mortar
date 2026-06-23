@@ -8,7 +8,7 @@ executes. It is not an ORM: it does not provide managed entity state, lazy
 loading, identity maps, implicit graph traversal, or repository method-name
 query derivation.
 
-Status: alpha. Java artifacts are published as `0.1.0-alpha.1`. Rust crates
+Status: alpha. Java artifacts are published as `0.1.0-alpha.2`. Rust crates
 and the VS Code extension are published as `0.1.0`. Mortar remains pre-`1.0`;
 APIs may still change, and production adoption should pin exact versions and
 review migration notes.
@@ -93,12 +93,12 @@ Java/Spring artifacts:
 
 ```kotlin
 dependencies {
-    implementation("io.github.sequelcore:mortar-core:0.1.0-alpha.1")
-    implementation("io.github.sequelcore:mortar-dialect-postgres:0.1.0-alpha.1")
-    implementation("io.github.sequelcore:mortar-runtime-jdbc:0.1.0-alpha.1")
-    implementation("io.github.sequelcore:mortar-spring-boot-starter:0.1.0-alpha.1")
-    annotationProcessor("io.github.sequelcore:mortar-processor:0.1.0-alpha.1")
-    testImplementation("io.github.sequelcore:mortar-testkit:0.1.0-alpha.1")
+    implementation("io.github.sequelcore:mortar-core:0.1.0-alpha.2")
+    implementation("io.github.sequelcore:mortar-dialect-postgres:0.1.0-alpha.2")
+    implementation("io.github.sequelcore:mortar-runtime-jdbc:0.1.0-alpha.2")
+    implementation("io.github.sequelcore:mortar-spring-boot-starter:0.1.0-alpha.2")
+    annotationProcessor("io.github.sequelcore:mortar-processor:0.1.0-alpha.2")
+    testImplementation("io.github.sequelcore:mortar-testkit:0.1.0-alpha.2")
 }
 ```
 

@@ -170,6 +170,67 @@ final class MortarProcessorGenerationTest {
     }
 
     @Test
+    void generatesFindByIdExecutorForUuidId() throws Exception {
+        Path sourceDir = tempDir.resolve("uuid-id-source");
+        Path classDir = tempDir.resolve("uuid-id-classes");
+        Path generatedDir = tempDir.resolve("uuid-id-generated");
+        Files.createDirectories(sourceDir.resolve("example"));
+        Files.createDirectories(classDir);
+        Files.createDirectories(generatedDir);
+
+        Path clientSource = sourceDir.resolve("example").resolve("ApprovalRequestRow.java");
+        Files.writeString(clientSource, """
+            package example;
+
+            import dev.mortar.processor.MortarColumn;
+            import dev.mortar.processor.MortarEntity;
+            import dev.mortar.processor.MortarId;
+            import java.util.UUID;
+
+            @MortarEntity(table = "approval_requests", alias = "ar")
+            final class ApprovalRequestRow {
+                @MortarId
+                @MortarColumn(name = "id", nullable = false)
+                UUID id;
+
+                @MortarColumn(name = "status", nullable = false)
+                String status;
+            }
+            """, StandardCharsets.UTF_8);
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.ROOT, StandardCharsets.UTF_8)) {
+            fileManager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(classDir));
+            fileManager.setLocationFromPaths(StandardLocation.SOURCE_OUTPUT, List.of(generatedDir));
+
+            boolean compiled = compiler.getTask(
+                null,
+                fileManager,
+                null,
+                List.of(
+                    "-classpath",
+                    System.getProperty("java.class.path"),
+                    "-processor",
+                    MortarProcessor.class.getName()
+                ),
+                null,
+                fileManager.getJavaFileObjectsFromPaths(List.of(clientSource))
+            ).call();
+
+            assertThat(compiled).isTrue();
+        }
+
+        String generatedSource = Files.readString(
+            generatedDir.resolve("example").resolve("QApprovalRequestRow.java"),
+            StandardCharsets.UTF_8
+        ).replace("\r\n", "\n");
+
+        assertThat(generatedSource)
+            .contains("public record FindByIdParameters(java.util.UUID id)")
+            .contains("return findByIdSpec(java.util.UUID.fromString(\"00000000-0000-0000-0000-000000000000\"));");
+    }
+
+    @Test
     void generatesFindAllExecutorForAnnotatedEntity() throws Exception {
         Path sourceDir = tempDir.resolve("find-all-source");
         Path classDir = tempDir.resolve("find-all-classes");
@@ -435,7 +496,7 @@ final class MortarProcessorGenerationTest {
     }
 
     @Test
-    void generatesQClassFromJpaAnnotationsWithoutJakartaDependency() throws Exception {
+    void ignoresJpaAnnotationsByDefault() throws Exception {
         Path sourceDir = tempDir.resolve("jpa-source");
         Path classDir = tempDir.resolve("jpa-classes");
         Path generatedDir = tempDir.resolve("jpa-generated");
@@ -535,6 +596,126 @@ final class MortarProcessorGenerationTest {
                     System.getProperty("java.class.path"),
                     "-processor",
                     MortarProcessor.class.getName()
+                ),
+                null,
+                fileManager.getJavaFileObjectsFromPaths(List.of(
+                    sourceDir.resolve("jakarta").resolve("persistence").resolve("Entity.java"),
+                    sourceDir.resolve("jakarta").resolve("persistence").resolve("Table.java"),
+                    sourceDir.resolve("jakarta").resolve("persistence").resolve("Column.java"),
+                    sourceDir.resolve("jakarta").resolve("persistence").resolve("Id.java"),
+                    clientSource
+                ))
+            ).call();
+
+            assertThat(compiled).isTrue();
+        }
+
+        Path generatedSource = generatedDir.resolve("example").resolve("QClient.java");
+        assertThat(generatedSource).doesNotExist();
+    }
+
+    @Test
+    void generatesQClassFromJpaAnnotationsWhenJpaDiscoveryIsEnabled() throws Exception {
+        Path sourceDir = tempDir.resolve("jpa-opt-in-source");
+        Path classDir = tempDir.resolve("jpa-opt-in-classes");
+        Path generatedDir = tempDir.resolve("jpa-opt-in-generated");
+        Files.createDirectories(sourceDir.resolve("example"));
+        Files.createDirectories(sourceDir.resolve("jakarta").resolve("persistence"));
+        Files.createDirectories(classDir);
+        Files.createDirectories(generatedDir);
+
+        writeJpaAnnotation(sourceDir, "Entity", """
+            package jakarta.persistence;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Entity {
+            }
+            """);
+        writeJpaAnnotation(sourceDir, "Table", """
+            package jakarta.persistence;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.TYPE)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Table {
+                String name();
+            }
+            """);
+        writeJpaAnnotation(sourceDir, "Column", """
+            package jakarta.persistence;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.FIELD)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Column {
+                String name();
+                boolean nullable() default true;
+            }
+            """);
+        writeJpaAnnotation(sourceDir, "Id", """
+            package jakarta.persistence;
+
+            import java.lang.annotation.ElementType;
+            import java.lang.annotation.Retention;
+            import java.lang.annotation.RetentionPolicy;
+            import java.lang.annotation.Target;
+
+            @Target(ElementType.FIELD)
+            @Retention(RetentionPolicy.RUNTIME)
+            public @interface Id {
+            }
+            """);
+
+        Path clientSource = sourceDir.resolve("example").resolve("Client.java");
+        Files.writeString(clientSource, """
+            package example;
+
+            import jakarta.persistence.Column;
+            import jakarta.persistence.Entity;
+            import jakarta.persistence.Id;
+            import jakarta.persistence.Table;
+
+            @Entity
+            @Table(name = "clients")
+            final class Client {
+                @Id
+                @Column(name = "id", nullable = false)
+                Long id;
+
+                @Column(name = "name")
+                String name;
+            }
+            """, StandardCharsets.UTF_8);
+
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        try (StandardJavaFileManager fileManager = compiler.getStandardFileManager(null, Locale.ROOT, StandardCharsets.UTF_8)) {
+            fileManager.setLocationFromPaths(StandardLocation.CLASS_OUTPUT, List.of(classDir));
+            fileManager.setLocationFromPaths(StandardLocation.SOURCE_OUTPUT, List.of(generatedDir));
+
+            boolean compiled = compiler.getTask(
+                null,
+                fileManager,
+                null,
+                List.of(
+                    "-classpath",
+                    System.getProperty("java.class.path"),
+                    "-processor",
+                    MortarProcessor.class.getName(),
+                    "-A" + MortarProcessor.JPA_DISCOVERY_OPTION + "=true"
                 ),
                 null,
                 fileManager.getJavaFileObjectsFromPaths(List.of(

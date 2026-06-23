@@ -20,6 +20,23 @@ annotationProcessor(project(":java:processor"))
 
 Also confirm the model has `@MortarEntity` and exactly one `@MortarId`.
 
+Mortar processes `@MortarEntity` models by default. It does not process every
+`jakarta.persistence.Entity` in the module unless JPA discovery is explicitly
+enabled. This lets Spring Data JPA applications add Mortar one query slice at a
+time without changing existing ORM entities.
+
+If a module intentionally wants Mortar to generate metamodels directly from JPA
+annotations, opt in explicitly:
+
+```kotlin
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-Amortar.jpaDiscovery=true")
+}
+```
+
+Prefer `@MortarEntity` row models for new Mortar code. Use JPA discovery only
+for simple mappings that are intentionally shared with Mortar.
+
 ## SQL Does Not Match The Expected Query
 
 Add a focused SQL assertion:

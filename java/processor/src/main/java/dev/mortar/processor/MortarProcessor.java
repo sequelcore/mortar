@@ -3,6 +3,7 @@ package dev.mortar.processor;
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedAnnotationTypes;
+import javax.annotation.processing.SupportedOptions;
 import javax.annotation.processing.SupportedSourceVersion;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.AnnotationMirror;
@@ -36,8 +37,10 @@ import java.util.Set;
  * Javac annotation processor that emits Mortar {@code Q*} metamodels and metadata files.
  */
 @SupportedAnnotationTypes("*")
+@SupportedOptions(MortarProcessor.JPA_DISCOVERY_OPTION)
 @SupportedSourceVersion(SourceVersion.RELEASE_21)
 public final class MortarProcessor extends AbstractProcessor {
+    static final String JPA_DISCOVERY_OPTION = "mortar.jpaDiscovery";
     private final List<EntityMetadata> sharedMetadata = new ArrayList<>();
     private final List<Element> sharedOriginatingElements = new ArrayList<>();
     private boolean wroteSharedArtifacts;
@@ -61,7 +64,8 @@ public final class MortarProcessor extends AbstractProcessor {
 
         for (Element element : roundEnvironment.getRootElements()) {
             if (element instanceof TypeElement typeElement) {
-                if (isMortarEntity(typeElement) || hasAnnotation(typeElement, "jakarta.persistence.Entity")) {
+                if (isMortarEntity(typeElement)
+                    || (jpaDiscoveryEnabled() && hasAnnotation(typeElement, "jakarta.persistence.Entity"))) {
                     Optional<EntityMetadata> generated = generateMetamodel(typeElement);
                     generated.ifPresent(entity -> {
                         sharedMetadata.add(entity);
@@ -72,6 +76,10 @@ public final class MortarProcessor extends AbstractProcessor {
         }
 
         return false;
+    }
+
+    private boolean jpaDiscoveryEnabled() {
+        return Boolean.parseBoolean(processingEnv.getOptions().getOrDefault(JPA_DISCOVERY_OPTION, "false"));
     }
 
     private void writeSharedArtifacts() {
@@ -697,6 +705,7 @@ public final class MortarProcessor extends AbstractProcessor {
             case "java.time.LocalDate" -> "java.time.LocalDate.of(1970, 1, 1)";
             case "java.time.LocalDateTime" -> "java.time.LocalDateTime.of(1970, 1, 1, 0, 0)";
             case "java.time.Instant" -> "java.time.Instant.EPOCH";
+            case "java.util.UUID" -> "java.util.UUID.fromString(\"00000000-0000-0000-0000-000000000000\")";
             default -> "new " + javaType + "()";
         };
     }
