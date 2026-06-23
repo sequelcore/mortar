@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "io.github.sequelcore"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 
 val junitVersion = "6.0.3"
 val assertjVersion = "3.27.7"

@@ -337,7 +337,7 @@ jobs:
           R23_INCLUDES: ${{ inputs.jmhIncludes }}
 
       - name: Upload R23.2 retained benchmark bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mortar-r23.2-post-r22-java-runtime-${{ inputs.profile }}-${{ github.sha }}
           path: java/benchmarks/build/reports/jmh/r23.2-post-r22-java-runtime/**
@@ -539,7 +539,7 @@ jobs:
           R23_RUST_FILTER: ${{ inputs.rustBenchmarkFilter }}
 
       - name: Upload R23.3 retained Rust tooling bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mortar-r23.3-rust-tooling-lsp-${{ github.sha }}
           path: rust/target/r23.3-rust-tooling-lsp/**
@@ -784,7 +784,7 @@ jobs:
           R23_EDITOR_SCENARIO: ${{ inputs.editorScenario }}
 
       - name: Upload R23.4 retained VS Code editor-latency bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: mortar-r23.4-vscode-editor-latency-${{ inputs.editorScenario }}-${{ github.sha }}
           path: editors/vscode/build/r23.4-vscode-editor-latency/**

@@ -6,6 +6,8 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
 
 ## Unreleased
 
+## 0.1.0-alpha.2 - 2026-06-23
+
 - Added a VS Code package contract check so VSIX builds fail if source files,
   tests, dependency folders, build caches, or oversized bundles enter the
   extension package.
@@ -13,6 +15,12 @@ Mortar follows semantic versioning after the first public release. Before `1.0.0
   read facade, SQL assertion, and first-user path examples.
 - Documented the planned public Sequel backend demo path as a separate
   ecosystem showcase.
+- Made JPA entity discovery explicit in the Mortar processor. `@MortarEntity`
+  models are processed by default; `jakarta.persistence.Entity` models are
+  processed only when `-Amortar.jpaDiscovery=true` is configured.
+- Added generated fixed-read helper support for `java.util.UUID` identifiers.
+- Documented incremental Spring Data JPA adoption guidance, including when to
+  use dedicated Mortar row models and when to opt in to JPA discovery.
 
 ## 0.1.0-alpha.1 - 2026-06-04
 

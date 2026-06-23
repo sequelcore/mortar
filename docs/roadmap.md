@@ -9,10 +9,10 @@ readiness work. Git history remains the detailed project history.
 
 ## Current Status
 
-Mortar is alpha. Java artifacts are published to Maven Central as
-`0.1.0-alpha.1`. Rust tooling crates and the VS Code extension are published as
-`0.1.0`. The project remains pre-`1.0`; APIs may still change before a stable
-release.
+Mortar is alpha. Java artifacts are prepared for Maven Central as
+`0.1.0-alpha.2`. Rust tooling crates and the VS Code extension remain published
+as `0.1.0`. The project remains pre-`1.0`; APIs may still change before a
+stable release.
 
 Supported current scope:
 
@@ -49,6 +49,7 @@ Current limits:
 | R23 Retained performance evidence and optimization decision | Done | Retained Java runtime, Rust tooling, and VS Code editor-latency evidence reviewed; optimization no-go and public performance claims remain blocked. |
 | R24 Public documentation and pre-release readiness | Done | Public documentation, API/Javadocs, examples, packaging dry-runs, CI/security posture, performance wording, benchmark evidence boundaries, and the first alpha publication decision are complete. |
 | R25 Formal release automation and first alpha publication | Done | Guarded release workflow added; Java artifacts, Rust crates, and VS Code extension published for the first alpha. |
+| R26 Incremental Spring/JPA adoption hardening | Done | Mortar processor discovery is explicit by default so existing Spring/JPA applications can adopt Mortar without generating metamodels for every JPA entity. UUID identifier row models compile generated fixed-read helpers. |
 
 R23 retained evidence covers the reviewed Java runtime, Rust tooling/LSP, and
 VS Code editor-latency families. The durable evidence reference is the retained
@@ -128,11 +129,32 @@ path and complete the first alpha publication.
 
 R25 did not create a GitHub release or migrate any application.
 
+## R26: Incremental Spring/JPA Adoption Hardening
+
+Status: Done
+
+Purpose: support incremental adoption in existing Spring/JPA applications
+without forcing a whole-application persistence rewrite. Mortar remains
+Java-first and SQL-transparent, while only intentional Mortar row models enter
+the processor by default.
+
+| Slice | Status | Outcome |
+| --- | --- | --- |
+| R26.1 Explicit processor discovery for JPA applications | Done | `@MortarEntity` models are discovered by default. Direct JPA annotation discovery is available only through the explicit `mortar.jpaDiscovery=true` processor option. |
+| R26.2 UUID identifier support in generated fixed reads | Done | Row models with `UUID` identifiers compile generated fixed-read helper methods. |
+
+R26 does not turn Mortar into an ORM and does not make JPA entities the preferred
+modeling surface. JPA discovery remains a compatibility path for teams that
+choose it deliberately.
+
+R26 prepares Java artifact version `0.1.0-alpha.2`. Rust crates and editor
+artifacts remain at `0.1.0`.
+
 ## Release Path
 
 R25 closes the first alpha publication action. Published artifacts:
 
-- Maven Central: `io.github.sequelcore:mortar-*` version `0.1.0-alpha.1`.
+- Maven Central: `io.github.sequelcore:mortar-*` version `0.1.0-alpha.2`.
 - crates.io: `sequel-mortar-compiler`, `sequel-mortar-cli`, and
   `sequel-mortar-lsp` version `0.1.0`.
 - Visual Studio Marketplace: `sequelcore.mortar-vscode` version `0.1.0`
