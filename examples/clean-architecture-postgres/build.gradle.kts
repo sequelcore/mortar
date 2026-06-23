@@ -9,7 +9,7 @@ dependencies {
     annotationProcessor(project(":java:processor"))
 
     testImplementation(project(":java:testkit"))
-    testImplementation("org.mockito:mockito-core:5.21.0")
+    testImplementation("org.mockito:mockito-core:5.23.0")
 }
 
 tasks.withType<JavaCompile>().configureEach {
