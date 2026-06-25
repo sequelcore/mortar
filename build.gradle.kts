@@ -7,7 +7,7 @@ plugins {
 group = "io.github.sequelcore"
 version = "0.1.0-alpha.3"
 
-val junitVersion = "6.0.3"
+val junitVersion = "6.1.0"
 val assertjVersion = "3.27.7"
 val publishableJavaProjects = setOf(
     ":java:core",
