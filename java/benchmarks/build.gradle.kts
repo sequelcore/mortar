@@ -13,7 +13,7 @@ dependencies {
     implementation(project(":java:runtime-jdbc"))
     implementation("com.querydsl:querydsl-sql:5.1.0")
     implementation("jakarta.xml.bind:jakarta.xml.bind-api:4.0.5")
-    implementation("org.jetbrains:annotations:26.0.2")
+    implementation("org.jetbrains:annotations:26.1.0")
     implementation("org.jooq:jooq:3.20.9")
     implementation("org.openjdk.jmh:jmh-core:1.37")
     implementation("org.postgresql:postgresql:42.7.11")
